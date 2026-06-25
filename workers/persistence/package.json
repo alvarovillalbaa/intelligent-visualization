@@ -1,0 +1,15 @@
+{
+  "name": "@intelligent-visualization/cloudflare-persistence-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local --persist-to ../../.data/cloudflare",
+    "migrate:local": "wrangler d1 migrations apply intelligent_visualization --local",
+    "seed:local": "wrangler d1 execute intelligent_visualization --local --file ./migrations/0001_initial.sql",
+    "deploy": "wrangler deploy",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "wrangler": "^4.58.0"
+  }
+}

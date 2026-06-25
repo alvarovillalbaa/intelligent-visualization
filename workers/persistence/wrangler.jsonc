@@ -1,0 +1,13 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "intelligent-visualization-persistence",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-06-25",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "intelligent_visualization",
+      "database_id": "local-development"
+    }
+  ]
+}

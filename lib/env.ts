@@ -23,5 +23,22 @@ export function getSessionCookieName() {
 }
 
 export function getSigningSecret() {
-  return process.env.SLIDES_SIGNING_SECRET ?? process.env.CONVEX_ADMIN_KEY ?? "slides-local-dev-secret"
+  const secret = process.env.VISUALIZATION_SIGNING_SECRET ?? process.env.SLIDES_SIGNING_SECRET
+  if (secret) return secret
+
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("VISUALIZATION_SIGNING_SECRET is required in production.")
+  }
+
+  return "visualization-local-dev-secret"
+}
+
+export function getProviderEnvironment() {
+  return {
+    persistenceProvider: process.env.PERSISTENCE_PROVIDER ?? "local",
+    storageProvider: process.env.STORAGE_PROVIDER ?? "auto",
+    authProvider: process.env.AUTH_PROVIDER ?? "portable",
+    realtimeProvider: process.env.REALTIME_PROVIDER ?? "auto",
+    aiEnabled: process.env.AI_ENABLED === "true",
+  }
 }

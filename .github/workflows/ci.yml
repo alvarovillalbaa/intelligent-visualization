@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  local-quality:
+    runs-on: ubuntu-latest
+    env:
+      PERSISTENCE_PROVIDER: local
+      STORAGE_PROVIDER: local
+      AI_ENABLED: "false"
+      NEXT_PUBLIC_APP_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run setup:local
+      - run: npm run doctor
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run test:providers
+      - run: npm run data:export -- --provider local --output .data/test-export
+      - run: npm run data:verify -- --input .data/test-export
+      - run: npm run build

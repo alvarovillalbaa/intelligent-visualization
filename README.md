@@ -1,80 +1,116 @@
-# Slides
+# Intelligent Visualization
 
-Slides is a Next.js + TypeScript + Convex application for turning pasted content, URLs, and uploaded files into editable, publishable, code-based slide decks.
+Intelligent Visualization is a Next.js + TypeScript application for creating interactive visual documents.
 
-Published decks are emitted as standalone HTML artifacts. The app layers team/workspace access control, review flows, lead capture, password protection, signed private embeds, analytics, and experiment routing around those artifacts.
+The platform supports exactly three primary visualization types:
 
-## What is implemented
+- Courses
+- Slide decks
+- Reports
 
-- Team-based authentication with company/team creation
-- Shared team workspaces with role-based deck editing
-- Deck generation from paste, URL, and file context
-- Streaming AI rewrites and direct structured editing
-- Checkpoints, published versions, and review links
-- Password-protected public deck routes
-- Signed private embed URLs
-- Standalone HTML deck artifacts with CTA, poll, lead capture, and event reporting
-- Deck analytics with per-version metrics
-- Asset upload and library management
+Every visualization is designed to publish as a standalone, responsive HTML artifact. The existing slide-deck product is being migrated in place; legacy slide routes and Convex data remain part of the compatibility path.
 
-## Local setup
+## Current Status
 
-1. Copy `.env.example` to `.env.local`.
-2. Fill in `NEXT_PUBLIC_APP_URL`.
-3. Configure Convex with `NEXT_PUBLIC_CONVEX_URL` and `CONVEX_ADMIN_KEY`.
-4. Add at least one AI provider and model if you want live generation.
-5. Optionally add `FIRECRAWL_API_KEY` for URL scraping + brand extraction.
-6. Run:
+Implemented in the current migration slice:
+
+- Canonical visualization document model for courses, slides, and reports.
+- Durable zero-hosted local provider using SQLite under `.data/`.
+- Local filesystem storage under `.data/storage`.
+- Provider-neutral persistence and storage contracts.
+- Standalone HTML artifact compiler with manifests and hashes.
+- Local setup, doctor, reset, export, verify, and import scripts.
+- First Vitest suites for domain, artifact, storage, and local provider behavior.
+
+Still in progress:
+
+- Full replacement of deck-facing UI/routes with visualization terminology.
+- Convex provider-contract adapter and in-place Convex deck migration.
+- Supabase provider.
+- Cloudflare Worker + D1 provider.
+- Report grid editor.
+- Course editor.
+- AI SDK structured-output migration.
+- Eve, Workflows, Sandbox QA, and Queues.
+
+See [docs/limitations.md](docs/limitations.md).
+
+## Local Setup
+
+Local mode does not require hosted services.
 
 ```bash
-npm ci
+npm install
+npm run setup:local
+npm run doctor
 npm run dev
 ```
 
 Open `http://localhost:3000`.
 
-## Environment
+Seeded demo credentials:
 
-- `NEXT_PUBLIC_APP_URL`: base URL used in public/share links
-- `NEXT_PUBLIC_CONVEX_URL`: Convex deployment URL
-- `CONVEX_ADMIN_KEY`: Convex admin key used by the repository layer
-- `SLIDES_SIGNING_SECRET`: HMAC secret for signed embed/artifact URLs
-- `FIRECRAWL_API_KEY`: optional URL scraping + brand extraction
-- `OPENAI_API_KEY` / `ANTHROPIC_API_KEY` / `GOOGLE_GENERATIVE_AI_API_KEY`: optional AI providers
-- `OPENAI_MODEL` / `ANTHROPIC_MODEL` / `GOOGLE_MODEL`: provider model names
+- Email: `morgan@northstarlabs.com`
+- Password: `demo1234`
+
+## Provider Selection
+
+```bash
+PERSISTENCE_PROVIDER=local
+STORAGE_PROVIDER=auto
+AUTH_PROVIDER=portable
+REALTIME_PROVIDER=auto
+```
+
+Allowed persistence providers:
+
+- `local`
+- `convex`
+- `supabase`
+- `cloudflare`
+
+Only the local provider is executable in this migration slice. Other provider boundaries exist but fail closed until their adapters and contract tests are implemented.
 
 ## Commands
 
 ```bash
 npm run dev
+npm run build
 npm run lint
 npm run typecheck
-npm run build
-npm run test
+npm test
+
+npm run setup:local
+npm run doctor
+npm run db:local:reset
+
+npm run data:export -- --provider local --output .data/exports/export-001
+npm run data:verify -- --input .data/exports/export-001
+npm run data:import -- --provider local --input .data/exports/export-001
 ```
-
-## Self-hosting
-
-The app is configured for standalone Next.js output.
-
-```bash
-docker compose up --build
-```
-
-Provide your environment in `.env.local` or adapt `docker-compose.yml`.
 
 ## Architecture
 
-- `app/`: App Router pages, route handlers, and server actions
-- `components/slides/`: product UI for generation, editing, review, and publishing
-- `lib/ai/`: provider routing and deck generation schema/prompting
-- `lib/deck-runtime.ts`: standalone HTML artifact generator
-- `lib/repository.ts`: persistence + authorization layer over Convex/demo store
-- `convex/`: schema and backend query/mutation functions
+- `packages/domain/`: canonical visualization entities, schemas, migrations, IDs, serialization, and starter documents.
+- `packages/backend-contracts/`: provider-neutral persistence contract and atomic domain commands.
+- `packages/provider-local/`: SQLite provider implementation.
+- `packages/storage/`: provider-neutral storage contract and local storage adapter.
+- `lib/artifacts/`: deterministic standalone HTML compiler.
+- `lib/persistence/` and `lib/storage/`: lazy provider factories.
+- `workers/persistence/`: Cloudflare Worker gateway skeleton for future D1 support.
+- `convex/`: legacy Convex backend that will be migrated behind `packages/provider-convex`.
 
-## Notes
+## Documentation
 
-- Public deck slugs only resolve explicitly published versions.
-- Password protection is enforced on public deck rendering and immutable artifacts.
-- Embeds require signed URLs.
-- Team members can access all workspaces in their team.
+- [Architecture and provider status](docs/provider-architecture.md)
+- [Provider contract](docs/provider-contract.md)
+- [Local development](docs/local-development.md)
+- [Storage](docs/storage.md)
+- [Artifact runtime](docs/artifact-runtime.md)
+- [Report rendering](docs/report-rendering.md)
+- [Reference sources](docs/reference-sources.md)
+- [Implementation plan](docs/implementation-plan.md)
+
+## License
+
+MIT. See [LICENSE](LICENSE).

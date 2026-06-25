@@ -1,5 +1,5 @@
 import { nanoid } from "nanoid"
-import { generateObject, streamObject } from "ai"
+import { generateText, Output, streamText } from "ai"
 
 import { applyBrandKitToSource, fetchFirecrawlBrandContext } from "@/lib/brand-kit"
 import { remixTheme, themeLibrary } from "@/lib/deck-runtime"
@@ -269,23 +269,25 @@ export async function generateDeckSource(input: GenerationInput, options?: {
     }
   }
 
-  const generated = await generateObject({
+  const generated = await generateText({
     model: resolved.model,
-    schema: deckSourceSchema,
+    output: Output.object({
+      schema: deckSourceSchema,
+      name: "deck_source",
+      description:
+        "A polished slide deck with brand details, CTA, lead capture, poll, and 4-8 slides.",
+    }),
     temperature: 0.8,
     prompt: buildPrompt(input, sourceContext ? {
       pageMarkdown: sourceContext.pageMarkdown,
       brandSummary: sourceContext.brandSummary,
     } : undefined),
-    schemaName: "deck_source",
-    schemaDescription:
-      "A polished slide deck with brand details, CTA, lead capture, poll, and 4-8 slides.",
   })
 
   return {
     provider: resolved.provider,
     modelName: resolved.modelName,
-    object: applyBrandKitToSource(generated.object, input.themeMode, sourceContext?.firecrawl),
+    object: applyBrandKitToSource(generated.output, input.themeMode, sourceContext?.firecrawl),
   }
 }
 
@@ -312,26 +314,30 @@ export async function streamDeckSource(
     }
   }
 
-  const result = streamObject({
+  const result = streamText({
     model: resolved.model,
-    schema: deckSourceSchema,
+    output: Output.object({
+      schema: deckSourceSchema,
+      name: "deck_source",
+      description:
+        "A polished slide deck with brand details, CTA, lead capture, poll, and 4-8 slides.",
+    }),
     temperature: 0.8,
     prompt: buildPrompt(input, sourceContext ? {
       pageMarkdown: sourceContext.pageMarkdown,
       brandSummary: sourceContext.brandSummary,
     } : undefined),
-    schemaName: "deck_source",
   })
 
   return {
     provider: resolved.provider,
     modelName: resolved.modelName,
     partialObjectStream: (async function* () {
-      for await (const partial of result.partialObjectStream) {
+      for await (const partial of result.partialOutputStream) {
         yield applyBrandKitToSource(partial as DeckSource, input.themeMode, sourceContext?.firecrawl)
       }
     })(),
-    finalObject: result.object.then((object) =>
+    finalObject: result.output.then((object) =>
       applyBrandKitToSource(object, input.themeMode, sourceContext?.firecrawl),
     ),
   }
