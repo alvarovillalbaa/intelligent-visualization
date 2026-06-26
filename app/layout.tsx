@@ -10,8 +10,8 @@ const fontVariables = {
 } as CSSProperties
 
 export const metadata: Metadata = {
-  title: "Slides",
-  description: "Generate, edit, review, and publish code-based slide decks from one product surface.",
+  title: "Intelligent Visualization",
+  description: "Import source material and turn it into slide decks, courses, and reports.",
 }
 
 export default function RootLayout({

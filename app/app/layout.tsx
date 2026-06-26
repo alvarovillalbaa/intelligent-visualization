@@ -1,9 +1,16 @@
 import Link from "next/link"
+import { ChevronDownIcon, LayersIcon, LogOutIcon, PanelsTopLeftIcon } from "lucide-react"
 
 import { signOutAction } from "@/app/actions/auth"
 import { Button } from "@/components/ui/button"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 import { repository } from "@/lib/repository"
 import { requireSessionUser } from "@/lib/server-auth"
+import { cn } from "@/lib/utils"
 
 export default async function AppLayout({
   children,
@@ -13,81 +20,117 @@ export default async function AppLayout({
   const sessionUser = await requireSessionUser()
   const dashboard = await repository.getDashboard(sessionUser.id)
   const workspaces = dashboard?.team.workspaces ?? []
+  const visualizations = workspaces.flatMap((workspace) =>
+    workspace.decks.map((deck) => ({
+      ...deck,
+      workspaceSlug: workspace.slug,
+      workspaceName: workspace.name,
+    })),
+  )
 
   return (
-    <div className="min-h-screen bg-[linear-gradient(180deg,_#fdf8f3_0%,_#f5f8ff_100%)]">
-      <div className="mx-auto grid min-h-screen max-w-[1600px] gap-6 px-4 py-4 lg:grid-cols-[260px_minmax(0,1fr)] lg:px-6">
-        <aside className="rounded-[32px] border border-foreground/8 bg-[#102114] p-5 text-white shadow-[0_24px_80px_rgba(16,33,20,0.18)]">
-          <div className="flex items-center gap-3">
-            <div className="grid size-12 place-items-center rounded-full bg-white text-sm font-semibold text-[#102114]">
-              SL
+    <div className="min-h-screen bg-[#f7f5ef] text-[#171a17]">
+      <div className="grid min-h-screen lg:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="flex min-h-screen flex-col bg-[#111513] px-4 py-5 text-white">
+          <div className="flex items-center gap-3 px-2">
+            <div className="grid size-10 place-items-center rounded-full bg-white text-sm font-semibold text-[#111513]">
+              IV
             </div>
-            <div>
-              <p className="text-sm font-semibold">{sessionUser.teamName}</p>
-              <p className="text-xs text-white/58">{sessionUser.email}</p>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold">{sessionUser.teamName}</p>
+              <p className="truncate text-xs text-white/52">{sessionUser.email}</p>
             </div>
           </div>
-          <nav className="mt-8 grid gap-2">
-            <Link
-              href="/app"
-              className="rounded-full px-4 py-3 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
-            >
-              Dashboard
-            </Link>
-            <Link
-              href={`/app/workspaces/${sessionUser.workspaceSlug}`}
-              className="rounded-full px-4 py-3 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
-            >
-              Workspace
-            </Link>
-            <Link
-              href={`/d/${sessionUser.teamSlug}/slides-operating-system`}
-              className="rounded-full px-4 py-3 text-sm font-medium text-white/80 transition-colors hover:bg-white/10 hover:text-white"
-            >
-              Public sample
-            </Link>
-          </nav>
 
-          <div className="mt-8 rounded-[28px] border border-white/10 bg-white/6 p-4">
-            <p className="text-xs uppercase tracking-[0.18em] text-white/48">Workspaces</p>
-            <div className="mt-4 grid gap-2">
+          <nav className="mt-8 grid gap-5">
+            <SidebarSection
+              title="Workspaces"
+              icon={<PanelsTopLeftIcon className="size-4" />}
+              count={workspaces.length}
+            >
               {workspaces.map((workspace) => (
                 <Link
                   key={workspace.id}
                   href={`/app/workspaces/${workspace.slug}`}
-                  className={`rounded-2xl px-3 py-3 text-sm transition-colors ${
-                    workspace.slug === sessionUser.workspaceSlug ? "bg-white text-[#102114]" : "bg-white/4 text-white/76 hover:bg-white/10"
-                  }`}
+                  className={cn(
+                    "block rounded-md px-3 py-2 text-sm transition-colors",
+                    workspace.slug === sessionUser.workspaceSlug
+                      ? "bg-white text-[#111513]"
+                      : "text-white/72 hover:bg-white/8 hover:text-white",
+                  )}
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="font-medium">{workspace.name}</span>
-                    <span className="text-xs uppercase tracking-[0.16em] opacity-60">{workspace.decks.length}</span>
-                  </div>
-                  <p className="mt-1 line-clamp-2 text-xs opacity-60">{workspace.description}</p>
+                  <span className="flex items-center justify-between gap-3">
+                    <span className="truncate font-medium">{workspace.name}</span>
+                    <span className="text-xs opacity-60">{workspace.decks.length}</span>
+                  </span>
                 </Link>
               ))}
-            </div>
-          </div>
+            </SidebarSection>
 
-          <div className="mt-8 rounded-[28px] border border-white/10 bg-white/6 p-4">
-            <p className="text-xs uppercase tracking-[0.18em] text-white/48">Team model</p>
-            <p className="mt-3 text-lg font-semibold text-white">{sessionUser.role}</p>
-            <p className="mt-2 text-sm leading-7 text-white/66">
-              Teams own workspaces, decks, published versions, review links, and public analytics.
-            </p>
-          </div>
+            <SidebarSection
+              title="Visualizations"
+              icon={<LayersIcon className="size-4" />}
+              count={visualizations.length}
+            >
+              {visualizations.length ? (
+                visualizations.map((visualization) => (
+                  <Link
+                    key={visualization.id}
+                    href={`/app/workspaces/${visualization.workspaceSlug}/decks/${visualization.id}`}
+                    className="block rounded-md px-3 py-2 text-sm text-white/72 transition-colors hover:bg-white/8 hover:text-white"
+                  >
+                    <span className="block truncate font-medium">{visualization.title}</span>
+                    <span className="mt-1 block truncate text-xs text-white/44">{visualization.workspaceName}</span>
+                  </Link>
+                ))
+              ) : (
+                <p className="px-3 py-2 text-sm text-white/48">No visualizations yet.</p>
+              )}
+            </SidebarSection>
+          </nav>
 
-          <form action={signOutAction} className="mt-8">
-            <Button type="submit" variant="outline" className="w-full border-white/14 bg-white/8 text-white hover:bg-white/14">
+          <form action={signOutAction} className="mt-auto pt-6">
+            <Button
+              type="submit"
+              variant="ghost"
+              className="w-full justify-start gap-2 text-white/72 hover:bg-white/8 hover:text-white"
+            >
+              <LogOutIcon className="size-4" />
               Sign out
             </Button>
           </form>
         </aside>
 
-        <div className="rounded-[32px] border border-foreground/8 bg-white/74 p-5 shadow-[0_20px_90px_rgba(15,23,42,0.05)] backdrop-blur-xl sm:p-6">
-          {children}
-        </div>
+        <div className="min-w-0 px-5 py-6 sm:px-8 lg:px-10 lg:py-8">{children}</div>
       </div>
     </div>
+  )
+}
+
+function SidebarSection({
+  title,
+  icon,
+  count,
+  children,
+}: {
+  title: string
+  icon: React.ReactNode
+  count: number
+  children: React.ReactNode
+}) {
+  return (
+    <Collapsible defaultOpen>
+      <CollapsibleTrigger className="flex w-full items-center justify-between rounded-md px-3 py-2 text-left text-sm font-medium text-white/86 transition-colors hover:bg-white/8">
+        <span className="flex items-center gap-2">
+          {icon}
+          {title}
+        </span>
+        <span className="flex items-center gap-2 text-xs text-white/46">
+          {count}
+          <ChevronDownIcon className="size-4" />
+        </span>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="mt-1 grid gap-1">{children}</CollapsibleContent>
+    </Collapsible>
   )
 }

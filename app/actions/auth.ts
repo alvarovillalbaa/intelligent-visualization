@@ -15,9 +15,15 @@ export interface AuthFormState {
   error?: string
 }
 
+function safeReturnTo(formData: FormData) {
+  const value = String(formData.get("returnTo") ?? "/app")
+  return value.startsWith("/") && !value.startsWith("//") ? value : "/app"
+}
+
 export async function signInAction(_: AuthFormState, formData: FormData): Promise<AuthFormState> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase()
   const password = String(formData.get("password") ?? "")
+  const returnTo = safeReturnTo(formData)
 
   if (!email || !password) {
     return { error: "Email and password are required." }
@@ -25,11 +31,11 @@ export async function signInAction(_: AuthFormState, formData: FormData): Promis
 
   const user = await authenticateUser(email, password)
   if (!user) {
-    return { error: "Invalid credentials. Use demo account morgan@northstarlabs.com / demo1234 or create a new team." }
+    return { error: "Invalid credentials. Check your email and password or create a new account." }
   }
 
   await establishSession(user.id)
-  redirect("/app")
+  redirect(returnTo)
 }
 
 export async function signUpAction(_: AuthFormState, formData: FormData): Promise<AuthFormState> {
@@ -37,6 +43,7 @@ export async function signUpAction(_: AuthFormState, formData: FormData): Promis
   const email = String(formData.get("email") ?? "").trim().toLowerCase()
   const password = String(formData.get("password") ?? "")
   const teamName = String(formData.get("teamName") ?? "").trim()
+  const returnTo = safeReturnTo(formData)
 
   if (!name || !email || !password || !teamName) {
     return { error: "Name, team name, email, and password are required." }
@@ -51,7 +58,7 @@ export async function signUpAction(_: AuthFormState, formData: FormData): Promis
     }
   }
 
-  redirect("/app")
+  redirect(returnTo)
 }
 
 export async function signOutAction() {
