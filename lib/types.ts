@@ -378,6 +378,11 @@ export interface GenerationInput {
     type: string
   }>
   themeMode: "brand" | "remix"
+  brandContext?: {
+    brandKit?: BrandKit
+    markdown?: string
+  }
+  themeOverride?: ThemeTokens
 }
 
 export interface PublicDeckView {

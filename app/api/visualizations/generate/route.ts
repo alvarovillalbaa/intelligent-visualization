@@ -2,25 +2,16 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 
 import { generateDeckSource } from "@/lib/ai/generate-deck"
-import { createVisualizationDraft } from "@/lib/visualization-drafts"
+import { generateVisualizationDocument } from "@/lib/ai/generate-visualization"
+import { generationInputSchema } from "@/lib/ai/schema"
+import { buildStandaloneDeckHtml } from "@/lib/deck-runtime"
+import { createSlidesDraft } from "@/lib/visualization-drafts"
+import { slugify } from "@/lib/utils"
 import type { GenerationInput } from "@/lib/types"
 
 const requestSchema = z.object({
   kind: z.enum(["slides", "course", "report"]),
-  generationInput: z.object({
-    inputKind: z.enum(["paste", "url", "files"]),
-    rawText: z.string(),
-    sourceUrl: z.string().optional(),
-    prompt: z.string(),
-    files: z.array(
-      z.object({
-        name: z.string(),
-        content: z.string(),
-        type: z.string(),
-      }),
-    ),
-    themeMode: z.enum(["brand", "remix"]),
-  }),
+  generationInput: generationInputSchema,
 })
 
 export async function POST(request: Request) {
@@ -31,15 +22,34 @@ export async function POST(request: Request) {
   }
 
   const generationInput = body.data.generationInput as GenerationInput
-  const slideResult = body.data.kind === "slides" ? await generateDeckSource(generationInput) : null
-  const document = createVisualizationDraft(body.data.kind, generationInput, slideResult?.object)
+
+  if (body.data.kind === "slides") {
+    const slideResult = await generateDeckSource(generationInput)
+    const artifactHtml = buildStandaloneDeckHtml(
+      slideResult.object,
+      slugify(slideResult.object.title || "visual-draft"),
+    )
+
+    return NextResponse.json({
+      kind: body.data.kind,
+      document: createSlidesDraft(slideResult.object),
+      deckSource: slideResult.object,
+      artifactHtml,
+      provider: slideResult.provider,
+      modelName: slideResult.modelName,
+      generatedAt: Date.now(),
+    })
+  }
+
+  const result = await generateVisualizationDocument(body.data.kind, generationInput)
 
   return NextResponse.json({
     kind: body.data.kind,
-    document,
-    deckSource: slideResult?.object ?? null,
-    provider: slideResult?.provider ?? "deterministic",
-    modelName: slideResult?.modelName ?? "starter-document",
+    document: result.document,
+    deckSource: null,
+    artifactHtml: null,
+    provider: result.provider,
+    modelName: result.modelName,
     generatedAt: Date.now(),
   })
 }

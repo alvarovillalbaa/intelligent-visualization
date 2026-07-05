@@ -292,46 +292,65 @@ export async function fetchFirecrawlBrandContext(sourceUrl: string) {
   } satisfies FirecrawlBrandContext
 }
 
-export function applyBrandKitToSource(
-  source: DeckSource,
-  themeMode: "brand" | "remix",
-  brandContext?: FirecrawlBrandContext | null,
-) {
-  if (!brandContext?.brandKit || !source.theme || !source.brand || !Array.isArray(source.slides)) {
-    return source
-  }
-
-  const { brandKit } = brandContext
-  const accent = pickFirstColor(brandKit.colors, ["primary", "accent", "brand", "cta"]) ?? source.theme.accent
-  const background = pickFirstColor(brandKit.colors, ["background", "surface", "canvas", "base"]) ?? source.theme.background
-  const foreground = pickFirstColor(brandKit.colors, ["foreground", "text", "copy", "ink"]) ?? source.theme.foreground
-  const card = pickFirstColor(brandKit.colors, ["card", "surface", "panel", "secondary"]) ?? source.theme.card
-  const border = pickFirstColor(brandKit.colors, ["border", "outline", "stroke", "divider"]) ?? source.theme.border
-  const displayFont = brandKit.typography?.display[0] ?? brandKit.fonts[0] ?? source.theme.displayFont
+export function deriveThemeFromBrandKit(brandKit: BrandKit, baseTheme: ThemeTokens): ThemeTokens {
+  const accent = pickFirstColor(brandKit.colors, ["primary", "accent", "brand", "cta"]) ?? baseTheme.accent
+  const background = pickFirstColor(brandKit.colors, ["background", "surface", "canvas", "base"]) ?? baseTheme.background
+  const foreground = pickFirstColor(brandKit.colors, ["foreground", "text", "copy", "ink"]) ?? baseTheme.foreground
+  const card = pickFirstColor(brandKit.colors, ["card", "surface", "panel", "secondary"]) ?? baseTheme.card
+  const border = pickFirstColor(brandKit.colors, ["border", "outline", "stroke", "divider"]) ?? baseTheme.border
+  const displayFont = brandKit.typography?.display[0] ?? brandKit.fonts[0] ?? baseTheme.displayFont
   const bodyFont =
     brandKit.typography?.body[0] ??
     brandKit.fonts[1] ??
     brandKit.fonts[0] ??
-    source.theme.bodyFont
-  const mood = brandKit.personality?.[0] ?? brandKit.notes[0] ?? source.theme.mood
+    baseTheme.bodyFont
+  const mood = brandKit.personality?.[0] ?? brandKit.notes[0] ?? baseTheme.mood
+
+  return {
+    ...baseTheme,
+    displayFont,
+    bodyFont,
+    accent,
+    accentSoft: mixAlpha(accent, "1f"),
+    background,
+    foreground,
+    card,
+    cardForeground: foreground,
+    border,
+    gradient: `linear-gradient(135deg, ${background} 0%, ${mixAlpha(accent, "26")} 42%, ${card} 100%)`,
+    mood,
+  }
+}
+
+export function hasUsableBrandStyle(brandKit: BrandKit | undefined | null): brandKit is BrandKit {
+  return Boolean(brandKit && (Object.keys(brandKit.colors).length || brandKit.fonts.length))
+}
+
+export function applyBrandKitToSource(
+  source: DeckSource,
+  themeMode: "brand" | "remix",
+  brandContext?: FirecrawlBrandContext | null,
+  themeOverride?: ThemeTokens,
+) {
+  if (!source.theme || !source.brand || !Array.isArray(source.slides)) {
+    return source
+  }
+
+  const brandKit = brandContext?.brandKit
+  if (!brandKit && !themeOverride) {
+    return source
+  }
 
   const nextTheme: ThemeTokens =
-    themeMode === "brand"
-      ? {
-          ...source.theme,
-          displayFont,
-          bodyFont,
-          accent,
-          accentSoft: mixAlpha(accent, "1f"),
-          background,
-          foreground,
-          card,
-          cardForeground: foreground,
-          border,
-          gradient: `linear-gradient(135deg, ${background} 0%, ${mixAlpha(accent, "26")} 42%, ${card} 100%)`,
-          mood,
-        }
-      : source.theme
+    themeOverride ??
+    (themeMode === "brand" && brandKit ? deriveThemeFromBrandKit(brandKit, source.theme) : source.theme)
+
+  if (!brandKit) {
+    return {
+      ...source,
+      theme: nextTheme,
+    }
+  }
 
   const descriptors = unique([
     ...(brandKit.personality ?? []),

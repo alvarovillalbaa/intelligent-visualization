@@ -2,23 +2,11 @@ import { NextResponse } from "next/server"
 import { z } from "zod"
 
 import { streamDeckSource } from "@/lib/ai/generate-deck"
+import { generationInputSchema } from "@/lib/ai/schema"
 import type { DeckSource, GenerationInput } from "@/lib/types"
 
 const requestSchema = z.object({
-  generationInput: z.object({
-    inputKind: z.enum(["paste", "url", "files"]),
-    rawText: z.string(),
-    sourceUrl: z.string().optional(),
-    prompt: z.string(),
-    files: z.array(
-      z.object({
-        name: z.string(),
-        content: z.string(),
-        type: z.string(),
-      }),
-    ),
-    themeMode: z.enum(["brand", "remix"]),
-  }),
+  generationInput: generationInputSchema,
   existingSource: z.any().optional(),
 })
 

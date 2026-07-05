@@ -1,7 +1,8 @@
 import { nanoid } from "nanoid"
 import { generateText, Output, streamText } from "ai"
 
-import { applyBrandKitToSource, fetchFirecrawlBrandContext } from "@/lib/brand-kit"
+import { applyBrandKitToSource } from "@/lib/brand-kit"
+import { resolveSourceContext } from "@/lib/ai/source-context"
 import { remixTheme, themeLibrary } from "@/lib/deck-runtime"
 import { deckSourceSchema } from "@/lib/ai/schema"
 import { resolveLanguageModel, type ProviderKey } from "@/lib/ai/provider-registry"
@@ -25,7 +26,8 @@ function createFallbackDeck(
     .filter((line) => line.length > 32)
     .slice(0, 8)
 
-  const theme = input.themeMode === "remix" ? remixTheme(themeLibrary[1]) : themeLibrary[0]
+  const theme =
+    input.themeOverride ?? (input.themeMode === "remix" ? remixTheme(themeLibrary[1]) : themeLibrary[0])
 
   return {
     title: headline.slice(0, 72),
@@ -121,9 +123,9 @@ function createFallbackDeck(
                 detail: "Source lines used to draft the first narrative.",
               },
               {
-                label: "Prompt mode",
-                value: input.themeMode === "remix" ? "Remix" : "Brand",
-                detail: "Theme generation mode selected by the editor.",
+                label: "Files attached",
+                value: String(input.files.length),
+                detail: "Source files parsed into this draft.",
               },
             ],
           },
@@ -202,7 +204,6 @@ ${input.prompt || "Create a crisp, well-structured deck."}
 
 Input kind: ${input.inputKind}
 Source URL: ${input.sourceUrl ?? "none"}
-Theme mode: ${input.themeMode}
 
 Raw content:
 ${input.rawText || "No pasted content provided."}
@@ -220,39 +221,6 @@ If files include OCR or extracted document structure, use that structured contex
   `.trim()
 }
 
-async function resolveSourceContext(input: GenerationInput) {
-  if (!input.sourceUrl) {
-    return null
-  }
-
-  try {
-    const firecrawl = await fetchFirecrawlBrandContext(input.sourceUrl)
-    return {
-      firecrawl,
-      pageMarkdown: firecrawl?.markdown,
-      brandSummary: firecrawl?.brandKit
-        ? JSON.stringify({
-            colors: firecrawl.brandKit.colors,
-            fonts: firecrawl.brandKit.fonts,
-            typography: firecrawl.brandKit.typography,
-            taglines: firecrawl.brandKit.taglines,
-            audiences: firecrawl.brandKit.audiences,
-            personality: firecrawl.brandKit.personality,
-            guidelines: firecrawl.brandKit.guidelines,
-            differentiators: firecrawl.brandKit.differentiators,
-            composition: firecrawl.brandKit.composition,
-            components: firecrawl.brandKit.components,
-            notes: firecrawl.brandKit.notes,
-            logos: firecrawl.brandKit.logos,
-            imagery: firecrawl.brandKit.imagery,
-          })
-        : undefined,
-    }
-  } catch {
-    return null
-  }
-}
-
 export async function generateDeckSource(input: GenerationInput, options?: {
   provider?: ProviderKey
   model?: string
@@ -265,7 +233,7 @@ export async function generateDeckSource(input: GenerationInput, options?: {
     return {
       provider: "fallback" as const,
       modelName: "heuristic",
-      object: applyBrandKitToSource(fallback, input.themeMode, sourceContext?.firecrawl),
+      object: applyBrandKitToSource(fallback, input.themeMode, sourceContext?.firecrawl ?? null, input.themeOverride),
     }
   }
 
@@ -287,7 +255,7 @@ export async function generateDeckSource(input: GenerationInput, options?: {
   return {
     provider: resolved.provider,
     modelName: resolved.modelName,
-    object: applyBrandKitToSource(generated.output, input.themeMode, sourceContext?.firecrawl),
+    object: applyBrandKitToSource(generated.output, input.themeMode, sourceContext?.firecrawl ?? null, input.themeOverride),
   }
 }
 
@@ -302,7 +270,8 @@ export async function streamDeckSource(
     const fallback = applyBrandKitToSource(
       createFallbackDeck(input, sourceContext ? { pageMarkdown: sourceContext.pageMarkdown } : undefined),
       input.themeMode,
-      sourceContext?.firecrawl,
+      sourceContext?.firecrawl ?? null,
+      input.themeOverride,
     )
     return {
       provider: "fallback" as const,
@@ -334,11 +303,11 @@ export async function streamDeckSource(
     modelName: resolved.modelName,
     partialObjectStream: (async function* () {
       for await (const partial of result.partialOutputStream) {
-        yield applyBrandKitToSource(partial as DeckSource, input.themeMode, sourceContext?.firecrawl)
+        yield applyBrandKitToSource(partial as DeckSource, input.themeMode, sourceContext?.firecrawl ?? null, input.themeOverride)
       }
     })(),
     finalObject: result.output.then((object) =>
-      applyBrandKitToSource(object, input.themeMode, sourceContext?.firecrawl),
+      applyBrandKitToSource(object, input.themeMode, sourceContext?.firecrawl ?? null, input.themeOverride),
     ),
   }
 }
