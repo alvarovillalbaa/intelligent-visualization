@@ -8,7 +8,7 @@ This migration is not complete.
 - Supabase provider is not implemented.
 - Cloudflare Worker + D1 provider is only a skeleton.
 - Report editor grid is not implemented.
-- Course editor is not implemented.
+- Course browser-draft authoring is implemented; hosted Course saving/publication and browser interaction acceptance remain unverified.
 - AI SDK deprecated object APIs still exist in `lib/ai/generate-deck.ts`.
 - Eve, Workflows, Sandbox QA, and Queues are not implemented.
 - Playwright and GitHub Actions are not fully wired.

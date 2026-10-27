@@ -4,12 +4,25 @@ import { useState } from "react"
 
 import type { CourseBlock, CourseVisualizationDocument } from "@/packages/domain/entities"
 
+function CourseList({ title, items, level = 3 }: { title: string; items: string[]; level?: 3 | 4 }) {
+  if (!items.length) return null
+  const Heading = level === 4 ? "h4" : "h3"
+  return (
+    <div className="grid min-w-0 gap-2">
+      <Heading className="text-sm font-semibold">{title}</Heading>
+      <ul className="list-disc space-y-1 pl-5 text-sm leading-6">
+        {items.map((item, index) => <li key={index} className="whitespace-pre-wrap break-words">{item}</li>)}
+      </ul>
+    </div>
+  )
+}
+
 function CourseBlockView({ block }: { block: CourseBlock }) {
   switch (block.kind) {
     case "heading":
       return <h4 className="text-lg font-semibold">{block.text}</h4>
     case "prose":
-      return <p className="leading-7 opacity-90">{block.text}</p>
+      return <p className="whitespace-pre-wrap break-words leading-7 opacity-90">{block.text}</p>
     case "callout":
       return (
         <div className="rounded-lg border-l-4 p-4" style={{ borderColor: "var(--iv-accent)", backgroundColor: "var(--iv-muted)" }}>
@@ -89,6 +102,10 @@ function MultipleChoiceCheck({
 export function CoursePreview({ document }: { document: CourseVisualizationDocument }) {
   const { theme, course } = document
   const lessonCount = course.modules.reduce((sum, module) => sum + module.lessons.length, 0)
+  const lessonTitles = new Map(course.modules.flatMap((module) => module.lessons.map((lesson) => [lesson.id, lesson.title] as const)))
+  const referenceTitles = new Map(course.references.map((reference) => [reference.id, reference.title]))
+  const hasPreparation = [course.prerequisites, course.learnerProfile.assumedKnowledge, course.learnerProfile.goals, course.learnerProfile.constraints]
+    .some((items) => items.length > 0)
 
   return (
     <div
@@ -110,7 +127,10 @@ export function CoursePreview({ document }: { document: CourseVisualizationDocum
           <h1 className="text-4xl font-semibold leading-tight" style={{ fontFamily: theme.displayFont }}>
             {document.title}
           </h1>
+          {document.subtitle ? <p className="break-words text-xl leading-8 opacity-80">{document.subtitle}</p> : null}
           <p className="text-lg leading-8 opacity-80">{document.summary}</p>
+          <p className="break-words text-sm leading-6"><strong>For:</strong> {document.audience}</p>
+          <p className="break-words text-sm leading-6"><strong>Goal:</strong> {document.goal}</p>
           <p className="text-sm opacity-60">
             {course.modules.length} modules · {lessonCount} lessons · about {course.estimatedMinutes} minutes ·{" "}
             {course.learnerProfile.level}
@@ -128,6 +148,16 @@ export function CoursePreview({ document }: { document: CourseVisualizationDocum
             ))}
           </ul>
         </section>
+
+        {hasPreparation ? (
+          <section className="grid gap-5 rounded-lg border p-6" style={{ borderColor: theme.border }}>
+            <h2 className="text-xl font-semibold" style={{ fontFamily: theme.displayFont }}>Before you start</h2>
+            <CourseList title="Prerequisites" items={course.prerequisites} />
+            <CourseList title="Assumed knowledge" items={course.learnerProfile.assumedKnowledge} />
+            <CourseList title="Learner goals" items={course.learnerProfile.goals} />
+            <CourseList title="Learning constraints" items={course.learnerProfile.constraints} />
+          </section>
+        ) : null}
 
         {course.modules.map((module, moduleIndex) => (
           <section key={module.id} className="grid gap-6">
@@ -148,7 +178,8 @@ export function CoursePreview({ document }: { document: CourseVisualizationDocum
                   <span className="text-xs opacity-60">{lesson.estimatedMinutes} min</span>
                 </div>
                 <p className="text-sm leading-6 opacity-70">{lesson.objective}</p>
-                <p className="leading-7 opacity-90">{lesson.explanation}</p>
+                <CourseList title="Before this lesson" level={4} items={lesson.prerequisiteIds.map((id) => lessonTitles.get(id) ?? "A prerequisite lesson is unavailable.")} />
+                <p className="whitespace-pre-wrap break-words leading-7 opacity-90">{lesson.explanation}</p>
 
                 {lesson.blocks.map((block) => (
                   <CourseBlockView key={block.id} block={block} />
@@ -163,7 +194,14 @@ export function CoursePreview({ document }: { document: CourseVisualizationDocum
                   </div>
                 ) : null}
 
-                {lesson.summary ? <p className="text-sm leading-6 opacity-70">{lesson.summary}</p> : null}
+                {lesson.feedback ? (
+                  <div className="grid gap-1">
+                    <h4 className="text-sm font-semibold">Feedback</h4>
+                    <p className="whitespace-pre-wrap break-words text-sm leading-6 opacity-80">{lesson.feedback}</p>
+                  </div>
+                ) : null}
+                {lesson.summary ? <p className="whitespace-pre-wrap break-words text-sm leading-6 opacity-70">{lesson.summary}</p> : null}
+                <CourseList title="Lesson references" level={4} items={lesson.references.map((reference) => referenceTitles.get(reference) ?? reference)} />
               </article>
             ))}
           </section>

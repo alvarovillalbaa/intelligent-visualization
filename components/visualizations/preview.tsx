@@ -89,7 +89,7 @@ export function VisualizationPreview({
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{draft.document.title}</p>
             <p className="text-xs text-muted-foreground">{visualizationKindLabel(draft.kind)}</p>
-            {note ? <p className="mt-1 max-w-xl text-xs text-muted-foreground">{note}</p> : null}
+            {note ? <p role="status" aria-live="polite" className="mt-1 max-w-xl text-xs text-muted-foreground">{note}</p> : null}
           </div>
         </div>
 

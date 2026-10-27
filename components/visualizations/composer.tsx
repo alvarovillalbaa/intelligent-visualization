@@ -19,6 +19,8 @@ import { visualizationOptions } from "@/components/visualizations/options"
 import { StylePanel } from "@/components/visualizations/style-panel"
 import { VisualizationPreview } from "@/components/visualizations/preview"
 import { GenerationResults, isExampleDraft } from "@/components/visualizations/generation-results"
+import { CourseEditor } from "@/components/visualizations/course-editor"
+import { applyCourseDraftEdit } from "@/lib/client/course-authoring"
 import {
   clearGuestDraft,
   loadGuestDraft,
@@ -38,7 +40,7 @@ import {
 import { extractUrls, urlDomain } from "@/lib/detect-urls"
 import { remixTheme, themeLibrary } from "@/lib/deck-runtime"
 import type { BrandKit, GenerationInput, ThemeTokens } from "@/lib/types"
-import type { VisualizationDocument, VisualizationKind } from "@/packages/domain/entities"
+import type { CourseVisualizationDocument, VisualizationDocument, VisualizationKind } from "@/packages/domain/entities"
 import { cn } from "@/lib/utils"
 
 const DEFAULT_PROMPT = "Create a polished visual document from this source."
@@ -52,6 +54,14 @@ type ComposerProps = { introduction?: ReactNode } & (
 )
 
 type StyleDecision = "accepted" | "shuffled" | "skipped" | null
+
+type CourseEditContext = {
+  id: string
+  batchId: string
+  resultId: string
+  expectedDraft: GeneratedDraft
+  document: CourseVisualizationDocument
+}
 
 type StyleState =
   | { status: "idle" }
@@ -113,6 +123,7 @@ export function Composer(props: ComposerProps) {
   const pendingImportsRef = useRef(0)
   const batchRef = useRef<GenerationBatch | null>(null)
   const savingRef = useRef(new Set<string>())
+  const courseEditorRef = useRef<CourseEditContext | null>(null)
 
   const [step, setStep] = useState<"source" | "configure">("source")
   const [textEntries, setTextEntries] = useState<string[]>([])
@@ -129,6 +140,7 @@ export function Composer(props: ComposerProps) {
   const [previewOpen, setPreviewOpen] = useState(false)
   const [batch, setBatch] = useState<GenerationBatch | null>(null)
   const [previewResultId, setPreviewResultId] = useState<string | null>(null)
+  const [courseEditing, setCourseEditing] = useState<CourseEditContext | null>(null)
   const [storageNotice, setStorageNotice] = useState<string | null>(null)
   const [recoveryRequired, setRecoveryRequired] = useState(false)
   const rawText = useMemo(() => serializeSourceText({ entries: textEntries, pending: pendingText }), [textEntries, pendingText])
@@ -147,6 +159,7 @@ export function Composer(props: ComposerProps) {
       importEpochRef.current++
       pendingImportsRef.current = 0
       requestRef.current?.abort()
+      courseEditorRef.current = null
     }
   }, [])
 
@@ -209,6 +222,42 @@ export function Composer(props: ComposerProps) {
   function replaceBatch(next: GenerationBatch | null) {
     batchRef.current = next
     setBatch(next)
+  }
+
+  function replaceCourseEditor(next: CourseEditContext | null) {
+    courseEditorRef.current = next
+    setCourseEditing(next)
+  }
+
+  function editCourse(resultId: string) {
+    const current = batchRef.current
+    const result = current?.results.find((candidate) => candidate.id === resultId)
+    if (!current || result?.status !== "completed" || result.kind !== "course" || !result.draft || result.draft.document.kind !== "course" || isExampleDraft(result.draft)) return
+    replaceCourseEditor({
+      id: crypto.randomUUID(), batchId: current.id, resultId,
+      expectedDraft: structuredClone(result.draft), document: structuredClone(result.draft.document),
+    })
+    setPreviewOpen(false)
+    setPreviewResultId(null)
+  }
+
+  function applyCourseChanges(context: CourseEditContext, document: CourseVisualizationDocument): string | null {
+    const current = batchRef.current
+    if (!mountedRef.current || courseEditorRef.current?.id !== context.id || !current || current.id !== context.batchId) {
+      return "This draft changed while you were editing. Keep a copy of your changes, then reopen its editor."
+    }
+    try {
+      replaceBatch(applyCourseDraftEdit(current, context.resultId, context.expectedDraft, document))
+      replaceCourseEditor(null)
+      setPreviewResultId(context.resultId)
+      return null
+    } catch (error) {
+      return error instanceof Error ? error.message : "The Course changes could not be applied. Your edits remain here."
+    }
+  }
+
+  function closeCourseEditor(context: CourseEditContext) {
+    if (courseEditorRef.current?.id === context.id) replaceCourseEditor(null)
   }
 
   function patchResult(batchId: string, resultId: string, patch: Partial<Omit<GenerationResult, "id" | "kind">>) {
@@ -472,6 +521,7 @@ export function Composer(props: ComposerProps) {
     generationBusyRef.current = true
     setRecoveryRequired(false)
     replaceBatch(next)
+    replaceCourseEditor(null)
     setDraft(null)
     setPreviewOpen(false)
     setPreviewResultId(null)
@@ -506,6 +556,7 @@ export function Composer(props: ComposerProps) {
     setPreviewOpen(false)
     setPreviewResultId(null)
     replaceBatch(null)
+    replaceCourseEditor(null)
     setRecoveryRequired(false)
     setStorageNotice(null)
     setError(null)
@@ -528,9 +579,10 @@ export function Composer(props: ComposerProps) {
 
   const previewResult = batch?.results.find((result) => result.id === previewResultId)
   const previewDraft = previewResult?.draft ?? (previewOpen ? draft : null)
-  const previewNote = previewResult?.savedDeckId ? "Saved to this workspace." : props.mode === "workspace"
+  const retentionNote = previewResult?.savedDeckId ? "Saved to this workspace." : props.mode === "workspace"
     ? "This draft remains in this tab until workspace saving is confirmed."
     : "This draft is held in this browser when storage is available; account creation does not save it automatically."
+  const previewNote = `${retentionNote}${storageNotice ? ` ${storageNotice}` : ""}`
 
   return (
     <div className="grid gap-4">
@@ -765,7 +817,7 @@ export function Composer(props: ComposerProps) {
 
       {batch ? (
         <GenerationResults batch={batch} busy={generating} workspaceSlug={props.mode === "workspace" ? props.workspaceSlug : undefined}
-          onPreview={(id) => { setPreviewResultId(id); setPreviewOpen(false) }} onRetry={retryResult} onStartOver={startOver} />
+          onPreview={(id) => { setPreviewResultId(id); setPreviewOpen(false) }} onEditCourse={editCourse} onRetry={retryResult} onStartOver={startOver} />
       ) : null}
 
       {props.mode === "guest" && draft && !batch ? (
@@ -803,6 +855,15 @@ export function Composer(props: ComposerProps) {
           showSignupCta={props.mode === "guest"}
           onClose={() => { setPreviewOpen(false); setPreviewResultId(null) }}
         />
+      ) : null}
+
+      {courseEditing ? (
+        <CourseEditor key={courseEditing.id} document={courseEditing.document}
+          persistenceNote={props.mode === "workspace"
+            ? "Apply updates this draft in this tab. Course workspace saving and publication are not available yet."
+            : "Apply updates this browser draft for its existing four-hour retention when storage is available. Check any browser-storage notice after applying."}
+          onApply={(document) => applyCourseChanges(courseEditing, document)}
+          onCancel={() => closeCourseEditor(courseEditing)} />
       ) : null}
     </div>
   )

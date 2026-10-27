@@ -16,6 +16,7 @@ export function GenerationResults({
   busy,
   workspaceSlug,
   onPreview,
+  onEditCourse,
   onRetry,
   onStartOver,
 }: {
@@ -23,6 +24,7 @@ export function GenerationResults({
   busy: boolean
   workspaceSlug?: string
   onPreview: (id: string) => void
+  onEditCourse: (id: string) => void
   onRetry: (id: string) => void
   onStartOver: () => void
 }) {
@@ -40,7 +42,7 @@ export function GenerationResults({
         <Button type="button" variant="outline" className="min-h-11" disabled={busy} onClick={onStartOver}>Start over</Button>
       </div>
       <p className="text-xs leading-relaxed text-muted-foreground">
-        These results use the source and style captured when this batch started. Retrying a failed format keeps the other drafts.
+        Generation used the source and style captured when this batch started. Course edits update that draft; retrying a failed format keeps the other drafts.
         {workspaceSlug ? " Slides save to this workspace. Course and Report drafts remain in this tab until workspace saving is available." : " Drafts are kept in this browser for up to four hours when storage is available. Creating an account does not automatically save them to a workspace."}
       </p>
       <ol className="grid min-w-0 gap-3">
@@ -53,14 +55,14 @@ export function GenerationResults({
                 <h3 className="font-semibold">{visualizationKindLabel(result.kind)}</h3>
                 <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
                   {result.status === "running" || result.saveStatus === "saving" ? <Loader2Icon className="size-4 animate-spin" aria-hidden="true" /> : null}
-                  {example ? "Previous example · not AI generated" : result.status === "completed" ? "AI draft ready" : result.status === "queued" ? "Waiting" : result.status === "running" ? "Generating" : result.status === "interrupted" ? "Interrupted · retry when ready" : "Generation failed"}
+                  {example ? "Previous example · not AI generated" : result.status === "completed" ? result.kind === "course" ? "Course draft ready" : "AI draft ready" : result.status === "queued" ? "Waiting" : result.status === "running" ? "Generating" : result.status === "interrupted" ? "Interrupted · retry when ready" : "Generation failed"}
                 </span>
               </div>
               {result.draft ? (
                 <div className="min-w-0 space-y-1">
                   <p className="break-words font-medium">{result.draft.document.title}</p>
                   <p className="line-clamp-3 break-words text-sm leading-relaxed text-muted-foreground">{result.draft.document.summary}</p>
-                  <p className="break-words text-xs text-muted-foreground">{result.draft.provider} · {result.draft.modelName}</p>
+                  <p className="break-words text-xs text-muted-foreground">{result.kind === "course" ? "Original generation: " : ""}{result.draft.provider} · {result.draft.modelName}</p>
                 </div>
               ) : null}
               {result.error ? <p className="break-words text-sm text-destructive">{result.error}</p> : null}
@@ -70,6 +72,9 @@ export function GenerationResults({
               {result.saveStatus === "failed" ? <p className="text-xs text-muted-foreground">The AI draft is still available here; workspace saving did not complete.</p> : null}
               <div className="flex flex-wrap gap-2">
                 {result.draft ? <Button type="button" variant="outline" className="min-h-11" onClick={() => onPreview(result.id)} aria-label={`Preview ${visualizationKindLabel(result.kind)}`}>Preview</Button> : null}
+                {result.status === "completed" && result.kind === "course" && result.draft?.document.kind === "course" && !example ? (
+                  <Button type="button" variant="outline" className="min-h-11" onClick={() => onEditCourse(result.id)}>Edit Course</Button>
+                ) : null}
                 {retryable ? <Button type="button" className="min-h-11" disabled={busy} onClick={() => onRetry(result.id)}>Retry {visualizationKindLabel(result.kind)}</Button> : null}
                 {workspaceSlug && result.savedDeckId ? (
                   <Button nativeButton={false} render={<Link href={`/app/workspaces/${workspaceSlug}/decks/${result.savedDeckId}`} />} variant="secondary" className="min-h-11">Open saved Slides</Button>

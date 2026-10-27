@@ -21,6 +21,7 @@ Implemented in the current migration slice:
 - Standalone HTML artifact compiler with manifests and hashes.
 - Local setup, doctor, reset, export, verify, and import scripts.
 - First Vitest suites for domain, artifact, storage, and local provider behavior.
+- [Course authoring](docs/course-authoring.md) for generated browser drafts, with typed content/practice fields, isolated preview and guarded Apply.
 
 Still in progress:
 
@@ -29,7 +30,7 @@ Still in progress:
 - Supabase provider.
 - Cloudflare Worker + D1 provider.
 - Report grid editor.
-- Course editor.
+- Hosted Course saving/publication and learner analytics; browser draft authoring is implemented.
 - AI SDK structured-output migration.
 - Eve, Workflows, Sandbox QA, and Queues.
 
