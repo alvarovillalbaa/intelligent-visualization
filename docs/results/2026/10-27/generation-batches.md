@@ -1,6 +1,6 @@
 # Multi-format generation repair
 
-Status: source under review; publication and runtime acceptance pending. This receipt covers the current repair and does not establish end-to-end provider readiness.
+Status: source published; a negative-test TypeScript fixture correction and CI readback are in progress. Focused runtime acceptance remains pending. This receipt covers the current repair and does not establish end-to-end provider readiness.
 
 The [owning Notion QA](https://app.notion.com/p/3b6a1ee8bd06808bb0bff40e0d6eb034), fetched on 2026-10-27, asks to remove the second-screen introduction, select multiple formats from the same sources, and use real AI rather than predefined drafts. The user explicitly confirmed the second-screen/multi-format interpretation. A signed reference-image navigation was blocked by the browser; the image was not viewed. No alternative interpretation of that image is claimed.
 
@@ -21,6 +21,8 @@ Fourteen frontend state/storage regression cases are authored in `tests/unit/gen
 Node 24.21.0 and the existing TypeScript 5.9.3 parser accepted sixteen changed/new TypeScript sources, including the inactive mocked test source; 93 local imports and 17 Markdown file targets resolved. This is syntax/import/link proof, not a TypeScript program compile or execution. Independent source review found two recovery bugs: a valid canonical-only Slides draft could not recompile after reload, and a file import could repopulate the composer after Start over. The repair now prefers rich legacy source with a canonical-document fallback, and invalidates late imports on reset/unmount while retaining simultaneous imports within the same source session. The workspace heading also retains its original first-screen spacing.
 
 Twenty-two backend/renderer assertions remain outside discovery in [the inactive proposal](../../../../docs/proposals/ai-generation-checks.md), pending explicit backend-test approval. Browser checks and temporary CI also require explicit approval under the supplied AGENTS.md §§7 and 14. Exact native CI and publication outcomes will be recorded separately.
+
+Source release [`71e676c98e2542fd031114e8194236276c1608f8`](https://github.com/alvarovillalbaa/intelligent-visualization/commit/71e676c98e2542fd031114e8194236276c1608f8) reached Vercel `READY` as `dpl_Gt94J2Hgq6w4cMwVz3Y6wH7vyt2T`. The unchanged automatic [CI run 40551649320](https://github.com/alvarovillalbaa/intelligent-visualization/actions/runs/40551649320/job/122356700654) passed setup/doctor/lint, then stopped on `TS2352` in the deliberately invalid-kind test cast. All test/provider/export/build steps were skipped. The correction casts through `unknown` before the intentionally invalid array; no assertion is removed or weakened. A successful host deployment alone is not a passing repository typecheck or test run.
 
 No local install, production model call, account operation, migration, database mutation, provider reconfiguration, or all-kind publication occurred for this repair. Production resource checks were read-only metadata. Local builds remain blocked by the Storage Guard reserve.
 

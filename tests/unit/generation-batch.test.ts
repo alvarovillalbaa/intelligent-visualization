@@ -36,7 +36,7 @@ describe("generation batch state", () => {
       { id: "batch-id:report", kind: "report", status: "queued", draft: null, error: null, saveStatus: "idle" },
     ])
     expect(() => createGenerationBatch([], sourceInput(), "batch", 42)).toThrow()
-    expect(() => normalizeGenerationKinds(["unknown"] as VisualizationKind[])).toThrow()
+    expect(() => normalizeGenerationKinds(["unknown"] as unknown as VisualizationKind[])).toThrow()
     expect(() => createGenerationBatch(["slides"], sourceInput(), " ", 42)).toThrow()
     expect(() => createGenerationBatch(["slides"], sourceInput(), "batch", Number.NaN)).toThrow()
   })
