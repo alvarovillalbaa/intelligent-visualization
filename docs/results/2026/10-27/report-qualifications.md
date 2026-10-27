@@ -1,6 +1,6 @@
 # Visible report qualifications
 
-27 October 2026. Status: renderer repair implemented and 18 focused rendering checks passed; source/hosted publication readback pending. The all-project goal is active.
+27 October 2026. Status: renderer repair published, 18 focused rendering checks passed, and exact-SHA hosted build/delivery verified. The all-project goal is active.
 
 Baseline: [da4d424965d68bf7e1ff41ce9dd5aa0e36c34325](https://github.com/alvarovillalbaa/intelligent-visualization/commit/da4d424965d68bf7e1ff41ce9dd5aa0e36c34325). The [owning audit](report-qualifications-audit.md) found that the React report preview hid illustrative flags and chart/KPI/table provenance already carried by the canonical schema and standalone artifact compiler.
 
@@ -41,8 +41,10 @@ Independent source review found no scoped blocker. Both TypeScript files and the
 
 ## Publication and limits
 
-The existing main-push workflow runs broad tests, provider checks, data export, typecheck and build. Source publication will use the commit-specific `[skip actions]` annotation to keep unapproved backend/provider suites unrun; the workflow remains unchanged and no green CI claim will be made. Vercel's normal hosted build/delivery will be verified separately under the existing publication authorization.
+The existing main-push workflow runs broad tests, provider checks, data export, typecheck and build. Source publication used the commit-specific `[skip actions]` annotation to keep unapproved backend/provider suites unrun; the workflow remains unchanged and no green CI claim is made. The source-SHA/event-filtered Actions API returned zero push runs. Vercel's normal hosted build/delivery was verified separately under the existing publication authorization.
 
 No local install, full Next build, broad TypeScript program check, browser, generation, account, persistence, provider or model call ran for this repair. Browser chart layout, model output quality, all-format durable saves/publication and existing provider/Auth gates remain unverified. Existing source-entry and multi-format acceptance proposals retain their original pending approval status.
 
-Focused results are complete. Immutable GitHub/exact-SHA hosted delivery readback pending.
+Source [ae589392b27125f91f65ed5f37859bf58b4f6641](https://github.com/alvarovillalbaa/intelligent-visualization/commit/ae589392b27125f91f65ed5f37859bf58b4f6641) was pushed to personal-repository `main`. An immutable connected GitHub read of the changed renderer returned blob `3f72b56edebce2ff97c939436d9d1aa66e52a41f`, equal to the local blob.
+
+Vercel production deployment `dpl_DMGK5A8yS1x56Pdvu1MDXS4yyLcj` reached `READY` at that exact SHA and owns the canonical alias. Build logs show successful compilation, TypeScript execution, completed build output and completed deployment. A connected GET of [the public app](https://intelligent-visualization.vercel.app/) returned 200 and identified that exact deployment. This establishes hosted source/build/delivery, not report interaction or browser chart layout. A documentation-only follow-up retains all checked runtime/test bytes.
