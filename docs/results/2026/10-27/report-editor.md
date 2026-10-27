@@ -1,8 +1,8 @@
 # Report draft grid authoring
 
-27 October 2026 (UTC). Client implementation and focused checks are prepared;
-publication and hosted build/delivery verification are pending. Browser
-acceptance is separately gated. The all-project goal is active.
+27 October 2026 (UTC). Source published, 96 focused checks passed, and hosted
+build/delivery verified. Browser acceptance is separately gated. The all-project
+goal is active.
 
 The owning [Report authoring](../../../report-authoring.md) and implementation
 plan identified the missing DOM grid editor. This slice implements that client
@@ -90,7 +90,9 @@ with an explicit value-preserving action, and fractional numeric input handling.
 Focused cases cover these corrections and cancellation/ownership boundaries.
 Independent source review found no remaining concrete blocker. Fourteen changed
 TS/TSX files passed syntax transpilation with no diagnostics; this is not a
-semantic TypeScript program check. `git diff --check` passed. The protected
+semantic TypeScript program check. Twenty-eight owned text files, 25 local
+Markdown targets and 59 local source imports passed whitespace/path checks.
+`git diff --check` passed. The protected
 domain/schema, provider/API/Auth, AI/compiler, dependency, storage-contract and
 workflow paths compare unchanged against the baseline.
 
@@ -115,8 +117,28 @@ all-format workflow gates remain unfinished.
 
 ## Publication
 
-Source publication, exact GitHub readback, the existing Vercel hosted build and
-canonical public delivery will be recorded here after they are observed. The
-commit-specific `[skip actions]` annotation will leave the existing broad
-backend/provider push workflow unrun; its file remains unchanged. No green
-GitHub CI result is inferred from that omission.
+Source
+[`b3c1a2218e6c10653a1ca2a27e98bda0ae9ca7c5`](https://github.com/alvarovillalbaa/intelligent-visualization/commit/b3c1a2218e6c10653a1ca2a27e98bda0ae9ca7c5)
+was pushed to personal-repository main. Immutable connected GitHub readback
+matches local blobs for ReportEditor (`6bbe7bb0625bf6164afea0f7cc2aa15ea10b29d3`),
+the authoring helper (`de8710fdd2d20ae265f9375515015271e4155531`) and Composer
+(`967caa476c1c0302a13e745ac5c6da38403da038`). The commit-specific `[skip actions]`
+annotation leaves the existing broad backend/provider push workflow unrun; the
+SHA/event-filtered Actions API returned zero push runs. Its file is unchanged;
+no green GitHub CI result is inferred from that omission.
+
+Vercel production
+[`dpl_DYeMCoQge17MWUbpFu4puHraNJJT`](https://vercel.com/my-team-4f230354/intelligent-visualization/DYeMCoQge17MWUbpFu4puHraNJJT)
+reached READY at that exact source SHA and owns the canonical alias. Logs show
+successful compilation in 11.3 seconds, the TypeScript step, completed build
+output and deployment. This is the actual hosted locked-dependency build; local
+syntax checks are not substituted for it.
+
+A public [homepage](https://intelligent-visualization.vercel.app/) GET returned
+200 and referenced that deployment in its script URLs. The Report editor chunk
+`/_next/static/chunks/303-d98ce2af823593e3.js` returned 200: 152,870 bytes,
+SHA256 `91729f34fbb56d22c8807cee987bc8ab6094877e29365f76b9103e1e83db7d04`.
+Its bytes contain Edit Report, Apply position and size, Discard position fields,
+Resize selected block and Source snapshots. This establishes source, hosted
+build and delivered client code, not browser interaction. The receipt-only
+follow-up keeps all checked runtime, test and proposal bytes unchanged.
