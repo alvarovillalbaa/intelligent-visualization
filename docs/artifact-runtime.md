@@ -11,10 +11,13 @@ Current behavior:
 - Produces a manifest with document hash, artifact hash, renderer version, source hashes, assets, and runtime features.
 - Uses trusted inline runtime code for analytics beacons and course progress.
 - Does not load external JavaScript from a CDN.
+- Report renderer `visualization-report-html-v2` applies responsive grid layouts,
+  exposes focusable scroll regions, expands print flow and preserves chart data
+  tables. See [Report HTML export](report-export.md) for supported marks and limits.
 
 Remaining work:
 
 - Full deterministic QA pass.
 - Stronger CSP response integration.
-- Rich report chart rendering.
+- Report chart appearance, standalone download/file-opening and print acceptance.
 - More complete course and slide interactions.

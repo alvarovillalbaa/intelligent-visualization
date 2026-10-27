@@ -74,9 +74,8 @@ before the block-count cap. These are client limits, not provider/schema changes
 
 ## Remaining work
 
-Standalone artifact rendering still follows source order and does not apply
-grid layouts; the current editor and React preview do. Hosted Report saving,
-publication/export of these layouts, data import, immutable snapshot creation
-and browser interaction acceptance remain separate work. Existing snapshot
-records are preserved rather than created or rewritten by this editor.
-See [Report rendering](report-rendering.md).
+[Report HTML export](report-export.md) now carries these layouts into a
+standalone copy of the committed draft. Hosted Report saving/publication, data
+import, immutable snapshot creation and browser/download/print acceptance remain
+separate work. Existing snapshot records are preserved rather than created or
+rewritten by the editor or export. See [Report rendering](report-rendering.md).

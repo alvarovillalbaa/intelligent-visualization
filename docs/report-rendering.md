@@ -20,5 +20,8 @@ The [Report editor](report-authoring.md) and React preview now use the canonical
 12/8/4-column layouts. Preview cells scroll and accept keyboard focus; container
 queries choose layouts from the preview's available width. The editor can force
 a breakpoint for its unapplied preview. Missing or invalid legacy placements
-fall back to readable source order. The standalone artifact compiler still
-renders source order without grid placement; it is not changed by this editor.
+fall back to readable source order. The [standalone Report export](report-export.md)
+uses the same grid geometry and breakpoints, expands to source order for print,
+and retains accessible chart data tables alongside its inline SVG. The general
+compiler reports unusable placements as `REPORT_LAYOUT_FALLBACK` rather than
+dropping content. Browser layout, download and print acceptance remain unverified.

@@ -5,6 +5,8 @@ import type {
   VisualizationDocument,
 } from "@/packages/domain/entities"
 import { migrateVisualizationDocument } from "@/packages/domain/migrations"
+import { REPORT_ARTIFACT_CSS, reportArtifactLayout, reportArtifactPlacement } from "./report-grid"
+import { REPORT_CHART_CSS, renderReportChart } from "./report-chart"
 
 export interface ArtifactCompileOptions {
   visualizationId: string
@@ -42,6 +44,7 @@ export interface CompiledArtifact {
 }
 
 const RENDERER_VERSION = "visualization-html-v1"
+const REPORT_RENDERER_VERSION = "visualization-report-html-v2"
 
 function escapeHtml(value: string) {
   return value
@@ -152,7 +155,7 @@ function renderReportBlock(block: ReportBlock): string {
     case "kpi":
       return `<article class="kpi" id="${escapeHtml(block.id)}"><span>${escapeHtml(block.label)}</span><strong>${escapeHtml(block.value)}</strong><small>${escapeHtml(block.detail)}</small><p>${escapeHtml(block.provenance)}</p></article>`
     case "chart":
-      return renderInlineChart(block)
+      return renderReportChart(block)
     case "data-table":
       return `<figure id="${escapeHtml(block.id)}"><figcaption>${escapeHtml(block.title)}</figcaption><table><thead><tr>${block.columns.map((column) => `<th>${escapeHtml(column)}</th>`).join("")}</tr></thead><tbody>${block.rows
         .map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`)
@@ -162,7 +165,7 @@ function renderReportBlock(block: ReportBlock): string {
         .map((tab) => `<article><h3>${escapeHtml(tab.label)}</h3>${tab.blocks.map(renderReportBlock).join("")}</article>`)
         .join("")}</section>`
     case "image":
-      return `<figure id="${escapeHtml(block.id)}"><div class="asset-placeholder">${escapeHtml(block.assetId)}</div><figcaption>${escapeHtml(block.caption ?? block.alt)}</figcaption></figure>`
+      return `<figure id="${escapeHtml(block.id)}"><div class="asset-placeholder">Image unavailable</div>${block.alt ? `<p class="image-description">${escapeHtml(block.alt)}</p>` : ""}${block.caption ? `<figcaption>${escapeHtml(block.caption)}</figcaption>` : ""}</figure>`
     case "list":
       return `<ul id="${escapeHtml(block.id)}">${block.items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
     case "timeline":
@@ -172,31 +175,32 @@ function renderReportBlock(block: ReportBlock): string {
     case "source-note":
       return `<p class="source-note" id="${escapeHtml(block.id)}">${escapeHtml(block.text)}</p>`
     case "cta":
-      return `<a class="cta" id="${escapeHtml(block.id)}" href="${escapeHtml(safeUrl(block.cta.href))}" rel="noopener noreferrer">${escapeHtml(block.cta.label)}</a>`
+      return `<div class="report-link"><a class="cta" id="${escapeHtml(block.id)}" href="${escapeHtml(safeUrl(block.cta.href))}" rel="noopener noreferrer">${escapeHtml(block.cta.label)}</a>${block.cta.helperText ? `<p>${escapeHtml(block.cta.helperText)}</p>` : ""}</div>`
     default:
       return ""
   }
 }
 
-function renderInlineChart(block: Extract<ReportBlock, { kind: "chart" }>) {
-  const chart = block.chart
-  const xKey = chart.xKey ?? "label"
-  const values = chart.data.map((row) => Number(row[chart.series[0]?.key ?? "value"] ?? 0))
-  const max = Math.max(1, ...values)
-  const bars = chart.data
-    .map((row, index) => {
-      const value = Number(row[chart.series[0]?.key ?? "value"] ?? 0)
-      const height = Math.max(2, Math.round((value / max) * 120))
-      const x = 24 + index * 52
-      return `<g><rect x="${x}" y="${150 - height}" width="32" height="${height}" fill="${escapeHtml(chart.series[0]?.color ?? "#2563eb")}"></rect><text x="${x + 16}" y="170" text-anchor="middle">${escapeHtml(String(row[xKey] ?? index + 1))}</text></g>`
-    })
-    .join("")
-
-  return `<figure class="chart" id="${escapeHtml(block.id)}"><figcaption><strong>${escapeHtml(chart.title)}</strong><span>${escapeHtml(chart.description)}</span></figcaption><svg role="img" aria-label="${escapeHtml(chart.accessibleLabel)}" viewBox="0 0 ${Math.max(240, chart.data.length * 52 + 48)} 190" xmlns="http://www.w3.org/2000/svg">${bars}</svg><p>${escapeHtml(chart.provenance)}${chart.illustrative ? " Illustrative values." : ""}</p></figure>`
+function renderReportSources(document: Extract<VisualizationDocument, { kind: "report" }>) {
+  if (!document.sourceManifest.length && !document.report.dataSources.length) return ""
+  const sources = document.sourceManifest.length
+    ? `<section aria-label="Source records"><h3>Source records</h3><ul>${document.sourceManifest.map((source) => `<li><h4>${escapeHtml(source.label)}</h4><p>${escapeHtml(source.provenance)}</p><dl><dt>Supplied content hash</dt><dd>${escapeHtml(source.contentHash)}</dd></dl></li>`).join("")}</ul></section>`
+    : ""
+  const snapshots = document.report.dataSources.length
+    ? `<section aria-label="Dataset snapshots"><h3>Dataset snapshots</h3><ul>${document.report.dataSources.map((source) => `<li><h4>${escapeHtml(source.label)}</h4><p>${escapeHtml(source.provenance)}</p><dl><dt>Supplied content hash</dt><dd>${escapeHtml(source.contentHash)}</dd>${source.rowCount !== undefined ? `<dt>Supplied row count</dt><dd>${source.rowCount}</dd>` : ""}</dl></li>`).join("")}</ul></section>`
+    : ""
+  return `<section class="report-sources" aria-label="Sources"><h2>Sources</h2>${sources}${snapshots}</section>`
 }
 
-function renderReport(document: Extract<VisualizationDocument, { kind: "report" }>) {
-  return `<main class="report">${document.report.blocks.map(renderReportBlock).join("")}</main>`
+function renderReport(document: Extract<VisualizationDocument, { kind: "report" }>, layout: ReturnType<typeof reportArtifactLayout>) {
+  const context = document.report.decisionQuestion || document.report.executiveSummary
+    ? `<section class="report-context" aria-label="Report context">${document.report.decisionQuestion ? `<p class="decision-question">${escapeHtml(document.report.decisionQuestion)}</p>` : ""}${document.report.executiveSummary ? `<p class="executive-summary">${escapeHtml(document.report.executiveSummary)}</p>` : ""}</section>`
+    : ""
+  const blocks = document.report.blocks.map((block, index) => {
+    const placement = layout.placements ? ` tabindex="0" style="${reportArtifactPlacement(layout.placements, block.id)}"` : ""
+    return `<section class="report-cell" data-report-block="${escapeHtml(block.id)}" aria-label="Report block ${index + 1}: ${block.kind}"${placement}>${renderReportBlock(block)}</section>`
+  }).join("")
+  return `<div class="report-artifact"><main class="report">${context}<div class="${layout.placements ? "report-grid" : "report-flow"}">${blocks}</div>${renderReportSources(document)}</main></div>`
 }
 
 function runtimeScript(preview = false) {
@@ -211,7 +215,12 @@ function shell(document: VisualizationDocument, body: string, options: ArtifactC
     ? `<a class="floating-cta" href="${escapeHtml(safeUrl(document.engagement.cta.href))}" rel="noopener noreferrer">${escapeHtml(document.engagement.cta.label)}</a>`
     : ""
 
-  return `<!doctype html><html lang="${escapeHtml(document.locale)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(document.seo.title)}</title><meta name="description" content="${escapeHtml(document.seo.description)}"><style>${baseCss(document)}</style></head><body data-kind="${document.kind}" data-public-id="${escapeHtml(options.visualizationId)}"><header class="artifact-header"><p>${escapeHtml(document.brand.companyName)}</p><h1>${escapeHtml(document.title)}</h1><p>${escapeHtml(document.summary)}</p></header>${body}${cta}${runtimeScript(options.preview === true)}</body></html>`
+  // CSS escaping keeps author-supplied Report theme values inside the style
+  // element; HTML entities would change CSS tokens without closing this boundary.
+  const css = document.kind === "report" ? (baseCss(document) + REPORT_ARTIFACT_CSS + REPORT_CHART_CSS).replace(/</g, "\\3c ") : baseCss(document)
+  const subtitle = document.kind === "report" && document.subtitle ? `<p class="artifact-subtitle">${escapeHtml(document.subtitle)}</p>` : ""
+  const runtime = document.kind === "report" && options.preview === true ? "" : runtimeScript(options.preview === true)
+  return `<!doctype html><html lang="${escapeHtml(document.locale)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(document.seo.title)}</title><meta name="description" content="${escapeHtml(document.seo.description)}"><style>${css}</style></head><body data-kind="${document.kind}" data-public-id="${escapeHtml(options.visualizationId)}"><header class="artifact-header"><p>${escapeHtml(document.brand.companyName)}</p><h1>${escapeHtml(document.title)}</h1>${subtitle}<p>${escapeHtml(document.summary)}</p></header>${body}${cta}${runtime}</body></html>`
 }
 
 function baseCss(document: VisualizationDocument) {
@@ -224,12 +233,13 @@ export async function compileVisualizationArtifact(
 ): Promise<CompiledArtifact> {
   const document = migrateVisualizationDocument(rawDocument)
   const documentHash = contentHash(document)
+  const reportLayout = document.kind === "report" ? reportArtifactLayout(document.report) : null
   const body =
     document.kind === "course"
       ? renderCourse(document)
       : document.kind === "slides"
         ? renderSlides(document)
-        : renderReport(document)
+        : renderReport(document, reportLayout!)
   const html = shell(document, body, options)
   const artifactHash = contentHash(html)
   const manifest: ArtifactManifest = {
@@ -240,18 +250,20 @@ export async function compileVisualizationArtifact(
     documentHash,
     artifactHash,
     createdAt: options.createdAt ?? new Date().toISOString(),
-    rendererVersion: RENDERER_VERSION,
+    rendererVersion: document.kind === "report" ? REPORT_RENDERER_VERSION : RENDERER_VERSION,
     sourceHashes: document.sourceManifest.map((source) => source.contentHash),
     assetReferences: document.assetIds,
-    runtimeFeatures: options.preview
-      ? ["preview", "in-memory-course-progress", "no-analytics", "no-external-js"]
-      : ["analytics-beacon", "local-course-progress", "no-external-js"],
+    runtimeFeatures: document.kind === "report"
+      ? [reportLayout?.placements ? "responsive-report-grid" : "report-flow-fallback", "inline-svg-charts", "print-flow", ...(options.preview ? ["preview", "no-analytics"] : ["analytics-beacon"]), "no-external-js"]
+      : options.preview
+        ? ["preview", "in-memory-course-progress", "no-analytics", "no-external-js"]
+        : ["analytics-beacon", "local-course-progress", "no-external-js"],
   }
 
   return {
     html,
     manifest,
     contentHash: artifactHash,
-    warnings: [],
+    warnings: reportLayout?.warnings ?? [],
   }
 }
