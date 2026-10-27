@@ -4,7 +4,7 @@ import { useActionState } from "react"
 
 import { signInAction, signUpAction, type AuthFormState } from "@/app/actions/auth"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 
 const initialState: AuthFormState = {}
@@ -22,8 +22,7 @@ export function AuthForms({
   const signInCard = (
     <Card className="border-0 bg-white/90 shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold">Sign in</CardTitle>
-        <CardDescription>Open your saved workspaces and visualizations.</CardDescription>
+        <CardTitle className="text-xl font-semibold">Sign in</CardTitle>
       </CardHeader>
       <CardContent>
         <form action={signInFormAction} className="grid gap-4">
@@ -56,10 +55,7 @@ export function AuthForms({
   const signUpCard = (
     <Card className="border-0 bg-[#111513] text-white shadow-[0_24px_90px_rgba(17,21,19,0.22)]">
       <CardHeader>
-        <CardTitle className="text-2xl font-semibold text-white">Create account</CardTitle>
-        <CardDescription className="text-white/72">
-          Save guest drafts, sources, and visualization versions.
-        </CardDescription>
+        <CardTitle className="text-xl font-semibold text-white">Create account</CardTitle>
       </CardHeader>
       <CardContent>
         <form action={signUpFormAction} className="grid gap-4">

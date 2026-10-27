@@ -20,13 +20,9 @@ export default async function AuthPage({
       <div className="mx-auto grid min-h-[calc(100vh-5rem)] max-w-6xl items-center">
         <div className="grid gap-8">
           <div className="max-w-2xl">
-            <p className="text-sm uppercase tracking-[0.22em] text-muted-foreground">Account</p>
-            <h1 className="mt-4 text-5xl font-semibold tracking-tight text-foreground sm:text-6xl">
-              Keep your visualization workspace.
+            <h1 className="text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+              Your account
             </h1>
-            <p className="mt-4 text-lg leading-8 text-muted-foreground">
-              Save imported sources, drafts, published versions, and review loops beyond this browser session.
-            </p>
           </div>
           <AuthForms defaultMode={mode === "signup" ? "signup" : "signin"} returnTo={returnTo} />
         </div>
