@@ -20,6 +20,8 @@ export interface StoredGuestDraft {
   version: 2
   input: {
     rawText: string
+    textEntries?: string[]
+    pendingText?: string
     files: ImportedFile[]
   }
   selectedKind: VisualizationKind
@@ -64,10 +66,24 @@ export function storeGuestDraft(snapshot: Omit<StoredGuestDraft, "version" | "sa
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(full))
   } catch {
-    const compact: StoredGuestDraft = {
+    const withoutTextMetadata: StoredGuestDraft = {
       ...full,
+      input: { rawText: full.input.rawText, files: full.input.files },
+    }
+    // Redundant entry metadata alone must never force existing files to be clipped.
+    if (full.input.textEntries !== undefined || full.input.pendingText !== undefined) {
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(withoutTextMetadata))
+        return
+      } catch {
+        // Preserve the existing clipped-file fallback for tighter storage limits.
+      }
+    }
+    const compact: StoredGuestDraft = {
+      ...withoutTextMetadata,
       input: {
-        ...full.input,
+        // Keep canonical text; omit the duplicate entry metadata under quota pressure.
+        rawText: full.input.rawText,
         files: full.input.files.map((file) => ({
           name: file.name,
           type: file.type,

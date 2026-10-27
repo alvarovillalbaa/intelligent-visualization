@@ -102,6 +102,7 @@ npm run data:import -- --provider local --input .data/exports/export-001
 
 ## Documentation
 
+- [Source intake](docs/source-intake.md)
 - [Architecture and provider status](docs/provider-architecture.md)
 - [Provider contract](docs/provider-contract.md)
 - [Local development](docs/local-development.md)

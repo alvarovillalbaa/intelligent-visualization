@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useId, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import {
   ArrowRightIcon,
@@ -15,7 +15,7 @@ import {
 
 import { createDeckFromGeneratedSourceAction } from "@/app/actions/decks"
 import { Button } from "@/components/ui/button"
-import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
 import { visualizationOptions } from "@/components/visualizations/options"
 import { StylePanel } from "@/components/visualizations/style-panel"
 import { VisualizationPreview } from "@/components/visualizations/preview"
@@ -26,6 +26,7 @@ import {
   type GeneratedDraft,
 } from "@/lib/client/guest-draft"
 import { readFiles, type ImportedFile } from "@/lib/client/import-files"
+import { restoreSourceText, serializeSourceText } from "@/lib/client/composer-source-input"
 import { extractUrls, urlDomain } from "@/lib/detect-urls"
 import { remixTheme, themeLibrary } from "@/lib/deck-runtime"
 import type { BrandKit, GenerationInput, ThemeTokens } from "@/lib/types"
@@ -91,10 +92,14 @@ function documentCount(document: VisualizationDocument) {
 export function Composer(props: ComposerProps) {
   const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
+  const textInputRef = useRef<HTMLInputElement>(null)
+  const composingRef = useRef(false)
+  const textInputId = useId()
   const hydratedRef = useRef(props.mode !== "guest")
 
   const [step, setStep] = useState<"source" | "configure">("source")
-  const [rawText, setRawText] = useState("")
+  const [textEntries, setTextEntries] = useState<string[]>([])
+  const [pendingText, setPendingText] = useState("")
   const [files, setFiles] = useState<ImportedFile[]>([])
   const [dismissedUrls, setDismissedUrls] = useState<string[]>([])
   const [selectedKind, setSelectedKind] = useState<VisualizationKind>("slides")
@@ -105,6 +110,7 @@ export function Composer(props: ComposerProps) {
   const [dragActive, setDragActive] = useState(false)
   const [draft, setDraft] = useState<GeneratedDraft | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const rawText = useMemo(() => serializeSourceText({ entries: textEntries, pending: pendingText }), [textEntries, pendingText])
 
   const detectedUrl = useMemo(() => {
     return extractUrls(rawText).find((url) => !dismissedUrls.includes(url)) ?? null
@@ -129,7 +135,10 @@ export function Composer(props: ComposerProps) {
         return
       }
 
-      setRawText(stored.input.rawText)
+      const restored = restoreSourceText(stored.input)
+      const multilinePending = /[\r\n]/.test(restored.pending)
+      setTextEntries(multilinePending ? [...restored.entries, restored.pending] : restored.entries)
+      setPendingText(multilinePending ? "" : restored.pending)
       setFiles(stored.input.files)
       setSelectedKind(stored.selectedKind)
       setDraft(stored.draft)
@@ -146,11 +155,23 @@ export function Composer(props: ComposerProps) {
     }
 
     storeGuestDraft({
-      input: { rawText, files },
+      input: { rawText, files, textEntries, pendingText },
       selectedKind,
       draft,
     })
-  }, [draft, files, props.mode, rawText, selectedKind])
+  }, [draft, files, props.mode, rawText, selectedKind, textEntries, pendingText])
+
+  function commitText(text: string) {
+    if (text === "") return
+    setTextEntries((current) => [...current, text])
+    setPendingText("")
+  }
+
+  function addPendingText() {
+    if (!pendingText.trim()) return
+    commitText(pendingText)
+    textInputRef.current?.focus({ preventScroll: true })
+  }
 
   async function handleFiles(fileList: FileList | File[] | null) {
     if (!fileList || !Array.from(fileList).length) {
@@ -220,6 +241,8 @@ export function Composer(props: ComposerProps) {
   }
 
   function handleContinue() {
+    // Moving pending text into an entry leaves the canonical rawText unchanged.
+    commitText(pendingText)
     setStep("configure")
     setError(null)
 
@@ -327,7 +350,8 @@ export function Composer(props: ComposerProps) {
 
   function startOver() {
     setStep("source")
-    setRawText("")
+    setTextEntries([])
+    setPendingText("")
     setFiles([])
     setDismissedUrls([])
     setSelectedKind("slides")
@@ -380,18 +404,62 @@ export function Composer(props: ComposerProps) {
             void handleFiles(event.dataTransfer.files)
           }}
         >
-          <Textarea
-            value={rawText}
-            onChange={(event) => setRawText(event.target.value)}
-            onPaste={(event) => {
-              if (event.clipboardData.files.length) {
-                event.preventDefault()
-                void handleFiles(event.clipboardData.files)
-              }
-            }}
-            placeholder="Paste text, write notes, drop files, or add a link…"
-            className="min-h-48 resize-y rounded-none border-0 bg-transparent px-5 py-4 text-base shadow-none focus-visible:ring-0"
-          />
+          <div className="grid gap-2 px-5 pb-4 pt-5">
+            <label htmlFor={textInputId} className="text-sm font-medium">Text or link</label>
+            <div className="flex items-center gap-2">
+              <Input
+                ref={textInputRef}
+                id={textInputId}
+                value={pendingText}
+                onChange={(event) => setPendingText(event.target.value)}
+                onCompositionStart={() => { composingRef.current = true }}
+                onCompositionEnd={() => { composingRef.current = false }}
+                onKeyDown={(event) => {
+                  if (event.key !== "Enter" || composingRef.current || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return
+                  event.preventDefault()
+                  if (!event.repeat) addPendingText()
+                }}
+                onPaste={(event) => {
+                  if (event.clipboardData.files.length) {
+                    event.preventDefault()
+                    void handleFiles(event.clipboardData.files)
+                    return
+                  }
+                  const pasted = event.clipboardData.getData("text/plain")
+                  if (/[\r\n]/.test(pasted)) {
+                    event.preventDefault()
+                    const start = event.currentTarget.selectionStart ?? pendingText.length
+                    const end = event.currentTarget.selectionEnd ?? start
+                    commitText(pendingText.slice(0, start) + pasted + pendingText.slice(end))
+                  }
+                }}
+                placeholder="Add text or a link…"
+                aria-describedby={`${textInputId}-help`}
+                className="min-h-11 rounded-lg bg-transparent text-base"
+              />
+              <Button type="button" onClick={addPendingText} disabled={!pendingText.trim()} className="min-h-11">Add</Button>
+            </div>
+            <p id={`${textInputId}-help`} className="text-xs leading-relaxed text-muted-foreground">
+              Press Enter or Add to keep each source below. Multiline pastes are kept together with their line breaks. Continue includes any text still in the input.
+            </p>
+          </div>
+
+          {textEntries.length > 0 ? (
+            <ol aria-label="Text sources" className="grid min-w-0 gap-3 px-5 pb-4">
+              {textEntries.map((text, index) => (
+                <li key={index} className="flex min-w-0 items-start gap-3 rounded-lg border border-black/10 bg-[#fbfaf6] p-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="mb-1 text-xs font-medium text-muted-foreground">Text source {index + 1}</p>
+                    <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{text}</p>
+                  </div>
+                  <Button type="button" variant="ghost" size="icon" className="min-h-11 min-w-11 shrink-0" aria-label={`Remove text source ${index + 1}`}
+                    onClick={() => setTextEntries((current) => current.filter((_, entryIndex) => entryIndex !== index))}>
+                    <XIcon aria-hidden="true" />
+                  </Button>
+                </li>
+              ))}
+            </ol>
+          ) : null}
 
           {detectedUrl || files.length ? (
             <div className="flex flex-wrap gap-2 px-5 pb-1">
@@ -401,7 +469,7 @@ export function Composer(props: ComposerProps) {
                   {urlDomain(detectedUrl)}
                   <button
                     type="button"
-                    className="text-muted-foreground hover:text-foreground"
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2"
                     onClick={() => setDismissedUrls((current) => [...current, detectedUrl])}
                   >
                     <XIcon className="size-3" />
@@ -419,7 +487,7 @@ export function Composer(props: ComposerProps) {
                   {file.name}
                   <button
                     type="button"
-                    className="text-muted-foreground hover:text-foreground"
+                    className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2"
                     onClick={() => removeFile(file.name)}
                   >
                     <XIcon className="size-3" />
@@ -435,6 +503,7 @@ export function Composer(props: ComposerProps) {
               type="button"
               variant="ghost"
               size="sm"
+              className="min-h-11"
               disabled={importing}
               onClick={() => fileRef.current?.click()}
             >
@@ -453,7 +522,7 @@ export function Composer(props: ComposerProps) {
             />
 
             {hasInput ? (
-              <Button type="button" size="sm" onClick={handleContinue} disabled={importing}>
+              <Button type="button" size="sm" className="min-h-11" onClick={handleContinue} disabled={importing}>
                 Continue
                 <ArrowRightIcon data-icon="inline-end" />
               </Button>
