@@ -1,6 +1,7 @@
 import { generateText, Output } from "ai"
 
 import { resolveLanguageModel } from "@/lib/ai/provider-registry"
+import { GenerationError } from "@/lib/ai/generation-errors"
 import { courseGenSchema, reportGenSchema } from "@/lib/ai/schema"
 import { resolveSourceContext, type ResolvedSourceContext } from "@/lib/ai/source-context"
 import {
@@ -10,6 +11,7 @@ import {
   reportGenToDocument,
 } from "@/lib/visualization-drafts"
 import type { CourseVisualizationDocument, ReportVisualizationDocument } from "@/packages/domain/entities"
+import { migrateVisualizationDocument } from "@/packages/domain/migrations"
 import type { GenerationInput } from "@/lib/types"
 
 const KIND_GUIDANCE = {
@@ -66,6 +68,7 @@ If files include OCR or extracted document structure, use that structured contex
 export async function generateVisualizationDocument(
   kind: "course" | "report",
   input: GenerationInput,
+  options?: { requireAi?: boolean },
 ): Promise<{
   provider: string
   modelName: string
@@ -75,6 +78,7 @@ export async function generateVisualizationDocument(
   const fallback = () => (kind === "course" ? createCourseDraft(input) : createReportDraft(input))
 
   if (!resolved) {
+    if (options?.requireAi) throw new GenerationError("AI_UNAVAILABLE")
     return { provider: "fallback", modelName: "heuristic", document: fallback() }
   }
 
@@ -92,12 +96,15 @@ export async function generateVisualizationDocument(
         }),
         temperature: 0.7,
         prompt,
+        ...(options?.requireAi ? { maxRetries: 0 } : {}),
       })
 
+      const document = courseGenToDocument(generated.output, input)
+      if (options?.requireAi) migrateVisualizationDocument(document)
       return {
         provider: resolved.provider,
         modelName: resolved.modelName,
-        document: courseGenToDocument(generated.output, input),
+        document,
       }
     }
 
@@ -110,14 +117,18 @@ export async function generateVisualizationDocument(
       }),
       temperature: 0.7,
       prompt,
+      ...(options?.requireAi ? { maxRetries: 0 } : {}),
     })
 
+    const document = reportGenToDocument(generated.output, input)
+    if (options?.requireAi) migrateVisualizationDocument(document)
     return {
       provider: resolved.provider,
       modelName: resolved.modelName,
-      document: reportGenToDocument(generated.output, input),
+      document,
     }
   } catch {
+    if (options?.requireAi) throw new GenerationError("AI_GENERATION_FAILED")
     return { provider: "fallback", modelName: "heuristic", document: fallback() }
   }
 }

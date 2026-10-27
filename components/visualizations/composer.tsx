@@ -1,7 +1,6 @@
 "use client"
 
-import { useEffect, useId, useMemo, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react"
 import {
   ArrowRightIcon,
   CheckIcon,
@@ -19,6 +18,7 @@ import { Input } from "@/components/ui/input"
 import { visualizationOptions } from "@/components/visualizations/options"
 import { StylePanel } from "@/components/visualizations/style-panel"
 import { VisualizationPreview } from "@/components/visualizations/preview"
+import { GenerationResults, isExampleDraft } from "@/components/visualizations/generation-results"
 import {
   clearGuestDraft,
   loadGuestDraft,
@@ -27,6 +27,14 @@ import {
 } from "@/lib/client/guest-draft"
 import { readFiles, type ImportedFile } from "@/lib/client/import-files"
 import { restoreSourceText, serializeSourceText } from "@/lib/client/composer-source-input"
+import {
+  createGenerationBatch,
+  restoreGeneratedDraft,
+  restoreGenerationBatch,
+  updateGenerationResult,
+  type GenerationBatch,
+  type GenerationResult,
+} from "@/lib/client/generation-batch"
 import { extractUrls, urlDomain } from "@/lib/detect-urls"
 import { remixTheme, themeLibrary } from "@/lib/deck-runtime"
 import type { BrandKit, GenerationInput, ThemeTokens } from "@/lib/types"
@@ -35,10 +43,13 @@ import { cn } from "@/lib/utils"
 
 const DEFAULT_PROMPT = "Create a polished visual document from this source."
 const EXTRACTION_TIMEOUT_MS = 15_000
+const GENERATION_TIMEOUT_MS = 120_000
+const SAVE_TIMEOUT_MS = 30_000
 
-type ComposerProps =
+type ComposerProps = { introduction?: ReactNode } & (
   | { mode: "guest" }
   | { mode: "workspace"; workspaceId: string; workspaceSlug: string }
+)
 
 type StyleDecision = "accepted" | "shuffled" | "skipped" | null
 
@@ -90,19 +101,25 @@ function documentCount(document: VisualizationDocument) {
 }
 
 export function Composer(props: ComposerProps) {
-  const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
   const textInputRef = useRef<HTMLInputElement>(null)
   const composingRef = useRef(false)
   const textInputId = useId()
   const hydratedRef = useRef(props.mode !== "guest")
+  const mountedRef = useRef(true)
+  const generationBusyRef = useRef(false)
+  const requestRef = useRef<AbortController | null>(null)
+  const importEpochRef = useRef(0)
+  const pendingImportsRef = useRef(0)
+  const batchRef = useRef<GenerationBatch | null>(null)
+  const savingRef = useRef(new Set<string>())
 
   const [step, setStep] = useState<"source" | "configure">("source")
   const [textEntries, setTextEntries] = useState<string[]>([])
   const [pendingText, setPendingText] = useState("")
   const [files, setFiles] = useState<ImportedFile[]>([])
   const [dismissedUrls, setDismissedUrls] = useState<string[]>([])
-  const [selectedKind, setSelectedKind] = useState<VisualizationKind>("slides")
+  const [selectedKinds, setSelectedKinds] = useState<VisualizationKind[]>(["slides"])
   const [style, setStyle] = useState<StyleState>({ status: "idle" })
   const [importing, setImporting] = useState(false)
   const [generating, setGenerating] = useState(false)
@@ -110,6 +127,10 @@ export function Composer(props: ComposerProps) {
   const [dragActive, setDragActive] = useState(false)
   const [draft, setDraft] = useState<GeneratedDraft | null>(null)
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [batch, setBatch] = useState<GenerationBatch | null>(null)
+  const [previewResultId, setPreviewResultId] = useState<string | null>(null)
+  const [storageNotice, setStorageNotice] = useState<string | null>(null)
+  const [recoveryRequired, setRecoveryRequired] = useState(false)
   const rawText = useMemo(() => serializeSourceText({ entries: textEntries, pending: pendingText }), [textEntries, pendingText])
 
   const detectedUrl = useMemo(() => {
@@ -117,6 +138,17 @@ export function Composer(props: ComposerProps) {
   }, [dismissedUrls, rawText])
 
   const hasInput = Boolean(rawText.trim() || files.length)
+  const compatibilityDraft = batch ? batch.results.find((result) => result.draft)?.draft ?? null : draft
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      importEpochRef.current++
+      pendingImportsRef.current = 0
+      requestRef.current?.abort()
+    }
+  }, [])
 
   useEffect(() => {
     if (props.mode !== "guest") {
@@ -135,13 +167,18 @@ export function Composer(props: ComposerProps) {
         return
       }
 
+      setRecoveryRequired(stored.recoveryRequired === true)
       const restored = restoreSourceText(stored.input)
       const multilinePending = /[\r\n]/.test(restored.pending)
       setTextEntries(multilinePending ? [...restored.entries, restored.pending] : restored.entries)
       setPendingText(multilinePending ? "" : restored.pending)
       setFiles(stored.input.files)
-      setSelectedKind(stored.selectedKind)
+      const storedKinds = stored.selectedKinds ?? [stored.selectedKind]
+      setSelectedKinds(visualizationOptions.map((option) => option.kind).filter((kind) => storedKinds.includes(kind)))
       setDraft(stored.draft)
+      const restoredBatch = restoreGenerationBatch(stored.batch)
+      batchRef.current = restoredBatch
+      setBatch(restoredBatch)
     })
 
     return () => {
@@ -150,16 +187,41 @@ export function Composer(props: ComposerProps) {
   }, [props.mode])
 
   useEffect(() => {
-    if (props.mode !== "guest" || !hydratedRef.current) {
+    if (props.mode !== "guest" || !hydratedRef.current || recoveryRequired) {
       return
     }
 
-    storeGuestDraft({
+    const result = storeGuestDraft({
       input: { rawText, files, textEntries, pendingText },
-      selectedKind,
-      draft,
+      selectedKind: selectedKinds[0] ?? "slides",
+      selectedKinds,
+      draft: compatibilityDraft,
+      batch: batch ?? undefined,
     })
-  }, [draft, files, props.mode, rawText, selectedKind, textEntries, pendingText])
+    const notice = !result.stored
+      ? "Browser storage is unavailable or full. Keep this tab open; the current sources and drafts have not been saved for reload."
+      : result.compacted ? "A smaller copy was saved in this browser. Keep this tab open to retain all source content and entry grouping." : null
+    let cancelled = false
+    queueMicrotask(() => { if (!cancelled) setStorageNotice(notice) })
+    return () => { cancelled = true }
+  }, [compatibilityDraft, files, props.mode, rawText, selectedKinds, textEntries, pendingText, batch, recoveryRequired])
+
+  function replaceBatch(next: GenerationBatch | null) {
+    batchRef.current = next
+    setBatch(next)
+  }
+
+  function patchResult(batchId: string, resultId: string, patch: Partial<Omit<GenerationResult, "id" | "kind">>) {
+    const current = batchRef.current
+    if (!mountedRef.current || !current || current.id !== batchId) return
+    replaceBatch(updateGenerationResult(current, resultId, patch))
+  }
+
+  function toggleKind(kind: VisualizationKind) {
+    if (generationBusyRef.current) return
+    setSelectedKinds((current) => visualizationOptions.map((option) => option.kind)
+      .filter((candidate) => candidate === kind ? !current.includes(kind) : current.includes(candidate)))
+  }
 
   function commitText(text: string) {
     if (text === "") return
@@ -178,13 +240,22 @@ export function Composer(props: ComposerProps) {
       return
     }
 
+    const epoch = importEpochRef.current
+    pendingImportsRef.current++
     setImporting(true)
-    const imported = await readFiles(fileList)
-    setFiles((current) => {
-      const existing = new Set(current.map((file) => file.name))
-      return [...current, ...imported.filter((file) => !existing.has(file.name))]
-    })
-    setImporting(false)
+    try {
+      const imported = await readFiles(fileList)
+      if (!mountedRef.current || importEpochRef.current !== epoch) return
+      setFiles((current) => {
+        const existing = new Set(current.map((file) => file.name))
+        return [...current, ...imported.filter((file) => !existing.has(file.name))]
+      })
+    } finally {
+      if (mountedRef.current && importEpochRef.current === epoch) {
+        pendingImportsRef.current--
+        if (pendingImportsRef.current === 0) setImporting(false)
+      }
+    }
   }
 
   function removeFile(name: string) {
@@ -280,14 +351,7 @@ export function Composer(props: ComposerProps) {
     )
   }
 
-  async function handleCreate() {
-    if (generating) {
-      return
-    }
-
-    setGenerating(true)
-    setError(null)
-
+  function generationInputSnapshot(): GenerationInput {
     let brandContext: GenerationInput["brandContext"]
     let themeOverride: ThemeTokens | undefined
     let themeMode: GenerationInput["themeMode"] = "brand"
@@ -304,7 +368,7 @@ export function Composer(props: ComposerProps) {
       brandContext = { markdown: style.markdown }
     }
 
-    const generationInput: GenerationInput = {
+    return {
       inputKind: detectedUrl ? "url" : files.length ? "files" : "paste",
       rawText,
       sourceUrl: detectedUrl ?? undefined,
@@ -314,50 +378,136 @@ export function Composer(props: ComposerProps) {
       brandContext,
       themeOverride,
     }
+  }
 
+  async function saveWorkspaceSlides(batchId: string, resultId: string, input: GenerationInput, generated: GeneratedDraft) {
+    if (props.mode !== "workspace" || savingRef.current.has(resultId)) return
+    const current = batchRef.current?.results.find((result) => result.id === resultId)
+    if (!current || current.savedDeckId || current.saveStatus === "saved" || current.saveStatus === "uncertain") return
+    if (!generated.deckSource) {
+      patchResult(batchId, resultId, { saveStatus: "failed", error: "The Slides draft is available, but its editable source could not be saved." })
+      return
+    }
+    savingRef.current.add(resultId)
+    patchResult(batchId, resultId, { saveStatus: "saving" })
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const save = createDeckFromGeneratedSourceAction({ workspaceId: props.workspaceId, generationInput: input, source: generated.deckSource })
+    let acknowledged = false
+    const recordSaved = (ack: { deckId: string }) => {
+      if (typeof ack?.deckId !== "string" || !ack.deckId.trim()) return false
+      if (acknowledged) return true
+      acknowledged = true
+      patchResult(batchId, resultId, { saveStatus: "saved", savedDeckId: ack.deckId, error: null })
+      return true
+    }
+    // A late acknowledgement can still supply the known ID. Never repeat an unacknowledged create.
+    void save.then(recordSaved).catch(() => {})
     try {
-      const response = await fetch("/api/visualizations/generate", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ kind: selectedKind, generationInput }),
-      })
-
-      if (!response.ok) {
-        setError("Generation failed. Please try again.")
-        return
-      }
-
-      const generated = (await response.json()) as GeneratedDraft
-
-      if (props.mode === "workspace" && selectedKind === "slides" && generated.deckSource) {
-        const result = await createDeckFromGeneratedSourceAction({
-          workspaceId: props.workspaceId,
-          generationInput,
-          source: generated.deckSource,
-        })
-        router.push(`/app/workspaces/${props.workspaceSlug}/decks/${result.deckId}`)
-        return
-      }
-
-      setDraft(generated)
-      setPreviewOpen(true)
+      const ack = await Promise.race([save, new Promise<never>((_, reject) => { timer = setTimeout(() => reject(new Error("Save acknowledgement timed out")), SAVE_TIMEOUT_MS) })])
+      if (!recordSaved(ack)) patchResult(batchId, resultId, { saveStatus: "uncertain", error: "The workspace did not confirm a saved Slides ID. Your draft remains available here." })
     } catch {
-      setError("Generation failed. Please try again.")
+      patchResult(batchId, resultId, { saveStatus: "uncertain", error: "The save response could not be confirmed. Check the workspace before creating another copy." })
     } finally {
-      setGenerating(false)
+      clearTimeout(timer)
+      savingRef.current.delete(resultId)
     }
   }
 
+  async function runGeneration(batchId: string, resultIds: string[]) {
+    try {
+      for (const resultId of resultIds) {
+        const current = batchRef.current
+        const result = current?.results.find((item) => item.id === resultId)
+        if (!mountedRef.current || !current || current.id !== batchId || !result || !["queued", "failed", "interrupted"].includes(result.status)) continue
+        patchResult(batchId, resultId, { status: "running", error: null })
+        const controller = new AbortController()
+        requestRef.current = controller
+        let timedOut = false
+        const timer = setTimeout(() => { timedOut = true; controller.abort() }, GENERATION_TIMEOUT_MS)
+        let message = "The generation service could not be reached. Retry this format when ready."
+        try {
+          const response = await fetch("/api/visualizations/generate", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({ kind: result.kind, generationInput: current.input }),
+            signal: controller.signal,
+          })
+          const payload = await response.json().catch(() => null)
+          if (!response.ok) {
+            message = typeof payload?.error === "string" ? payload.error.slice(0, 500) : "Generation failed for this format. Retry it when ready."
+            throw new Error(message)
+          }
+          const generated = restoreGeneratedDraft(payload)
+          if (!generated || generated.kind !== result.kind || !generated.provider.trim() || !generated.modelName.trim() || isExampleDraft(generated)) {
+            message = "The service did not return an AI-generated draft for this format. No example was substituted."
+            throw new Error(message)
+          }
+          if (!mountedRef.current || batchRef.current?.id !== batchId) return
+          clearTimeout(timer)
+          if (requestRef.current === controller) requestRef.current = null
+          patchResult(batchId, resultId, { status: "completed", draft: generated, error: null })
+          if (props.mode === "workspace" && result.kind === "slides") await saveWorkspaceSlides(batchId, resultId, current.input, generated)
+        } catch {
+          patchResult(batchId, resultId, { status: controller.signal.aborted ? "interrupted" : "failed", error: timedOut ? "The generation response timed out. Retry this format when ready." : message })
+        } finally {
+          clearTimeout(timer)
+          if (requestRef.current === controller) requestRef.current = null
+        }
+      }
+    } finally {
+      generationBusyRef.current = false
+      if (mountedRef.current) setGenerating(false)
+    }
+  }
+
+  function handleCreate() {
+    if (generationBusyRef.current || createDisabled) return
+    let next: GenerationBatch
+    try {
+      next = createGenerationBatch(selectedKinds, generationInputSnapshot(), crypto.randomUUID(), Date.now())
+    } catch {
+      setError("The draft request could not be prepared. Your sources are still here; try creating again.")
+      return
+    }
+    generationBusyRef.current = true
+    setRecoveryRequired(false)
+    replaceBatch(next)
+    setDraft(null)
+    setPreviewOpen(false)
+    setPreviewResultId(null)
+    setError(null)
+    setGenerating(true)
+    void runGeneration(next.id, next.results.map((result) => result.id))
+  }
+
+  function retryResult(id: string) {
+    if (generationBusyRef.current) return
+    const current = batchRef.current
+    const result = current?.results.find((item) => item.id === id)
+    if (!current || !result || (result.status !== "failed" && result.status !== "interrupted")) return
+    generationBusyRef.current = true
+    setGenerating(true)
+    void runGeneration(current.id, [id])
+  }
+
   function startOver() {
+    if (generationBusyRef.current) return
+    importEpochRef.current++
+    pendingImportsRef.current = 0
+    setImporting(false)
     setStep("source")
     setTextEntries([])
     setPendingText("")
     setFiles([])
     setDismissedUrls([])
-    setSelectedKind("slides")
+    setSelectedKinds(["slides"])
     setStyle({ status: "idle" })
     setDraft(null)
     setPreviewOpen(false)
+    setPreviewResultId(null)
+    replaceBatch(null)
+    setRecoveryRequired(false)
+    setStorageNotice(null)
     setError(null)
     if (props.mode === "guest") {
       clearGuestDraft()
@@ -366,7 +516,7 @@ export function Composer(props: ComposerProps) {
 
   const extractionPending = style.status === "loading"
   const awaitingStyleDecision = style.status === "ready" && style.decision === null
-  const createDisabled = generating || extractionPending || awaitingStyleDecision || !hasInput
+  const createDisabled = generating || extractionPending || awaitingStyleDecision || !hasInput || selectedKinds.length === 0
 
   const sourceSummary = [
     rawText.trim() ? `${rawText.trim().length.toLocaleString()} characters` : null,
@@ -376,13 +526,15 @@ export function Composer(props: ComposerProps) {
     .filter(Boolean)
     .join(" · ")
 
-  const previewNote =
-    props.mode === "workspace" && draft && draft.kind !== "slides"
-      ? `${draft.kind === "course" ? "Course" : "Report"} drafts aren't saved yet.`
-      : undefined
+  const previewResult = batch?.results.find((result) => result.id === previewResultId)
+  const previewDraft = previewResult?.draft ?? (previewOpen ? draft : null)
+  const previewNote = previewResult?.savedDeckId ? "Saved to this workspace." : props.mode === "workspace"
+    ? "This draft remains in this tab until workspace saving is confirmed."
+    : "This draft is held in this browser when storage is available; account creation does not save it automatically."
 
   return (
     <div className="grid gap-4">
+      {step === "source" ? props.introduction : null}
       {step === "source" ? (
         <section
           className={cn(
@@ -533,6 +685,7 @@ export function Composer(props: ComposerProps) {
         <>
           <button
             type="button"
+            disabled={generating}
             onClick={() => setStep("source")}
             className="flex items-center justify-between gap-3 rounded-xl bg-white px-5 py-3.5 text-left shadow-sm transition hover:bg-[#fbfaf6]"
           >
@@ -543,19 +696,21 @@ export function Composer(props: ComposerProps) {
             </span>
           </button>
 
-          <section className="grid gap-3 sm:grid-cols-3">
+          <section role="group" aria-label="Draft formats" className="grid gap-3 sm:grid-cols-3">
             {visualizationOptions.map((option) => {
               const Icon = option.icon
-              const active = selectedKind === option.kind
+              const active = selectedKinds.includes(option.kind)
               return (
                 <button
                   key={option.kind}
                   type="button"
+                  aria-pressed={active}
+                  disabled={generating}
                   className={cn(
-                    "grid gap-3 rounded-xl bg-white p-5 text-left shadow-sm transition",
+                    "grid min-h-11 gap-3 rounded-xl bg-white p-5 text-left shadow-sm transition outline-none focus-visible:ring-2 focus-visible:ring-[#111513] focus-visible:ring-offset-2 disabled:opacity-60",
                     active ? "ring-2 ring-[#111513]" : "hover:bg-[#fbfaf6]",
                   )}
-                  onClick={() => setSelectedKind(option.kind)}
+                  onClick={() => toggleKind(option.kind)}
                 >
                   <span className="flex items-center justify-between">
                     <span className="grid size-10 place-items-center rounded-md bg-[#111513] text-white">
@@ -571,6 +726,7 @@ export function Composer(props: ComposerProps) {
               )
             })}
           </section>
+          <p className="text-sm text-muted-foreground">Choose one or more formats. Each selected format creates its own draft from the same source.</p>
 
           {style.status === "loading" || (style.status === "ready" && style.decision !== "skipped") ? (
             <StylePanel
@@ -586,22 +742,36 @@ export function Composer(props: ComposerProps) {
           ) : null}
 
           <div className="flex flex-wrap items-center gap-3 pt-1">
-            <Button type="button" size="lg" disabled={createDisabled} onClick={handleCreate}>
+            <Button type="button" size="lg" className="min-h-11" disabled={createDisabled} onClick={handleCreate}>
               {generating || extractionPending ? <Loader2Icon className="animate-spin" data-icon="inline-start" /> : null}
-              {generating ? "Generating" : extractionPending ? "Reading style…" : "Create draft"}
+              {generating ? "Generating" : extractionPending ? "Reading style…" : selectedKinds.length > 1 ? "Create drafts" : "Create draft"}
             </Button>
             {awaitingStyleDecision ? (
               <p className="text-sm text-muted-foreground">Choose a style to continue.</p>
             ) : null}
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
+            {selectedKinds.length === 0 ? <p role="status" className="text-sm text-muted-foreground">Select at least one format to continue.</p> : null}
           </div>
+          {batch && !generating ? <p className="text-xs text-muted-foreground">Creating again starts a new batch and replaces the results shown below. Retry a failed format from its result card to keep the other drafts.</p> : null}
         </>
       )}
 
-      {props.mode === "guest" && draft ? (
+      {recoveryRequired ? (
+        <div role="status" className="space-y-3 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
+          <p>A saved batch could not be restored safely. Its browser copy has been left unchanged. Current edits stay in this tab until you explicitly create a new batch or start over, which replaces that saved copy.</p>
+          <Button type="button" variant="outline" className="min-h-11" onClick={startOver}>Start over</Button>
+        </div>
+      ) : storageNotice ? <p role="status" className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">{storageNotice}</p> : null}
+
+      {batch ? (
+        <GenerationResults batch={batch} busy={generating} workspaceSlug={props.mode === "workspace" ? props.workspaceSlug : undefined}
+          onPreview={(id) => { setPreviewResultId(id); setPreviewOpen(false) }} onRetry={retryResult} onStartOver={startOver} />
+      ) : null}
+
+      {props.mode === "guest" && draft && !batch ? (
         <section className="grid gap-3 rounded-xl bg-[#111513] p-5 text-white">
           <p className="text-xs uppercase tracking-[0.18em] text-white/50">
-            {visualizationOptions.find((option) => option.kind === draft.kind)?.label}
+            {isExampleDraft(draft) ? "Previous example · not AI generated" : "Previous draft"} · {visualizationOptions.find((option) => option.kind === draft.kind)?.label}
           </p>
           <h2 className="text-xl font-semibold">{draft.document.title}</h2>
           <p className="line-clamp-2 max-w-3xl text-sm leading-6 text-white/68">{draft.document.summary}</p>
@@ -619,19 +789,19 @@ export function Composer(props: ComposerProps) {
               Start over
             </Button>
             <p className="text-xs text-white/44">
-              {documentCount(draft.document)} · stored in this browser for 4 hours
+              {documentCount(draft.document)} · retained in this tab; browser storage is used when available
             </p>
           </div>
         </section>
       ) : null}
 
-      {previewOpen && draft ? (
+      {previewDraft ? (
         <VisualizationPreview
-          key={draft.generatedAt}
-          draft={draft}
-          note={previewNote}
+          key={previewResult?.id ?? `legacy:${previewDraft.generatedAt}`}
+          draft={previewDraft}
+          note={`${isExampleDraft(previewDraft) ? "Previous example, not an AI-generated draft. " : ""}${previewNote}`}
           showSignupCta={props.mode === "guest"}
-          onClose={() => setPreviewOpen(false)}
+          onClose={() => { setPreviewOpen(false); setPreviewResultId(null) }}
         />
       ) : null}
     </div>

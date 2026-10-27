@@ -11,6 +11,7 @@ export interface ArtifactCompileOptions {
   versionId: string
   createdAt?: string
   assetBaseUrl?: string
+  preview?: boolean
 }
 
 export interface ArtifactWarning {
@@ -198,7 +199,10 @@ function renderReport(document: Extract<VisualizationDocument, { kind: "report" 
   return `<main class="report">${document.report.blocks.map(renderReportBlock).join("")}</main>`
 }
 
-function runtimeScript() {
+function runtimeScript(preview = false) {
+  if (preview) {
+    return `<script>(()=>{const completed=new Set();document.querySelectorAll('.complete-lesson').forEach((button)=>{button.setAttribute('aria-pressed','false');button.addEventListener('click',()=>{const id=button.getAttribute('data-lesson-id');if(id&&!completed.has(id)){completed.add(id);button.textContent='Completed';button.setAttribute('aria-pressed','true')}})});document.querySelectorAll('.quiz').forEach((quiz)=>{const feedback=quiz.querySelector('.feedback');const explanation=feedback?feedback.textContent:'';quiz.addEventListener('change',()=>{const selected=quiz.querySelector('input:checked');if(feedback&&selected){feedback.hidden=false;feedback.setAttribute('role','status');feedback.textContent=(selected.value===quiz.getAttribute('data-answer')?'Correct. ':'Try again. ')+explanation}})})})();</script>`
+  }
   return `<script>(()=>{const post=(type,payload={})=>{try{navigator.sendBeacon&&navigator.sendBeacon('/api/events',new Blob([JSON.stringify({type,publicId:document.body.dataset.publicId||'',...payload})],{type:'application/json'}))}catch{}};post('view');document.querySelectorAll('.complete-lesson').forEach((button)=>button.addEventListener('click',()=>{const id=button.getAttribute('data-lesson-id');if(id){localStorage.setItem('iv:lesson:'+id,'complete');post('course_lesson_complete',{nodeId:id,nodeKind:'course-lesson'})}}));document.querySelectorAll('.quiz').forEach((quiz)=>quiz.addEventListener('change',()=>{const feedback=quiz.querySelector('.feedback');if(feedback)feedback.hidden=false;post('course_quiz_answer',{nodeId:quiz.id,nodeKind:'course-block'})}))})();</script>`
 }
 
@@ -207,7 +211,7 @@ function shell(document: VisualizationDocument, body: string, options: ArtifactC
     ? `<a class="floating-cta" href="${escapeHtml(safeUrl(document.engagement.cta.href))}" rel="noopener noreferrer">${escapeHtml(document.engagement.cta.label)}</a>`
     : ""
 
-  return `<!doctype html><html lang="${escapeHtml(document.locale)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(document.seo.title)}</title><meta name="description" content="${escapeHtml(document.seo.description)}"><style>${baseCss(document)}</style></head><body data-kind="${document.kind}" data-public-id="${escapeHtml(options.visualizationId)}"><header class="artifact-header"><p>${escapeHtml(document.brand.companyName)}</p><h1>${escapeHtml(document.title)}</h1><p>${escapeHtml(document.summary)}</p></header>${body}${cta}${runtimeScript()}</body></html>`
+  return `<!doctype html><html lang="${escapeHtml(document.locale)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(document.seo.title)}</title><meta name="description" content="${escapeHtml(document.seo.description)}"><style>${baseCss(document)}</style></head><body data-kind="${document.kind}" data-public-id="${escapeHtml(options.visualizationId)}"><header class="artifact-header"><p>${escapeHtml(document.brand.companyName)}</p><h1>${escapeHtml(document.title)}</h1><p>${escapeHtml(document.summary)}</p></header>${body}${cta}${runtimeScript(options.preview === true)}</body></html>`
 }
 
 function baseCss(document: VisualizationDocument) {
@@ -239,7 +243,9 @@ export async function compileVisualizationArtifact(
     rendererVersion: RENDERER_VERSION,
     sourceHashes: document.sourceManifest.map((source) => source.contentHash),
     assetReferences: document.assetIds,
-    runtimeFeatures: ["analytics-beacon", "local-course-progress", "no-external-js"],
+    runtimeFeatures: options.preview
+      ? ["preview", "in-memory-course-progress", "no-analytics", "no-external-js"]
+      : ["analytics-beacon", "local-course-progress", "no-external-js"],
   }
 
   return {

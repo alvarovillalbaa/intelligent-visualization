@@ -5,6 +5,7 @@ import { applyBrandKitToSource } from "@/lib/brand-kit"
 import { resolveSourceContext } from "@/lib/ai/source-context"
 import { remixTheme, themeLibrary } from "@/lib/deck-runtime"
 import { deckSourceSchema } from "@/lib/ai/schema"
+import { GenerationError } from "@/lib/ai/generation-errors"
 import { resolveLanguageModel, type ProviderKey } from "@/lib/ai/provider-registry"
 import type { DeckSource, GenerationInput } from "@/lib/types"
 
@@ -224,38 +225,49 @@ If files include OCR or extracted document structure, use that structured contex
 export async function generateDeckSource(input: GenerationInput, options?: {
   provider?: ProviderKey
   model?: string
+  requireAi?: boolean
 }) {
-  const resolved = resolveLanguageModel(options?.provider, options?.model)
-  const sourceContext = await resolveSourceContext(input)
-
-  if (!resolved) {
-    const fallback = createFallbackDeck(input, sourceContext ? { pageMarkdown: sourceContext.pageMarkdown } : undefined)
-    return {
-      provider: "fallback" as const,
-      modelName: "heuristic",
-      object: applyBrandKitToSource(fallback, input.themeMode, sourceContext?.firecrawl ?? null, input.themeOverride),
+  try {
+    const resolved = resolveLanguageModel(options?.provider, options?.model)
+    if (!resolved && options?.requireAi) {
+      throw new GenerationError("AI_UNAVAILABLE")
     }
-  }
+    const sourceContext = await resolveSourceContext(input)
 
-  const generated = await generateText({
-    model: resolved.model,
-    output: Output.object({
-      schema: deckSourceSchema,
-      name: "deck_source",
-      description:
-        "A polished slide deck with brand details, CTA, lead capture, poll, and 4-8 slides.",
-    }),
-    temperature: 0.8,
-    prompt: buildPrompt(input, sourceContext ? {
-      pageMarkdown: sourceContext.pageMarkdown,
-      brandSummary: sourceContext.brandSummary,
-    } : undefined),
-  })
+    if (!resolved) {
+      const fallback = createFallbackDeck(input, sourceContext ? { pageMarkdown: sourceContext.pageMarkdown } : undefined)
+      return {
+        provider: "fallback" as const,
+        modelName: "heuristic",
+        object: applyBrandKitToSource(fallback, input.themeMode, sourceContext?.firecrawl ?? null, input.themeOverride),
+      }
+    }
 
-  return {
-    provider: resolved.provider,
-    modelName: resolved.modelName,
-    object: applyBrandKitToSource(generated.output, input.themeMode, sourceContext?.firecrawl ?? null, input.themeOverride),
+    const generated = await generateText({
+      model: resolved.model,
+      output: Output.object({
+        schema: deckSourceSchema,
+        name: "deck_source",
+        description:
+          "A polished slide deck with brand details, CTA, lead capture, poll, and 4-8 slides.",
+      }),
+      temperature: 0.8,
+      prompt: buildPrompt(input, sourceContext ? {
+        pageMarkdown: sourceContext.pageMarkdown,
+        brandSummary: sourceContext.brandSummary,
+      } : undefined),
+      ...(options?.requireAi ? { maxRetries: 0 } : {}),
+    })
+
+    const object = applyBrandKitToSource(generated.output, input.themeMode, sourceContext?.firecrawl ?? null, input.themeOverride)
+    return {
+      provider: resolved.provider,
+      modelName: resolved.modelName,
+      object: options?.requireAi ? deckSourceSchema.parse(object) : object,
+    }
+  } catch (error) {
+    if (!options?.requireAi || error instanceof GenerationError) throw error
+    throw new GenerationError("AI_GENERATION_FAILED")
   }
 }
 

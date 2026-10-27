@@ -1,0 +1,232 @@
+// INACTIVE. Explicit backend-test approval is required before copying this file
+// into tests/ or running it. Every model/provider/source fetch is mocked.
+import { beforeEach, describe, expect, it, vi } from "vitest"
+
+const mocks = vi.hoisted(() => ({
+  generateText: vi.fn(),
+  resolveLanguageModel: vi.fn(),
+  resolveSourceContext: vi.fn(),
+}))
+
+vi.mock("ai", () => ({
+  generateText: mocks.generateText,
+  streamText: vi.fn(),
+  Output: { object: (options: unknown) => options },
+}))
+vi.mock("@/lib/ai/provider-registry", () => ({ resolveLanguageModel: mocks.resolveLanguageModel }))
+vi.mock("@/lib/ai/source-context", () => ({ resolveSourceContext: mocks.resolveSourceContext }))
+vi.mock("@/lib/brand-kit", () => ({ applyBrandKitToSource: (source: unknown) => source }))
+
+import { POST as generate } from "@/app/api/visualizations/generate/route"
+import { POST as artifact } from "@/app/api/visualizations/artifact/route"
+import { generateDeckSource } from "@/lib/ai/generate-deck"
+import { generateVisualizationDocument } from "@/lib/ai/generate-visualization"
+import { buildStandaloneDeckHtml, themeLibrary } from "@/lib/deck-runtime"
+import { compileVisualizationArtifact } from "@/lib/artifacts/compiler"
+import { slugify } from "@/lib/utils"
+import type { DeckSource, GenerationInput } from "@/lib/types"
+import {
+  createStarterCourseDocument,
+  createStarterReportDocument,
+  createStarterSlidesDocument,
+} from "@/packages/domain/fixtures"
+
+const input: GenerationInput = {
+  inputKind: "paste", rawText: "Authored quarterly revenue evidence.",
+  prompt: "Summarize the supplied evidence.", files: [], themeMode: "brand",
+}
+const kinds = ["slides", "course", "report"] as const
+
+function deckSource(): DeckSource {
+  const document = createStarterSlidesDocument()
+  return {
+    title: document.title, subtitle: document.subtitle ?? "", audience: document.audience,
+    narrative: document.goal, summary: document.summary,
+    seoTitle: document.seo.title, seoDescription: document.seo.description,
+    brand: document.brand, theme: themeLibrary[0],
+    cta: { label: "Read the evidence", href: "https://example.com", helperText: "Authored fixture" },
+    leadCapture: { enabled: false, headline: "", description: "", fields: [] },
+    poll: { question: "Which evidence matters?", options: ["Revenue", "Retention"] },
+    slides: [...document.slides.items, { ...document.slides.items[0], id: "authored-fourth-slide" }],
+  }
+}
+
+function modelOutput(kind: (typeof kinds)[number]) {
+  if (kind === "slides") return deckSource()
+  const common = {
+    title: "Authored AI fixture", summary: "Quarterly evidence for review.",
+    audience: "Analysts", goal: "Explain the supplied evidence.",
+    visualDirection: { layout: "explainer", style: "Editorial", rationale: "Evidence first." },
+  }
+  if (kind === "report") return {
+    ...common, decisionQuestion: "What does the evidence support?",
+    executiveSummary: "Review the supplied revenue evidence.",
+    blocks: [
+      { kind: "heading", level: 1, text: "Revenue evidence" },
+      { kind: "rich-text", text: "Revenue evidence is supplied by the author." },
+      { kind: "callout", title: "Source boundary", body: "Use the authored evidence." },
+      { kind: "source-note", text: "Authored fixture; no external data was fetched." },
+    ],
+  }
+  return {
+    ...common, mission: "Understand the evidence.", estimatedMinutes: 5,
+    learnerProfile: { level: "beginner", assumedKnowledge: [], goals: ["Explain evidence"], constraints: [] },
+    learningObjectives: ["Explain the supplied evidence", "Identify its source"], prerequisites: [], glossary: [], references: [],
+    modules: [{ title: "Evidence", objective: "Read the evidence.", lessons: [{
+      title: "Revenue", objective: "Identify the evidence.", estimatedMinutes: 5,
+      explanation: "Revenue evidence was supplied by the author.",
+      blocks: [{ kind: "prose", text: "Use the supplied evidence." }],
+      practice: [{ kind: "free-recall-check", prompt: "What evidence was supplied?", guidance: "Name the source." }],
+      feedback: "Review the source.", summary: "Use evidence.", references: [],
+    }] }],
+  }
+}
+
+function request(body: unknown) {
+  return new Request("http://localhost/api/visualizations/generate", {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
+  })
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  mocks.generateText.mockReset()
+  mocks.resolveLanguageModel.mockReturnValue(null)
+  mocks.resolveSourceContext.mockResolvedValue(null)
+})
+
+describe("primary AI generation", () => {
+  it.each(kinds)("returns safe503 without configuration for %s; no model or source fetch", async (kind) => {
+    const response = await generate(request({ kind, generationInput: input }))
+    expect(response.status).toBe(503)
+    expect(await response.json()).toEqual({
+      code: "AI_UNAVAILABLE",
+      error: "AI generation is unavailable. Configure an AI model before creating a draft.",
+    })
+    expect(mocks.generateText).not.toHaveBeenCalled()
+    expect(mocks.resolveSourceContext).not.toHaveBeenCalled()
+  })
+
+  it.each(kinds)("returns safe502 for %s provider failure without a heuristic draft", async (kind) => {
+    mocks.resolveLanguageModel.mockReturnValue({ provider: "openai", modelName: "authored-mock", model: {} })
+    mocks.generateText.mockRejectedValue(new Error("sensitive-provider-detail-do-not-return"))
+    const response = await generate(request({ kind, generationInput: input }))
+    expect(response.status).toBe(502)
+    expect(await response.json()).toEqual({ code: "AI_GENERATION_FAILED", error: "AI generation failed. Please try again." })
+    expect(mocks.generateText).toHaveBeenCalledTimes(1)
+    expect(mocks.generateText.mock.calls[0][0]).toMatchObject({ maxRetries: 0 })
+  })
+
+  it.each(kinds)("rejects unusable %s model output instead of substituting starter content", async (kind) => {
+    mocks.resolveLanguageModel.mockReturnValue({ provider: "openai", modelName: "authored-mock", model: {} })
+    mocks.generateText.mockResolvedValue({ output: null })
+    const response = await generate(request({ kind, generationInput: input }))
+    expect(response.status).toBe(502)
+    expect(await response.json()).toEqual({ code: "AI_GENERATION_FAILED", error: "AI generation failed. Please try again." })
+  })
+
+  it.each(kinds)("keeps the %s GeneratedDraft success contract with mocked AI", async (kind) => {
+    mocks.resolveLanguageModel.mockReturnValue({ provider: "openai", modelName: "authored-mock", model: {} })
+    mocks.generateText.mockResolvedValue({ output: modelOutput(kind) })
+    const response = await generate(request({ kind, generationInput: input }))
+    expect(response.status).toBe(200)
+    const result = await response.json()
+    expect(result.kind).toBe(kind)
+    expect(result.document.kind).toBe(kind)
+    expect(result.provider).toBe("openai")
+    expect(result.modelName).toBe("authored-mock")
+    expect(result.generatedAt).toEqual(expect.any(Number))
+    if (kind === "slides") {
+      expect(result.deckSource.title).toBe(result.document.title)
+      expect(result.artifactHtml).toMatch(/<!doctype html>/i)
+      expect(result.artifactHtml).not.toMatch(/sendBeacon|localStorage|fetch\(/)
+    } else {
+      expect(result.deckSource).toBeNull()
+      expect(result.artifactHtml).toBeNull()
+    }
+    expect(mocks.generateText.mock.calls[0][0]).toMatchObject({ maxRetries: 0 })
+  })
+
+  it("returns safe400 for malformed JSON and invalid kinds before model access", async () => {
+    const malformed = new Request("http://localhost/api/visualizations/generate", { method: "POST", body: "{" })
+    for (const value of [malformed, request({ kind: "unknown", generationInput: input })]) {
+      const response = await generate(value)
+      expect(response.status).toBe(400)
+      expect(await response.json()).toEqual({ code: "INVALID_GENERATION_INPUT", error: "Invalid visualization generation payload." })
+    }
+    expect(mocks.resolveLanguageModel).not.toHaveBeenCalled()
+  })
+
+  it("keeps missing-config legacy helper fallbacks opt-in compatible", async () => {
+    expect((await generateDeckSource(input)).provider).toBe("fallback")
+    for (const kind of ["course", "report"] as const) {
+      expect((await generateVisualizationDocument(kind, input)).provider).toBe("fallback")
+    }
+    expect(mocks.generateText).not.toHaveBeenCalled()
+  })
+
+  it.each(["course", "report"] as const)("keeps %s legacy model-failure fallback", async (kind) => {
+    mocks.resolveLanguageModel.mockReturnValue({ provider: "openai", modelName: "authored-mock", model: {} })
+    mocks.generateText.mockRejectedValue(new Error("Authored failure"))
+    expect((await generateVisualizationDocument(kind, input)).provider).toBe("fallback")
+  })
+})
+
+describe("canonical artifact preview", () => {
+  it.each([
+    ["slides", createStarterSlidesDocument], ["course", createStarterCourseDocument], ["report", createStarterReportDocument],
+  ] as const)("compiles validated %s HTML with preview runtime", async (kind, createDocument) => {
+    const response = await artifact(request({ document: createDocument() }))
+    expect(response.status).toBe(200)
+    const { artifactHtml } = await response.json()
+    expect(artifactHtml).toContain(`data-kind="${kind}"`)
+    expect(artifactHtml).not.toContain("sendBeacon")
+    expect(artifactHtml).not.toContain("localStorage")
+    expect(mocks.generateText).not.toHaveBeenCalled()
+  })
+
+  it("preserves the legacy deckSource payload and compiles its rich preview without storage or backend calls", async () => {
+    const source = deckSource()
+    const response = await artifact(request({ deckSource: source }))
+    expect(response.status).toBe(200)
+    const { artifactHtml } = await response.json()
+    expect(artifactHtml).toBe(buildStandaloneDeckHtml(source, slugify(source.title), { preview: true }))
+    expect(artifactHtml).not.toMatch(/sendBeacon|localStorage|fetch\(|\/api\/events|\/api\/leads/)
+    expect(artifactHtml).toContain('document.addEventListener("keydown"')
+    expect(artifactHtml).toContain('button.addEventListener("click"')
+    expect(artifactHtml).toContain('addEventListener("submit"')
+    expect(artifactHtml).toContain("Preview vote selected. Nothing was submitted.")
+    expect(artifactHtml).toContain("Preview only. No lead was submitted.")
+    const published = buildStandaloneDeckHtml(source, slugify(source.title))
+    expect(published).toBe(buildStandaloneDeckHtml(source, slugify(source.title), { preview: false }))
+    expect(published).toContain("localStorage.getItem")
+    expect(published).toContain('postJson("/api/events"')
+  })
+
+  it("rejects malformed, invalid and ambiguous documents with safe400", async () => {
+    for (const payload of [null, {}, { document: { kind: "course" } }, { document: createStarterSlidesDocument(), deckSource: deckSource() }]) {
+      const response = await artifact(request(payload))
+      expect(response.status).toBe(400)
+      expect((await response.json()).code).toBe("INVALID_ARTIFACT_INPUT")
+    }
+    expect((await artifact(new Request("http://localhost/api/visualizations/artifact", { method: "POST", body: "{" }))).status).toBe(400)
+  })
+
+  it("keeps published defaults identical and preview course state in memory", async () => {
+    const document = createStarterCourseDocument()
+    const options = { visualizationId: "authored-preview", versionId: "authored-version", createdAt: "2026-10-27T00:00:00.000Z" }
+    const published = await compileVisualizationArtifact(document, options)
+    const explicitPublished = await compileVisualizationArtifact(document, { ...options, preview: false })
+    const preview = await compileVisualizationArtifact(document, { ...options, preview: true })
+    expect(published.html).toBe(explicitPublished.html)
+    expect(published.manifest.runtimeFeatures).toEqual(["analytics-beacon", "local-course-progress", "no-external-js"])
+    expect(published.html).toContain("navigator.sendBeacon")
+    expect(published.html).toContain("localStorage.setItem")
+    expect(preview.html).not.toMatch(/sendBeacon|localStorage|fetch\(/)
+    expect(preview.html).toContain("const completed=new Set()")
+    expect(preview.html).toContain("button.textContent='Completed'")
+    expect(preview.html).toContain("'Correct. '")
+    expect(preview.html).toContain("'Try again. '")
+    expect(preview.manifest.runtimeFeatures).toEqual(["preview", "in-memory-course-progress", "no-analytics", "no-external-js"])
+  })
+})

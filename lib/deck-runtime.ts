@@ -133,6 +133,52 @@ function renderLeadField(field: DeckSource["leadCapture"]["fields"][number]) {
   return `<label class="lead-field"><span>${escapeHtml(field.label)}</span><input type="${field.type === "email" ? "email" : "text"}" name="${escapeHtml(field.key)}" placeholder="${escapeHtml(field.placeholder)}" ${field.required ? "required" : ""} /></label>`
 }
 
+function previewDeckRuntime() {
+  return `
+      const state = { visitorId: "preview", seenSlides: new Set(), vote: null };
+      const slides = Array.from(document.querySelectorAll(".slide"));
+      if ("IntersectionObserver" in window) {
+        const observer = new IntersectionObserver((entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting) state.seenSlides.add(entry.target.getAttribute("data-slide"));
+          }
+        }, { threshold: 0.6 });
+        slides.forEach((slide) => observer.observe(slide));
+      }
+      document.addEventListener("keydown", (event) => {
+        if (event.target instanceof HTMLElement && event.target.closest("input, textarea, select, [contenteditable=true]")) return;
+        const activeIndex = slides.findIndex((slide) => {
+          const rect = slide.getBoundingClientRect();
+          return rect.top >= -20 && rect.top < window.innerHeight / 2;
+        });
+        if (event.key === "ArrowDown" || event.key === "PageDown") {
+          event.preventDefault();
+          slides[Math.min(slides.length - 1, activeIndex + 1)]?.scrollIntoView({ behavior: "smooth" });
+        }
+        if (event.key === "ArrowUp" || event.key === "PageUp") {
+          event.preventDefault();
+          slides[Math.max(0, activeIndex - 1)]?.scrollIntoView({ behavior: "smooth" });
+        }
+      });
+      const pollOptions = document.querySelectorAll(".poll-option");
+      pollOptions.forEach((button) => {
+        button.setAttribute("aria-pressed", "false");
+        button.addEventListener("click", () => {
+          state.vote = button.getAttribute("data-value");
+          pollOptions.forEach((option) => option.setAttribute("aria-pressed", String(option === button)));
+          const status = document.getElementById("poll-status");
+          if (status) status.textContent = state.vote ? "Preview vote selected. Nothing was submitted." : "";
+        });
+      });
+      const leadStatus = document.getElementById("lead-status");
+      if (leadStatus) leadStatus.textContent = "Preview only. Leads are not submitted.";
+      document.getElementById("lead-form")?.addEventListener("submit", (event) => {
+        event.preventDefault();
+        if (leadStatus) leadStatus.textContent = "Preview only. No lead was submitted.";
+      });
+    `
+}
+
 export function buildStandaloneDeckHtml(
   source: DeckSource,
   deckSlug: string,
@@ -140,6 +186,7 @@ export function buildStandaloneDeckHtml(
     teamName?: string
     publicId?: string
     versionId?: string
+    preview?: boolean
   },
 ) {
   const slides = source.slides
@@ -513,7 +560,7 @@ export function buildStandaloneDeckHtml(
       ${slides}
       ${finalPanel}
     </main>
-    <script>
+    <script>${options?.preview ? previewDeckRuntime() : `
       const runtime = ${runtimeConfig};
       const visitorStorageKey = "slides_visitor_id";
       const startedAt = Date.now();
@@ -653,7 +700,7 @@ export function buildStandaloneDeckHtml(
           sendSessionEnd();
         }
       });
-    </script>
+    `}</script>
   </body>
 </html>`
 }

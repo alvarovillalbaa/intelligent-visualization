@@ -27,17 +27,18 @@ export default async function WorkspacePage({
 
   return (
     <div className="mx-auto grid w-full max-w-3xl gap-10">
-      <header>
-        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{dashboard.workspace.name}</h1>
-        {dashboard.workspace.description ? (
-          <p className="mt-3 text-lg leading-8 text-muted-foreground">{dashboard.workspace.description}</p>
-        ) : null}
-      </header>
-
       <Composer
         mode="workspace"
         workspaceId={dashboard.workspace.id}
         workspaceSlug={dashboard.workspace.slug}
+        introduction={
+          <header className="mb-6">
+            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">{dashboard.workspace.name}</h1>
+            {dashboard.workspace.description ? (
+              <p className="mt-3 text-lg leading-8 text-muted-foreground">{dashboard.workspace.description}</p>
+            ) : null}
+          </header>
+        }
       />
 
       <section className="grid gap-3">
