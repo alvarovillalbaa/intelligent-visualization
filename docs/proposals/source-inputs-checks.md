@@ -2,6 +2,8 @@
 
 This proposal has not installed a workflow or run browser checks. Approval for BeforeLaunch does not cover Intelligent Visualization. The workflow remains a [reviewable example](source-inputs-ci.yml.example), outside `.github/workflows/`.
 
+The repository already has an unchanged `ci.yml` that ran automatically after source publication and passed, including the 12 native frontend cases. See [the result record](../results/2026/10-27/source-inputs.md#pre-existing-automatic-ci). This proposal adds a temporary browser job only after approval; its focused unit step verifies the same reviewed baseline before installing the isolated browser tool.
+
 Approval under the supplied AGENTS.md §7 and §14 is needed for this app's desktop/mobile browser checks, temporary CI activation, dependency installation in the runner, and the runner-only Playwright tool. The repository currently declares Vitest and has `package-lock.json`; it does not declare Playwright. No package manifest or lockfile change is proposed.
 
 After approval, the owner can install the example as `.github/workflows/source-inputs-acceptance.yml` on `qa/source-inputs-acceptance`, publish that temporary branch once, inspect the results, and remove the active workflow afterward. The public-repository, exact-repository, and exact-branch job guards exclude private or unrelated targets. No automatic reruns or retry policy is proposed.
@@ -49,4 +51,4 @@ GitHub documents standard hosted-runner usage for public repositories as free; t
 
 A future successful run would establish only the selected native Vitest frontend behavior and anonymous Chromium development-server behavior for the logged source commit and hashes. It would not establish hosted production QA, real clipboard/IME input, physical mobile behavior, native file selection, authentication, database/provider operations, model quality, generation, or a complete end-to-end release.
 
-Only source review, YAML/Bash syntax validation, and diff checks apply to these proposal files so far. No workflow commands were executed. No workflow activation, dependency installation, lint/Vitest/browser execution, development server, build, database setup, provider action, or authentication change was performed while preparing them.
+Only source review, YAML/Bash syntax validation, and diff checks apply to these proposal files so far. None of the proposed workflow commands was executed while preparing them. No additional workflow activation, runner-tool installation, proposed browser execution, database setup, provider action, or authentication change was performed. The separate pre-existing automatic CI result above is not browser acceptance.

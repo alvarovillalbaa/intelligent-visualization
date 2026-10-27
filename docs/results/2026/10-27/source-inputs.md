@@ -1,6 +1,6 @@
 # Source inputs below the composer
 
-Status: source published and production READY; 12 focused frontend cases pass using the recorded Node adapter. Browser interaction remains unverified.
+Status: source published and production READY; the 12 new frontend cases pass in native Vitest through the pre-existing CI, as well as the recorded Node adapter. Browser interaction remains unverified.
 
 ## Intent and scope
 
@@ -14,11 +14,11 @@ Independent review found and corrected a quota regression before publication: ad
 
 ## Checks
 
-The 12 authored cases in [the unit source](../../../../tests/unit/source-inputs.test.ts) passed unchanged under Node 24.21.0 using a temporary assertion adapter: `describe`/`it` route to `node:test`; `toBe`, `toEqual`, `toHaveLength`, and absent-property checks route to strict Node assertions. Only the three client helper modules are permitted through the alias resolver; network calls throw. Results: 12 passed, zero failed/skipped/cancelled. No dependencies were installed. Both temporary adapter files were removed after an open-handle check returned none. Native Vitest, React rendering, browser gestures, real storage quota, model calls, and hosted provider behavior remain unverified.
+The 12 authored cases in [the unit source](../../../../tests/unit/source-inputs.test.ts) first passed unchanged under Node 24.21.0 using a temporary assertion adapter: `describe`/`it` route to `node:test`; `toBe`, `toEqual`, `toHaveLength`, and absent-property checks route to strict Node assertions. Only the three client helper modules are permitted through the alias resolver; network calls throw. Results: 12 passed, zero failed/skipped/cancelled. No dependencies were installed locally. Both temporary adapter files were removed after an open-handle check returned none. The subsequent native Vitest result is recorded below. React rendering, browser gestures, real storage quota, model calls, and hosted provider behavior remain unverified.
 
 These cases cover legacy CRLF/multiline text, exact whitespace, order and duplicates, pending text, empty pending delimiters, matching optional metadata, malformed/sparse/mismatched metadata, copied arrays, existing v2 storage, metadata-only quota pressure retaining full files, and true quota pressure reaching the existing compact-file fallback. They use authored text and in-memory storage only. Node emitted its existing typeless-package ESM detection warning; package configuration was not changed.
 
-`git diff --check` and independent source review pass. The four changed TypeScript files parse with the existing TypeScript 5.9.3 parser, all 20 local imports resolve, and all 15 local links in the four changed Markdown documents resolve. These are static checks; no broad type compile was run. The last Storage Guard preflight reported 24.9 GiB free versus 34.0 GiB required; the source-only checkout is bounded at roughly 2 MB. No local dependency install, app build, development server, browser, database, provider setup, or CI was started.
+`git diff --check` and independent source review pass. The four changed TypeScript files parse with the existing TypeScript 5.9.3 parser, all 20 local imports resolve, and all 15 then-current local links in the four changed Markdown documents resolve. These are static checks; no broad local type compile was run. The last Storage Guard preflight reported 24.9 GiB free versus 34.0 GiB required; the source-only checkout is bounded at roughly 2 MB. No local dependency install, app build, development server, browser, database, or provider setup was used. No additional CI was configured or manually dispatched. The repository's pre-existing workflow ran automatically on publication.
 
 ## Hosting and remaining requirements
 
@@ -36,4 +36,12 @@ A connected Vercel fetch of the canonical guest page returned HTTP 200 and refer
 
 The current evidence/proposal follow-up preserves the application/test/dependency/configuration source from that release. Focused anonymous browser checks require separate approval under supplied `AGENTS.md` §§7 and 14 before any browser, temporary CI, or runner-only browser-tool installation.
 
-The [reviewed acceptance scope](../../../proposals/source-inputs-checks.md), [inactive workflow](../../../proposals/source-inputs-ci.yml.example), and [inactive four-case browser source](../../../proposals/source-inputs-browser.spec.ts.example) are prepared. Independent review found no remaining concrete blocker. YAML parsing, all nine shell syntax blocks, the generated configuration, and the browser example's TypeScript syntax pass; the 12 local links across the acceptance scope and this result record resolve at preparation time. No workflow is installed, no permanent dependency is added, and no new browser or native Vitest execution has occurred. The app-specific approval request is pending.
+The [reviewed acceptance scope](../../../proposals/source-inputs-checks.md), [inactive workflow](../../../proposals/source-inputs-ci.yml.example), and [inactive four-case browser source](../../../proposals/source-inputs-browser.spec.ts.example) are prepared. Independent review found no remaining concrete blocker. YAML parsing, all nine shell syntax blocks, the generated configuration, and the browser example's TypeScript syntax pass; the 12 then-current local links across the acceptance scope and this result record resolve at preparation time. No temporary workflow is installed and no permanent dependency is added. Its proposed checks have not run; the app-specific approval request is pending. The pre-existing CI is a separate, unchanged workflow.
+
+## Pre-existing automatic CI
+
+The initial verification note omitted [the repository's existing workflow](../../../../.github/workflows/ci.yml). It was not added or changed by this repair; it triggers automatically on `main` publication. [Run 40531878075](https://github.com/alvarovillalbaa/intelligent-visualization/actions/runs/40531878075), job `122286589019`, completed successfully at source `a1ab9efe779b956b5e3075639faeba93047bf1c0` on Node 22.23.4 with native Vitest 4.1.9.
+
+All 44 tests across eight files passed, including the 12 new source-input cases and the three existing local-provider cases. The workflow's separate provider command reran those same three cases successfully; they are not three additional distinct tests. Its existing setup/doctor, lint, broad typecheck, local export/verify, and production build steps also passed. These commands were performed by the preconfigured workflow, not manually invoked or newly configured by this task. Its own existing cache/action settings were preserved.
+
+This establishes native execution of the new frontend cases and the current local-provider slice. It does not establish hosted Convex/Supabase/Cloudflare support, browser events, authentication, or AI generation. The proposed temporary browser job remains a separate approval surface.
