@@ -1,0 +1,454 @@
+// INACTIVE. App-specific browser/CI/runner-package approval is required.
+// The proposed runner copies this file to tests/browser/batch.spec.ts.
+// HTTP generation, artifact and file-context responses are authored mocks.
+// Pure production renderers build preview HTML; no API handler/model is invoked.
+import { expect, test, type BrowserContext, type Locator, type Page, type Route } from "@playwright/test"
+
+import { buildStandaloneDeckHtml, themeLibrary } from "../../lib/deck-runtime"
+import { compileVisualizationArtifact } from "../../lib/artifacts/compiler"
+import type { GeneratedDraft } from "../../lib/client/guest-draft"
+import type { GenerationBatch } from "../../lib/client/generation-batch"
+import type { DeckSource, GenerationInput } from "../../lib/types"
+import type { VisualizationKind } from "../../packages/domain/entities"
+import {
+  createStarterCourseDocument,
+  createStarterReportDocument,
+  createStarterSlidesDocument,
+} from "../../packages/domain/fixtures"
+
+const STORAGE_KEY = "iv:guest-draft:v2"
+const FIXTURE_TIME = Date.parse("2026-10-27T12:00:00.000Z")
+const KINDS: VisualizationKind[] = ["slides", "course", "report"]
+const TITLES = { slides: "Authored browser Slides", course: "Authored browser Course", report: "Authored browser Report" }
+const LABELS = { slides: "Slides deck", course: "Course", report: "Report" }
+type MockResponse = { status: number; body: unknown }
+type GenerationCall = { kind: VisualizationKind; generationInput: GenerationInput }
+type Harness = {
+  unexpected: string[]
+  generation: GenerationCall[]
+  artifacts: Array<{ deckSource?: DeckSource; document?: GeneratedDraft["document"] }>
+  files: number
+  generate: (call: GenerationCall) => Promise<MockResponse>
+  artifact: (body: Harness["artifacts"][number]) => Promise<MockResponse>
+  fileContext: (index: number) => Promise<MockResponse>
+}
+const harnesses = new WeakMap<BrowserContext, Harness>()
+
+test.use({
+  viewport: { width: 1440, height: 1000 },
+  isMobile: false,
+  hasTouch: false,
+  storageState: { cookies: [], origins: [] },
+  serviceWorkers: "block",
+})
+
+function authoredDrafts(): Record<VisualizationKind, GeneratedDraft> {
+  const slides = createStarterSlidesDocument()
+  slides.title = TITLES.slides
+  slides.summary = "Authored local evidence for a mocked browser response."
+  slides.slides.items[0].title = "Authored rich opening"
+  const source: DeckSource = {
+    title: slides.title, subtitle: "Authored fixture", summary: slides.summary,
+    audience: slides.audience, narrative: slides.goal,
+    seoTitle: slides.title, seoDescription: slides.summary,
+    brand: slides.brand, theme: themeLibrary[0],
+    cta: { label: "Unused authored link", href: "https://example.com/unused", helperText: "Not followed by these checks." },
+    leadCapture: { enabled: false, headline: "", description: "", fields: [] },
+    poll: { question: "Which authored source should be reviewed?", options: ["Authored evidence", "Authored follow-up"] },
+    slides: [...slides.slides.items, { ...slides.slides.items[0], id: "authored-fourth-slide", title: "Authored rich closing" }],
+  }
+  const course = createStarterCourseDocument()
+  course.title = TITLES.course
+  course.summary = "A mocked course using authored local evidence."
+  course.course.modules[0].title = "Authored module"
+  course.course.modules[0].lessons[0].title = "Authored lesson"
+  course.course.modules[0].lessons[0].practice = [{
+    id: "authored-practice", kind: "multiple-choice-check", prompt: "Which source is used?",
+    options: ["Authored local evidence", "Unrequested external data"], answerIndex: 0,
+    explanation: "This browser fixture uses authored local evidence only.",
+  }]
+  const report = createStarterReportDocument()
+  report.title = TITLES.report
+  report.summary = "A mocked report using authored local evidence."
+  report.report.blocks = [
+    { id: "authored-heading", kind: "heading", level: 1, text: "Authored report evidence" },
+    { id: "authored-kpi", kind: "kpi", label: "Authored count", value: "42", detail: "Fixture value", provenance: "Authored fixture" },
+    { id: "authored-source", kind: "source-note", text: "No external evidence was fetched." },
+  ]
+  report.report.layouts = {
+    lg: report.report.blocks.map((block, index) => ({ blockId: block.id, x: 0, y: index * 2, w: 12, h: 2 })),
+    md: report.report.blocks.map((block, index) => ({ blockId: block.id, x: 0, y: index * 2, w: 8, h: 2 })),
+    sm: report.report.blocks.map((block, index) => ({ blockId: block.id, x: 0, y: index * 2, w: 4, h: 2 })),
+  }
+  report.report.dataSources = []
+  const common = { provider: "authored-client-mock", modelName: "batch-browser-fixture", generatedAt: FIXTURE_TIME }
+  return {
+    slides: { ...common, kind: "slides", document: slides, deckSource: source, artifactHtml: null },
+    course: { ...common, kind: "course", document: course, deckSource: null, artifactHtml: null },
+    report: { ...common, kind: "report", document: report, deckSource: null, artifactHtml: null },
+  }
+}
+
+function harness(context: BrowserContext) {
+  const value = harnesses.get(context)
+  if (!value) throw new Error("The owned HTTP harness is missing.")
+  return value
+}
+
+async function fulfill(route: Route, response: MockResponse) {
+  await route.fulfill({ status: response.status, contentType: "application/json", body: JSON.stringify(response.body) })
+}
+
+test.beforeEach(async ({ context, baseURL }) => {
+  expect(baseURL).toBeTruthy()
+  const origin = new URL(baseURL!)
+  expect(origin.protocol).toBe("http:")
+  expect(["127.0.0.1", "localhost"]).toContain(origin.hostname)
+  expect(await context.cookies()).toEqual([])
+  const fixtures = authoredDrafts()
+  const state: Harness = {
+    unexpected: [], generation: [], artifacts: [], files: 0,
+    generate: async (call) => ({ status: 200, body: structuredClone(fixtures[call.kind]) }),
+    artifact: async (body) => {
+      if (body.deckSource && !body.document) {
+        return { status: 200, body: { artifactHtml: buildStandaloneDeckHtml(body.deckSource, "authored-preview", { preview: true }) } }
+      }
+      if (body.document && !body.deckSource) {
+        const compiled = await compileVisualizationArtifact(body.document, {
+          visualizationId: "authored-preview", versionId: "authored-version",
+          createdAt: "2026-10-27T12:00:00.000Z", preview: true,
+        })
+        return { status: 200, body: { artifactHtml: compiled.html } }
+      }
+      state.unexpected.push("Malformed artifact payload")
+      return { status: 400, body: { error: "Authored harness rejected the artifact payload." } }
+    },
+    fileContext: async () => {
+      state.unexpected.push("Unexpected file-context request")
+      return { status: 400, body: { error: "No file mock was configured." } }
+    },
+  }
+  harnesses.set(context, state)
+  await context.route("**/*", async (route) => {
+    const request = route.request()
+    const url = new URL(request.url())
+    if (url.origin !== origin.origin) {
+      state.unexpected.push(request.method() + " " + url.origin + url.pathname)
+      await route.abort("blockedbyclient")
+      return
+    }
+    if (request.method() === "POST" && url.pathname === "/api/visualizations/generate") {
+      const call = request.postDataJSON() as GenerationCall
+      if (!call || !KINDS.includes(call.kind) || !call.generationInput) {
+        state.unexpected.push("Malformed generation payload")
+        await fulfill(route, { status: 400, body: { error: "Invalid authored request." } })
+        return
+      }
+      state.generation.push(structuredClone(call))
+      await fulfill(route, await state.generate(call))
+      return
+    }
+    if (request.method() === "POST" && url.pathname === "/api/visualizations/artifact") {
+      const body = request.postDataJSON()
+      state.artifacts.push(structuredClone(body))
+      await fulfill(route, await state.artifact(body))
+      return
+    }
+    if (request.method() === "POST" && url.pathname === "/api/file-context") {
+      const index = state.files++
+      await fulfill(route, await state.fileContext(index))
+      return
+    }
+    if (!["GET", "HEAD"].includes(request.method()) || url.pathname.startsWith("/api/")) {
+      state.unexpected.push(request.method() + " " + url.pathname)
+      await route.abort("blockedbyclient")
+      return
+    }
+    await route.continue()
+  })
+})
+
+test.afterEach(async ({ context }) => {
+  // Known POSTs are fulfilled above and never reach the server. HTTP guards do
+  // not sandbox Node/server traffic or intercept Next's development WebSocket.
+  expect(harness(context).unexpected, "No unmocked mutation, API read or external request is allowed").toEqual([])
+})
+
+function results(page: Page) { return page.getByRole("region", { name: "Generation results", exact: true }) }
+function resultCard(page: Page, kind: VisualizationKind) {
+  return results(page).getByRole("listitem").filter({ has: page.getByRole("heading", { name: LABELS[kind], level: 3, exact: true }) })
+}
+function sourceInput(page: Page) { return page.getByRole("textbox", { name: "Text or link", exact: true }) }
+function formatButton(page: Page, kind: VisualizationKind) {
+  return page.getByRole("group", { name: "Draft formats", exact: true }).getByRole("button").filter({ hasText: LABELS[kind] })
+}
+async function openConfigure(page: Page, text = "Authored batch source. No URLs or account data.") {
+  await page.goto("/")
+  await expect(page.getByRole("heading", { name: "Start with your source material.", exact: true })).toBeVisible()
+  await sourceInput(page).fill(text)
+  await page.getByRole("button", { name: "Continue", exact: true }).click()
+  await expect(page.getByRole("group", { name: "Draft formats", exact: true })).toBeVisible()
+  await expect(page.getByRole("heading", { name: "Start with your source material.", exact: true })).toHaveCount(0)
+  await expect(page.getByText("Paste text, drop files, or point at a page. Then choose what to make of it.", { exact: true })).toHaveCount(0)
+}
+async function selectAll(page: Page) {
+  for (const kind of KINDS) if (await formatButton(page, kind).getAttribute("aria-pressed") !== "true") await formatButton(page, kind).click()
+}
+async function expectComplete(page: Page, kinds: VisualizationKind[]) {
+  for (const kind of kinds) await expect(resultCard(page, kind)).toContainText("AI draft ready")
+}
+async function stored(page: Page) {
+  return page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), STORAGE_KEY)
+}
+function deferred() {
+  let release!: () => void
+  const ready = new Promise<void>((resolve) => { release = resolve })
+  return { ready, release }
+}
+async function expectTouchTarget(control: Locator) {
+  const box = await control.boundingBox()
+  expect(box).not.toBeNull()
+  expect(box!.width).toBeGreaterThanOrEqual(44)
+  expect(box!.height).toBeGreaterThanOrEqual(44)
+}
+async function seedGuest(context: BrowserContext, batch: GenerationBatch) {
+  await context.addInitScript(({ key, batch }) => {
+    if (!["127.0.0.1", "localhost"].includes(location.hostname) || localStorage.getItem(key) !== null) return
+    const now = Date.now()
+    localStorage.setItem(key, JSON.stringify({
+      version: 2, input: { rawText: batch.input.rawText, files: [], textEntries: [batch.input.rawText], pendingText: "" },
+      selectedKind: "slides", selectedKinds: batch.results.map((result) => result.kind),
+      draft: null, batch, savedAt: now, expiresAt: now + 60 * 60 * 1000,
+    }))
+  }, { key: STORAGE_KEY, batch })
+}
+function restoredBatch(statuses: Array<"completed" | "running" | "queued">): GenerationBatch {
+  const drafts = authoredDrafts()
+  // An optional legacy rich source is deliberately absent from restored Slides.
+  // Its canonical document must remain previewable after artifact stripping.
+  drafts.slides.deckSource = null
+  return {
+    id: "authored-restored", createdAt: FIXTURE_TIME,
+    input: { inputKind: "paste", rawText: "Authored restored source", prompt: "Authored frozen prompt", files: [], themeMode: "brand" },
+    results: statuses.map((status, index) => ({
+      id: "authored-restored:" + KINDS[index], kind: KINDS[index], status,
+      draft: status === "completed" ? drafts[KINDS[index]] : null, error: null, saveStatus: "idle",
+    })),
+  }
+}
+
+test("desktop selects multiple formats accessibly, hides only the configure introduction and sends canonical ordered requests", async ({ page, context }) => {
+  const state = harness(context)
+  await openConfigure(page)
+  await expect(formatButton(page, "slides")).toHaveAttribute("aria-pressed", "true")
+  await formatButton(page, "slides").click()
+  await expect(page.getByRole("button", { name: "Create draft", exact: true })).toBeDisabled()
+  await expect(page.getByText("Select at least one format to continue.", { exact: true })).toBeVisible()
+  // Select in the opposite order; requests and result cards must still be canonical.
+  for (const kind of ["report", "course", "slides"] as VisualizationKind[]) await formatButton(page, kind).click()
+  for (const kind of KINDS) await expect(formatButton(page, kind)).toHaveAttribute("aria-pressed", "true")
+  await page.getByRole("button", { name: "Create drafts", exact: true }).click()
+  await expectComplete(page, KINDS)
+  expect(state.generation.map((call) => call.kind)).toEqual(KINDS)
+  await expect(results(page).getByRole("heading", { level: 3 })).toHaveText(KINDS.map((kind) => LABELS[kind]))
+  expect(state.generation.map((call) => call.generationInput.rawText)).toEqual(Array(3).fill("Authored batch source. No URLs or account data."))
+})
+
+test("partial failure preserves completed siblings and retry uses only the failed kind with its frozen input", async ({ page, context }) => {
+  const state = harness(context)
+  const drafts = authoredDrafts()
+  const first = deferred()
+  let courseAttempts = 0
+  state.generate = async (call) => {
+    if (call.kind === "slides") await first.ready
+    if (call.kind === "course" && courseAttempts++ === 0) return { status: 502, body: { code: "AI_GENERATION_FAILED", error: "Authored temporary Course failure." } }
+    return { status: 200, body: drafts[call.kind] }
+  }
+  await openConfigure(page, "Original authored input for every format.")
+  await selectAll(page)
+  try {
+    // Same-task synthetic activation checks the synchronous guard, not physical double-tap timing.
+    await page.getByRole("button", { name: "Create drafts", exact: true }).evaluate((element) => { (element as HTMLButtonElement).click(); (element as HTMLButtonElement).click() })
+    await expect.poll(() => state.generation.length).toBe(1)
+    await expect(page.getByRole("button", { name: "Generating", exact: true })).toBeDisabled()
+    first.release()
+    await expectComplete(page, ["slides", "report"])
+    await expect(resultCard(page, "course")).toContainText("Authored temporary Course failure.")
+    expect(state.generation.map((call) => call.kind)).toEqual(KINDS)
+    await expect.poll(async () => (await stored(page)).batch.results.map((result: { status: string }) => result.status)).toEqual(["completed", "failed", "completed"])
+    const before = (await stored(page)).batch as GenerationBatch
+    const frozenInput = structuredClone(state.generation[0].generationInput)
+    await page.getByRole("button", { name: /\bEdit$/ }).click()
+    await sourceInput(page).fill("Later edits must not replace frozen retry input.")
+    await page.getByRole("button", { name: "Continue", exact: true }).click()
+    await formatButton(page, "slides").click()
+    await formatButton(page, "course").click()
+    await expect(formatButton(page, "report")).toHaveAttribute("aria-pressed", "true")
+    await resultCard(page, "course").getByRole("button", { name: "Retry Course", exact: true }).click()
+    await expectComplete(page, KINDS)
+    expect(state.generation.map((call) => call.kind)).toEqual(["slides", "course", "report", "course"])
+    expect(state.generation.every((call) => JSON.stringify(call.generationInput) === JSON.stringify(frozenInput))).toBe(true)
+    await expect.poll(async () => (await stored(page)).batch.results.every((result: { status: string }) => result.status === "completed")).toBe(true)
+    const after = (await stored(page)).batch as GenerationBatch
+    expect(after.id).toBe(before.id)
+    for (const kind of ["slides", "report"] as VisualizationKind[]) {
+      expect(after.results.find((result) => result.kind === kind)).toEqual(before.results.find((result) => result.kind === kind))
+    }
+  } finally { first.release() }
+})
+
+test("restored running and queued results require explicit retry without auto-calls and canonical-only Slides still previews", async ({ page, context }) => {
+  const state = harness(context)
+  const fixture = restoredBatch(["completed", "running", "queued"])
+  await seedGuest(context, fixture)
+  await page.goto("/")
+  await expect(resultCard(page, "course")).toContainText("Interrupted")
+  await expect(resultCard(page, "report")).toContainText("Interrupted")
+  await expect.poll(async () => (await stored(page)).batch.results.map((result: { status: string }) => result.status)).toEqual(["completed", "interrupted", "interrupted"])
+  expect(state.generation).toEqual([])
+  await page.reload()
+  await expect(resultCard(page, "course").getByRole("button", { name: "Retry Course", exact: true })).toBeVisible()
+  expect(state.generation).toEqual([])
+  await resultCard(page, "slides").getByRole("button", { name: "Preview Slides deck", exact: true }).click()
+  await expect(page.frameLocator("iframe").getByRole("heading", { name: "Authored rich opening", exact: true })).toBeVisible()
+  expect(state.artifacts).toHaveLength(1)
+  expect(state.artifacts[0]).toEqual({ document: fixture.results[0].draft!.document })
+  expect(state.generation).toEqual([])
+  await page.getByRole("button", { name: "Back", exact: true }).click()
+  await resultCard(page, "course").getByRole("button", { name: "Retry Course", exact: true }).click()
+  await expectComplete(page, ["slides", "course"])
+  expect(state.generation).toEqual([{ kind: "course", generationInput: fixture.input }])
+  await expect(resultCard(page, "report")).toContainText("Interrupted")
+})
+
+test("rich Slides preview retries compilation without generation, keeps its local poll and isolates all three preview kinds", async ({ page, context }) => {
+  const state = harness(context)
+  const compile = state.artifact
+  let attempts = 0
+  state.artifact = async (body) => ++attempts === 1 ? { status: 503, body: { error: "Authored compile failure." } } : compile(body)
+  await openConfigure(page)
+  await selectAll(page)
+  await page.getByRole("button", { name: "Create drafts", exact: true }).click()
+  await expectComplete(page, KINDS)
+  await resultCard(page, "slides").getByRole("button", { name: "Preview Slides deck", exact: true }).click()
+  await expect(page.getByText("The Slides preview could not be prepared. Your generated draft is still available.", { exact: true })).toBeVisible()
+  expect(state.generation).toHaveLength(3)
+  await page.getByRole("button", { name: "Retry preview", exact: true }).click()
+  const iframe = page.locator("iframe")
+  await expect(iframe).toHaveAttribute("sandbox", "allow-scripts")
+  expect(await iframe.getAttribute("srcdoc")).not.toMatch(/sendBeacon|localStorage|fetch\(|\/api\/events|\/api\/leads/)
+  const frame = page.frameLocator("iframe")
+  await expect(frame.getByRole("heading", { name: "Authored rich opening", exact: true }).first()).toBeVisible()
+  const poll = frame.getByRole("button", { name: "Authored evidence", exact: true })
+  await poll.click()
+  await expect(poll).toHaveAttribute("aria-pressed", "true")
+  await expect(frame.locator("#poll-status")).toHaveText("Preview vote selected. Nothing was submitted.")
+  await frame.getByRole("button", { name: "Authored follow-up", exact: true }).click()
+  await expect(poll).toHaveAttribute("aria-pressed", "false")
+  expect(await frame.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute("content")).toContain("connect-src 'none'")
+  expect(state.artifacts).toHaveLength(2)
+  expect(state.artifacts.every((body) => body.deckSource && !body.document)).toBe(true)
+  expect(state.generation).toHaveLength(3)
+  await page.getByRole("button", { name: "Back", exact: true }).click()
+  await resultCard(page, "course").getByRole("button", { name: "Preview Course", exact: true }).click()
+  await expect(page.getByRole("heading", { name: TITLES.course, level: 1, exact: true })).toBeVisible()
+  await page.getByRole("button", { name: "Authored local evidence", exact: true }).click()
+  await expect(page.getByText("This browser fixture uses authored local evidence only.", { exact: true })).toBeVisible()
+  await page.getByRole("button", { name: "Back", exact: true }).click()
+  await resultCard(page, "report").getByRole("button", { name: "Preview Report", exact: true }).click()
+  await expect(page.getByRole("heading", { name: TITLES.report, level: 1, exact: true })).toBeVisible()
+  await expect(page.getByText("Authored count", { exact: true })).toBeVisible()
+  await expect(page.getByText("42", { exact: true })).toBeVisible()
+  expect(state.artifacts).toHaveLength(2)
+  expect(state.generation).toHaveLength(3)
+})
+
+test("Start over invalidates a late authored file response while concurrent current imports are retained", async ({ page, context }) => {
+  const state = harness(context)
+  const gates = [deferred(), deferred(), deferred()]
+  const names = ["old-context.txt", "current-a.txt", "current-b.txt"]
+  state.fileContext = async (index) => {
+    expect(index).toBeLessThan(3)
+    await gates[index].ready
+    return { status: 200, body: { files: [{ name: names[index], type: "text/plain", content: "Authored content for " + names[index] }] } }
+  }
+  await seedGuest(context, restoredBatch(["completed"]))
+  await page.goto("/")
+  const fileInput = page.locator('input[type="file"]')
+  const attach = page.getByRole("button", { name: "Attach files", exact: true })
+  const settle = () => page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))))
+  try {
+    await expect(results(page)).toBeVisible()
+    await fileInput.setInputFiles({ name: names[0], mimeType: "text/plain", buffer: Buffer.from("Old authored context") })
+    await expect.poll(() => state.files).toBe(1)
+    await expect(attach).toBeDisabled()
+    await results(page).getByRole("button", { name: "Start over", exact: true }).click()
+    await expect(results(page)).toHaveCount(0)
+    await expect(attach).toBeEnabled()
+    await fileInput.setInputFiles({ name: names[1], mimeType: "text/plain", buffer: Buffer.from("Current authored A") })
+    await expect.poll(() => state.files).toBe(2)
+    await fileInput.setInputFiles({ name: names[2], mimeType: "text/plain", buffer: Buffer.from("Current authored B") })
+    await expect.poll(() => state.files).toBe(3)
+    const oldResponse = page.waitForResponse((response) => response.url().endsWith("/api/file-context"))
+    gates[0].release()
+    await oldResponse
+    await settle()
+    await expect(page.getByRole("button", { name: "Remove old-context.txt", exact: true })).toHaveCount(0)
+    await expect(attach).toBeDisabled()
+    const secondResponse = page.waitForResponse((response) => response.url().endsWith("/api/file-context"))
+    gates[2].release()
+    await secondResponse
+    await expect(page.getByRole("button", { name: "Remove current-b.txt", exact: true })).toBeVisible()
+    await expect(attach).toBeDisabled()
+    const finalResponse = page.waitForResponse((response) => response.url().endsWith("/api/file-context"))
+    gates[1].release()
+    await finalResponse
+    await expect(attach).toBeEnabled()
+    await expect(page.getByRole("button", { name: "Remove current-a.txt", exact: true })).toBeVisible()
+    await expect.poll(async () => (await stored(page)).input.files.map((file: { name: string }) => file.name).sort()).toEqual(["current-a.txt", "current-b.txt"])
+    await expect(sourceInput(page)).toHaveValue("")
+    expect(state.generation).toEqual([])
+  } finally { for (const gate of gates) gate.release() }
+})
+
+test.describe("mobile batch flow", () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
+
+  test("touch multi-selection and per-kind previews survive reload without auto-calls or horizontal overflow", async ({ page, context }) => {
+    const state = harness(context)
+    await page.goto("/")
+    await sourceInput(page).fill("Authored mobile batch source")
+    await page.getByRole("button", { name: "Continue", exact: true }).tap()
+    await expect(page.getByRole("heading", { name: "Start with your source material.", exact: true })).toHaveCount(0)
+    for (const kind of KINDS) await expectTouchTarget(formatButton(page, kind))
+    await formatButton(page, "slides").tap()
+    await expect(page.getByRole("button", { name: "Create draft", exact: true })).toBeDisabled()
+    await formatButton(page, "course").tap()
+    await formatButton(page, "report").tap()
+    const create = page.getByRole("button", { name: "Create drafts", exact: true })
+    await expectTouchTarget(create)
+    await create.tap()
+    await expectComplete(page, ["course", "report"])
+    expect(state.generation.map((call) => call.kind)).toEqual(["course", "report"])
+    const preview = resultCard(page, "course").getByRole("button", { name: "Preview Course", exact: true })
+    await expectTouchTarget(preview)
+    await preview.tap()
+    await expect(page.getByRole("heading", { name: TITLES.course, level: 1, exact: true })).toBeVisible()
+    await page.getByRole("button", { name: "Authored local evidence", exact: true }).tap()
+    await expect(page.getByText("This browser fixture uses authored local evidence only.", { exact: true })).toBeVisible()
+    await page.getByRole("button", { name: "Back", exact: true }).tap()
+    await resultCard(page, "report").getByRole("button", { name: "Preview Report", exact: true }).tap()
+    await expect(page.getByRole("heading", { name: TITLES.report, level: 1, exact: true })).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+    await page.getByRole("button", { name: "Back", exact: true }).tap()
+    await expect.poll(async () => (await stored(page)).batch.results.map((result: { status: string }) => result.status)).toEqual(["completed", "completed"])
+    const savedBatchId = (await stored(page)).batch.id
+    await page.reload()
+    await expectComplete(page, ["course", "report"])
+    expect(state.generation.map((call) => call.kind)).toEqual(["course", "report"])
+    expect((await stored(page)).batch.id).toBe(savedBatchId)
+    await page.getByRole("button", { name: "Continue", exact: true }).tap()
+    for (const kind of KINDS) await expect(formatButton(page, kind)).toHaveAttribute("aria-pressed", String(kind !== "slides"))
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true)
+  })
+})

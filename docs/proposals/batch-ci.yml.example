@@ -1,0 +1,200 @@
+# INACTIVE. Requires explicit app-specific browser/backend/temporary-CI/tool approval.
+# Install only on qa/generation-batches-acceptance; remove the active workflow afterward.
+name: Temporary generation batches acceptance
+on:
+  push:
+    branches: [qa/generation-batches-acceptance]
+    paths:
+      - .github/workflows/generation-batches-acceptance.yml
+      - docs/proposals/batch-browser.spec.ts.example
+      - docs/proposals/ai-generation.test.ts.example
+      - tests/unit/source-inputs.test.ts
+      - tests/unit/generation-batch.test.ts
+      - components/visualizations/composer.tsx
+      - components/visualizations/preview.tsx
+      - components/visualizations/generation-results.tsx
+      - lib/client/composer-source-input.ts
+      - lib/client/generation-batch.ts
+      - lib/client/guest-draft.ts
+permissions:
+  contents: read
+jobs:
+  generation-batches:
+    if: github.repository == 'alvarovillalbaa/intelligent-visualization' && github.event.repository.private == false && github.ref == 'refs/heads/qa/generation-batches-acceptance'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CI: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+      DO_NOT_TRACK: "1"
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3100
+      PERSISTENCE_PROVIDER: local
+      STORAGE_PROVIDER: auto
+      AUTH_PROVIDER: portable
+      REALTIME_PROVIDER: auto
+      AI_ENABLED: "false"
+      EVE_ENABLED: "false"
+      WORKFLOWS_ENABLED: "false"
+      QUEUES_ENABLED: "false"
+      SANDBOX_QA_ENABLED: "false"
+      CONVEX_URL: ""
+      NEXT_PUBLIC_CONVEX_URL: ""
+      CONVEX_DEPLOYMENT: ""
+      CONVEX_DEPLOY_KEY: ""
+      CONVEX_SERVER_TOKEN: ""
+      CONVEX_ADMIN_KEY: ""
+      DATABASE_URL: ""
+      SUPABASE_URL: ""
+      NEXT_PUBLIC_SUPABASE_URL: ""
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ""
+      SUPABASE_SERVICE_ROLE_KEY: ""
+      CLOUDFLARE_DATA_API_URL: ""
+      CLOUDFLARE_DATA_API_SECRET: ""
+      CLOUDFLARE_ACCOUNT_ID: ""
+      CLOUDFLARE_API_TOKEN: ""
+      CLOUDFLARE_D1_DATABASE_ID: ""
+      CLOUDFLARE_R2_BUCKET: ""
+      CLOUDFLARE_R2_ACCESS_KEY_ID: ""
+      CLOUDFLARE_R2_SECRET_ACCESS_KEY: ""
+      BLOB_READ_WRITE_TOKEN: ""
+      AI_GATEWAY_API_KEY: ""
+      VERCEL_OIDC_TOKEN: ""
+      VERCEL: ""
+      OPENAI_API_KEY: ""
+      ANTHROPIC_API_KEY: ""
+      GOOGLE_GENERATIVE_AI_API_KEY: ""
+      FIRECRAWL_API_KEY: ""
+      AI_GENERATION_MODEL: ""
+      AI_PLANNING_MODEL: ""
+      AI_CRITIQUE_MODEL: ""
+      AI_VISION_MODEL: ""
+      OPENAI_MODEL: ""
+      ANTHROPIC_MODEL: ""
+      GOOGLE_MODEL: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24.21.0
+          package-manager-cache: false
+      - name: Verify the reviewed runtime and log exact source identities
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          if (process.version !== 'v24.21.0' || pkg.dependencies.next !== '16.1.6') throw new Error('Re-review changed runtime versions.');
+          if (!pkg.devDependencies.vitest || pkg.dependencies['@playwright/test'] || pkg.devDependencies['@playwright/test']) throw new Error('Re-review changed test dependencies.');
+          const source = fs.readFileSync('docs/proposals/batch-browser.spec.ts.example', 'utf8');
+          if ((source.match(/^\s*test\(/gm) || []).length !== 6) throw new Error('Re-review changed browser case count.');
+          for (const file of ['package-lock.json', 'tests/unit/source-inputs.test.ts', 'tests/unit/generation-batch.test.ts', 'docs/proposals/ai-generation.test.ts.example']) {
+            if (!fs.existsSync(file)) throw new Error('Missing reviewed source: ' + file);
+          }
+          NODE
+          git rev-parse HEAD
+          sha256sum package.json package-lock.json app/page.tsx components/visualizations/composer.tsx components/visualizations/preview.tsx components/visualizations/generation-results.tsx lib/client/composer-source-input.ts lib/client/generation-batch.ts lib/client/guest-draft.ts lib/deck-runtime.ts lib/artifacts/compiler.ts app/api/visualizations/generate/route.ts app/api/visualizations/artifact/route.ts tests/unit/source-inputs.test.ts tests/unit/generation-batch.test.ts docs/proposals/ai-generation.test.ts.example docs/proposals/batch-browser.spec.ts.example docs/proposals/batch-ci.yml.example
+      - name: Name disposable runner tool and output paths
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          if (!process.env.RUNNER_TEMP || !process.env.GITHUB_ENV) throw new Error('Runner paths unavailable.');
+          const root = path.join(process.env.RUNNER_TEMP, 'iv-batch-' + process.env.GITHUB_RUN_ID + '-' + process.env.GITHUB_RUN_ATTEMPT);
+          fs.appendFileSync(process.env.GITHUB_ENV, [
+            'IV_BATCH_TOOL_PREFIX=' + path.join(root, 'tools'),
+            'PLAYWRIGHT_BROWSERS_PATH=' + path.join(root, 'browsers'),
+            'IV_BATCH_TEST_RESULTS=' + path.join(root, 'results'),
+            'IV_BATCH_NATIVE_REPORT=' + path.join(root, 'native.json'),
+            'IV_BATCH_BROWSER_REPORT=' + path.join(root, 'browser.json'),
+          ].join('\n') + '\n');
+          fs.mkdirSync(root, { recursive: true });
+          NODE
+      - name: Install only existing locked dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Copy only the approved mocked backend example into runner test discovery
+        run: |
+          mkdir -p tests/proposals
+          test ! -e tests/proposals/ai-generation.test.ts
+          cp docs/proposals/ai-generation.test.ts.example tests/proposals/ai-generation.test.ts
+      - name: Run exactly twenty-six frontend and twenty-two mocked backend cases
+        run: |
+          ./node_modules/.bin/vitest run tests/unit/source-inputs.test.ts tests/unit/generation-batch.test.ts tests/proposals/ai-generation.test.ts --retry=0 --reporter=json --outputFile "$IV_BATCH_NATIVE_REPORT"
+          node <<'NODE'
+          const fs = require('node:fs');
+          const report = JSON.parse(fs.readFileSync(process.env.IV_BATCH_NATIVE_REPORT, 'utf8'));
+          const expected = new Map([['source-inputs.test.ts', 12], ['generation-batch.test.ts', 14], ['ai-generation.test.ts', 22]]);
+          const suites = report.testResults || [];
+          if (report.numTotalTests !== 48 || report.numPassedTests !== 48 || suites.length !== 3) throw new Error('Expected exactly 48 passing selected native cases.');
+          for (const suite of suites) {
+            const name = suite.name.split(/[\\/]/).pop();
+            if (!expected.has(name) || suite.assertionResults.length !== expected.get(name)) throw new Error('Selected suite or case count changed: ' + name);
+            expected.delete(name);
+          }
+          if (expected.size) throw new Error('A selected suite is missing.');
+          process.stdout.write('26 frontend + 22 mocked backend cases passed. No real provider was exercised.\n');
+          NODE
+      - name: Install the exact browser tool outside the repository manifest
+        run: |
+          npm install --prefix "$IV_BATCH_TOOL_PREFIX" --no-save --package-lock=false --ignore-scripts --no-audit --no-fund @playwright/test@1.61.1
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const target = path.join(process.env.IV_BATCH_TOOL_PREFIX, 'node_modules', '@playwright', 'test');
+          const pkg = JSON.parse(fs.readFileSync(path.join(target, 'package.json'), 'utf8'));
+          if (pkg.version !== '1.61.1') throw new Error('Unexpected browser tool version.');
+          const link = path.join(process.cwd(), 'node_modules', '@playwright', 'test');
+          try {
+            fs.lstatSync(link);
+            throw new Error('Refusing to replace an existing browser tool path.');
+          } catch (error) {
+            if (error.code !== 'ENOENT') throw error;
+          }
+          fs.mkdirSync(path.dirname(link), { recursive: true });
+          fs.symlinkSync(target, link, 'dir');
+          process.stdout.write('Runner-only @playwright/test ' + pkg.version + '\n');
+          NODE
+          git diff --exit-code -- package.json package-lock.json
+      - name: Install only Chromium and its Linux libraries in the disposable runner
+        run: node "$IV_BATCH_TOOL_PREFIX/node_modules/@playwright/test/cli.js" install --with-deps chromium
+      - name: Prepare only the reviewed batch browser source and local runner configuration
+        run: |
+          mkdir -p tests/browser
+          test ! -e tests/browser/batch.spec.ts
+          cp docs/proposals/batch-browser.spec.ts.example tests/browser/batch.spec.ts
+          cat > .batch-ci.playwright.config.ts <<'CONFIG'
+          import { defineConfig, devices } from '@playwright/test';
+          const baseURL = 'http://127.0.0.1:3100';
+          export default defineConfig({
+            testDir: './tests/browser',
+            testMatch: '**/batch.spec.ts',
+            forbidOnly: true,
+            fullyParallel: false,
+            workers: 1,
+            retries: 0,
+            timeout: 60_000,
+            globalTimeout: 360_000,
+            expect: { timeout: 10_000 },
+            reporter: [['line'], ['json', { outputFile: process.env.IV_BATCH_BROWSER_REPORT }]],
+            outputDir: process.env.IV_BATCH_TEST_RESULTS,
+            use: { baseURL, trace: 'off', screenshot: 'off', video: 'off', serviceWorkers: 'block' },
+            projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+            webServer: {
+              command: 'npm run dev -- --hostname 127.0.0.1 --port 3100',
+              url: baseURL,
+              reuseExistingServer: false,
+              timeout: 120_000,
+              env: { NODE_ENV: 'development', AI_ENABLED: 'false', NEXT_TELEMETRY_DISABLED: '1' },
+            },
+          });
+          CONFIG
+      - name: Run only six mocked desktop and mobile batch browser scenarios
+        run: |
+          node "$IV_BATCH_TOOL_PREFIX/node_modules/@playwright/test/cli.js" test --config .batch-ci.playwright.config.ts --project chromium
+          node <<'NODE'
+          const fs = require('node:fs');
+          const report = JSON.parse(fs.readFileSync(process.env.IV_BATCH_BROWSER_REPORT, 'utf8'));
+          const stats = report.stats || {};
+          if (stats.expected !== 6 || stats.unexpected !== 0 || stats.skipped !== 0 || stats.flaky !== 0) throw new Error('Expected exactly six passing browser scenarios without skips or retries.');
+          process.stdout.write('Six mocked anonymous browser scenarios passed. No live generation/provider call was exercised.\n');
+          NODE
