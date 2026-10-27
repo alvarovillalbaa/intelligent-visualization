@@ -1,0 +1,252 @@
+// INACTIVE. Separate browser, targeted-backend and temporary-CI approval required.
+// Copy only in that runner to tests/tmp/report-export.spec.ts; paths depend on it.
+import { createHash } from "node:crypto"
+import { mkdtempSync, mkdirSync, readFileSync, rmSync } from "node:fs"
+import path from "node:path"
+import { pathToFileURL } from "node:url"
+import { expect, test, type Browser, type BrowserContext, type Download, type Locator, type Page, type TestInfo } from "@playwright/test"
+
+import type { GeneratedDraft } from "../../lib/client/guest-draft"
+import type { ChartSpec, ReportBlock, ReportVisualizationDocument } from "../../packages/domain/entities"
+import { createStarterReportDocument } from "../../packages/domain/fixtures"
+
+const ORIGIN = "http://127.0.0.1:3100"
+const KEY = "iv:guest-draft:v2"
+const SOURCE = "Authored Report export check. No real source, URL, account or model request."
+const TITLE = "Authored / Export: Résumé?"
+const FILENAME = "report-authored-export-resume.html"
+const TYPES: ChartSpec["type"][] = ["line", "bar", "area", "pie", "donut", "composed"]
+type Harness = {
+  authored: ReportVisualizationDocument; unexpected: string[]; pageErrors: string[];
+  generation: number; artifacts: number; actualArtifacts: number; mocked503: number; failFirst: boolean;
+  downloads: Download[]; fileContexts: BrowserContext[]; directories: string[]; blobs: Set<string>;
+}
+const harnesses = new WeakMap<BrowserContext, Harness>()
+
+function fixture(): GeneratedDraft {
+  const document = createStarterReportDocument()
+  document.title = TITLE
+  document.subtitle = "Authored standalone subtitle"
+  document.summary = "Authored export summary with no real user data."
+  document.seo = { title: TITLE, description: "Authored export description" }
+  document.report.decisionQuestion = "What does the authored evidence support?"
+  document.report.executiveSummary = "An authored conclusion, preserved in the downloaded file."
+  document.sourceManifest = [{ id: "source-record", label: "Authored source record", kind: "paste", contentHash: "authored-source-hash", provenance: "Authored source provenance, not a verification claim." }]
+  document.report.dataSources = [{ id: "dataset-snapshot", label: "Authored dataset snapshot", contentHash: "authored-snapshot-hash", rowCount: 4, provenance: "Authored immutable snapshot provenance." }]
+  const charts: ReportBlock[] = TYPES.map((type) => ({
+    id: `chart-${type}`, kind: "chart", chart: {
+      id: `spec-${type}`, type, title: `Authored ${type} chart`, description: `Authored ${type} description`,
+      series: [{ key: "actual", label: "Actual", color: "#2563eb" }, { key: "comparison", label: "Comparison", color: "#f97316" }],
+      data: [
+        { period: "Alpha", actual: type === "pie" || type === "donut" ? 12 : -12, comparison: 4, annotation: "First authored row" },
+        { period: "Beta", actual: 0, comparison: 8, annotation: "Zero stays zero" },
+        { period: "Gamma", actual: null, comparison: 12, annotation: "Empty stays empty" },
+        { period: "Delta", actual: 24, comparison: 16, annotation: "Final authored row" },
+      ], xKey: "period", source: `Authored ${type} source`, provenance: `Authored ${type} provenance`,
+      accessibleLabel: `Four authored rows and two series for ${type}`, illustrative: true,
+    },
+  }))
+  document.report.blocks = [
+    { id: "report-heading", kind: "heading", level: 2, text: "Authored export findings" }, ...charts,
+    { id: "report-note", kind: "source-note", text: "Authored final qualification retained." },
+    { id: "report-table", kind: "data-table", title: "Authored narrative table", columns: ["Evidence", "Observation"], rows: [["A", "Preserve this exact authored cell"], ["B", "Second authored cell"]], provenance: "Authored table provenance." },
+  ]
+  function layout(size: "lg" | "md" | "sm", columns: number) {
+    return document.report.blocks.map((block, index) => {
+      if (index === 0) return { blockId: block.id, x: 0, y: 0, w: columns, h: 2 }
+      if (index <= 6) return size === "lg"
+        ? { blockId: block.id, x: (index - 1) % 2 * 6, y: 2 + Math.floor((index - 1) / 2) * 10, w: 6, h: 10 }
+        : { blockId: block.id, x: 0, y: 2 + (index - 1) * 10, w: columns, h: 10 }
+      const tail = size === "lg" ? 32 : 62
+      return { blockId: block.id, x: 0, y: tail + (index - 7) * 4, w: columns, h: 4 }
+    })
+  }
+  document.report.layouts = { lg: layout("lg", 12), md: layout("md", 8), sm: layout("sm", 4) }
+  return { kind: "report", document, provider: "authored-browser-mock", modelName: "report-export-fixture", generatedAt: Date.now(), deckSource: null, artifactHtml: null }
+}
+
+function canonical(value: unknown): string {
+  function ordered(entry: unknown): unknown {
+    if (Array.isArray(entry)) return entry.map(ordered)
+    if (entry && typeof entry === "object") return Object.fromEntries(Object.entries(entry).sort(([a], [b]) => a.localeCompare(b)).map(([key, item]) => [key, ordered(item)]))
+    return entry
+  }
+  return JSON.stringify(ordered(value))
+}
+function ownedDownloadRoot(): string {
+  const root = process.env.IV_EXPORT_RUN_ROOT, runner = process.env.RUNNER_TEMP, downloads = process.env.IV_EXPORT_DOWNLOADS
+  if (!root || !runner || !downloads || path.dirname(root) !== path.resolve(runner) || !path.basename(root).startsWith("iv-report-export-") || downloads !== path.join(root, "downloads")) throw new Error("Refusing unowned download paths")
+  return downloads
+}
+
+test.beforeEach(async ({ context, page, baseURL }) => {
+  expect(baseURL).toBe(ORIGIN); expect(await context.cookies()).toEqual([])
+  const authored = fixture(), document = authored.document
+  if (document.kind !== "report") throw new Error("Expected authored Report")
+  const state: Harness = { authored: document, unexpected: [], pageErrors: [], generation: 0, artifacts: 0, actualArtifacts: 0, mocked503: 0, failFirst: false, downloads: [], fileContexts: [], directories: [], blobs: new Set() }
+  harnesses.set(context, state)
+  page.on("pageerror", (error) => state.pageErrors.push(error.message))
+  page.on("download", (download) => state.downloads.push(download))
+  await context.route("**/*", async (route) => {
+    const request = route.request(), url = new URL(request.url())
+    if (url.protocol === "blob:" && state.blobs.has(request.url()) && ["GET", "HEAD"].includes(request.method())) { await route.continue(); return }
+    if (url.origin !== ORIGIN) { state.unexpected.push(`${request.method()} ${url.origin}${url.pathname}`); await route.abort("blockedbyclient"); return }
+    if (request.method() === "POST" && url.pathname === "/api/visualizations/generate") {
+      const body = request.postDataJSON() as { kind?: string; generationInput?: { rawText?: string } }
+      if (body.kind !== "report" || body.generationInput?.rawText !== SOURCE) {
+        state.unexpected.push("Unexpected generation payload"); await route.fulfill({ status: 400, json: { error: "Authored harness rejected generation." } }); return
+      }
+      state.generation++; await route.fulfill({ status: 200, json: structuredClone(authored) }); return
+    }
+    if (request.method() === "POST" && url.pathname === "/api/visualizations/artifact") {
+      if (canonical(request.postDataJSON()) !== canonical({ document: state.authored })) {
+        state.unexpected.push("Unexpected artifact payload"); await route.fulfill({ status: 400, json: { error: "Authored harness rejected artifact." } }); return
+      }
+      state.artifacts++
+      if (state.failFirst && state.artifacts === 1) { state.mocked503++; await route.fulfill({ status: 503, json: { error: "Authored first-attempt failure." } }); return }
+      state.actualArtifacts++; await route.continue(); return // Actual approved LOCAL route and compiler only.
+    }
+    if (!["GET", "HEAD"].includes(request.method()) || !(url.pathname === "/" || url.pathname.startsWith("/_next/") || url.pathname === "/favicon.ico")) {
+      state.unexpected.push(`${request.method()} ${url.pathname}`); await route.abort("blockedbyclient"); return
+    }
+    await route.continue()
+  })
+})
+
+test.afterEach(async ({ context, page }) => {
+  const state = harnesses.get(context)
+  if (!state) return // A failed beforeEach cannot have reached this harness.
+  const closed = await Promise.allSettled([page.close(), ...state.fileContexts.map((file) => file.close())])
+  try {
+    expect(state.unexpected, "No unexpected API, navigation or external request").toEqual([])
+    expect(state.pageErrors).toEqual([]); expect(state.generation).toBe(1)
+    expect(state.actualArtifacts).toBe(1)
+    expect(state.artifacts).toBe(state.failFirst ? 2 : 1); expect(state.mocked503).toBe(state.failFirst ? 1 : 0)
+  } finally {
+    const outcomes = [...closed, ...await Promise.allSettled(state.downloads.map((download) => download.delete()))]
+    const root = ownedDownloadRoot()
+    for (const directory of state.directories) {
+      if (path.dirname(directory) !== root || !/^(desktop|mobile)-/.test(path.basename(directory))) throw new Error("Refusing unowned saved-file cleanup")
+      rmSync(directory, { recursive: true, force: true })
+    }
+    const rejected = outcomes.filter((result): result is PromiseRejectedResult => result.status === "rejected")
+    if (rejected.length) throw new AggregateError(rejected.map((result) => result.reason), "Owned browser-file cleanup failed")
+  }
+})
+
+const downloadUI = (page: Page) => page.locator('[aria-label="Report HTML download"]')
+async function activate(control: Locator, mobile: boolean) { if (mobile) await control.tap(); else await control.click() }
+async function stored(page: Page): Promise<string | null> { return page.evaluate((key) => localStorage.getItem(key), KEY) }
+async function generateAndOpen(page: Page, mobile: boolean) {
+  await page.goto("/")
+  await page.getByRole("textbox", { name: "Text or link", exact: true }).fill(SOURCE)
+  await page.getByRole("button", { name: "Continue", exact: true }).click()
+  const formats = page.getByRole("group", { name: "Draft formats", exact: true })
+  await formats.getByRole("button", { name: /^Slides deck\b/ }).click()
+  await formats.getByRole("button", { name: /^Report\b/ }).click()
+  await page.getByRole("button", { name: "Create drafts", exact: true }).click()
+  const card = page.getByRole("region", { name: "Generation results", exact: true }).getByRole("listitem").filter({ has: page.getByRole("heading", { name: "Report", level: 3, exact: true }) })
+  await expect(card).toContainText("Report draft ready")
+  await expect.poll(async () => JSON.parse((await stored(page))!).batch?.results[0]?.status).toBe("completed")
+  await activate(card.getByRole("button", { name: "Preview Report", exact: true }), mobile)
+  await expect(page.getByRole("heading", { name: TITLE, level: 1, exact: true })).toBeVisible()
+  await expect(downloadUI(page).getByRole("button", { name: "Download Report HTML", exact: true })).toBeVisible()
+}
+async function saveNativeFile(page: Page, mobile: boolean, testInfo: TestInfo) {
+  const link = downloadUI(page).getByRole("link", { name: "Save Report HTML", exact: true })
+  await expect(link).toHaveAttribute("download", FILENAME)
+  const href = await link.getAttribute("href")
+  if (!href?.startsWith(`blob:${ORIGIN}/`)) throw new Error("Expected an owned local Blob URL")
+  harnesses.get(page.context())!.blobs.add(href)
+  const pending = page.waitForEvent("download")
+  await activate(link, mobile)
+  const download = await pending
+  expect(download.suggestedFilename()).toBe(FILENAME); expect(download.suggestedFilename()).not.toMatch(/[\\/\r\n]/)
+  const root = ownedDownloadRoot(); mkdirSync(root, { recursive: true })
+  const directory = mkdtempSync(path.join(root, testInfo.project.name + "-"))
+  harnesses.get(page.context())!.directories.push(directory)
+  const file = path.join(directory, "saved-report.html")
+  await download.saveAs(file); expect(await download.failure()).toBeNull()
+  const html = readFileSync(file, "utf8")
+  expect(html).toMatch(/^<!doctype html>/); expect(html).not.toMatch(/<script\b/i)
+  console.info(`Owned ${testInfo.project.name} export ${download.suggestedFilename()} SHA256 ${createHash("sha256").update(html).digest("hex")}`)
+  return file
+}
+async function standaloneFile(browser: Browser, appPage: Page, file: string, mobile: boolean) {
+  const state = harnesses.get(appPage.context())!, fileURL = pathToFileURL(file).href
+  const context = await browser.newContext({ javaScriptEnabled: false, serviceWorkers: "block", acceptDownloads: false, storageState: { cookies: [], origins: [] }, viewport: { width: mobile ? 390 : 1440, height: mobile ? 844 : 1000 }, isMobile: mobile, hasTouch: mobile })
+  state.fileContexts.push(context)
+  expect(await context.cookies()).toEqual([])
+  await context.route("**/*", async (route) => {
+    if (route.request().url() === fileURL && ["GET", "HEAD"].includes(route.request().method())) { await route.continue(); return }
+    state.unexpected.push(`Standalone ${route.request().method()} ${route.request().url()}`); await route.abort("blockedbyclient")
+  })
+  const page = await context.newPage()
+  page.on("pageerror", (error) => state.pageErrors.push("Standalone: " + error.message))
+  await page.goto(fileURL, { waitUntil: "load" }); expect(page.url()).toBe(fileURL)
+  return page
+}
+
+test("native Report HTML export opens without page JavaScript and preserves responsive charts, sources and print flow", async ({ page, browser }, testInfo) => {
+  const mobile = testInfo.project.name === "mobile"
+  await generateAndOpen(page, mobile)
+  const before = await stored(page)
+  await activate(downloadUI(page).getByRole("button", { name: "Download Report HTML", exact: true }), mobile)
+  await expect(downloadUI(page).getByRole("link", { name: "Save Report HTML", exact: true })).toBeVisible()
+  const file = await saveNativeFile(page, mobile, testInfo), standalone = await standaloneFile(browser, page, file, mobile)
+  await expect(standalone.getByRole("heading", { name: TITLE, level: 1, exact: true })).toBeVisible()
+  for (const text of ["Authored standalone subtitle", "What does the authored evidence support?", "An authored conclusion, preserved in the downloaded file.", "Authored final qualification retained.", "Preserve this exact authored cell", "Authored table provenance."]) await expect(standalone.getByText(text, { exact: true })).toBeVisible()
+  for (const type of TYPES) {
+    const chart = standalone.locator(`[data-chart-type="${type}"]`)
+    await expect(chart).toHaveCount(1); await expect(chart.locator('table.chart-data tbody tr')).toHaveCount(4)
+    await expect(chart.locator('.chart-legend[aria-label="Chart series"] li')).toHaveCount(2)
+    await expect(chart.locator('.chart-source')).toHaveText(`Source: Authored ${type} source`)
+    await expect(chart.locator('.chart-provenance')).toHaveText(`Authored ${type} provenance`)
+    await expect(chart.locator('.chart-illustrative')).toHaveText("Illustrative values.")
+    await expect(chart.locator('td[data-column-key="actual"][data-value-type="number"]').nth(1)).toHaveText("0")
+    await expect(chart.locator('td[data-column-key="actual"][data-value-type="null"]')).toHaveText("Empty")
+    await expect(chart.locator('td[data-column-key="annotation"]').last()).toHaveText("Final authored row")
+    await expect(chart.locator("svg")).toHaveCount(type === "pie" || type === "donut" ? 2 : 1)
+  }
+  const sources = standalone.getByRole("region", { name: "Sources", exact: true })
+  for (const text of ["Authored source record", "authored-source-hash", "Authored source provenance, not a verification claim.", "Authored dataset snapshot", "authored-snapshot-hash", "Authored immutable snapshot provenance.", "Supplied row count"]) await expect(sources.getByText(text, { exact: true })).toBeVisible()
+  await expect(sources.locator('dd').last()).toHaveText("4")
+  const grid = standalone.locator(".report-grid"), cell = standalone.locator('[data-report-block="chart-line"]')
+  for (const [width, columns, span] of [[1440, 12, 6], [900, 8, 8], [390, 4, 4]]) {
+    await standalone.setViewportSize({ width, height: 1000 })
+    await expect.poll(() => grid.evaluate((element) => getComputedStyle(element).gridTemplateColumns.trim().split(/\s+/).length)).toBe(columns)
+    await expect.poll(() => cell.evaluate((element) => getComputedStyle(element).gridColumnEnd)).toBe(`span ${span}`)
+    await expect(cell).toHaveAttribute("tabindex", "0")
+    expect(await cell.evaluate((element) => getComputedStyle(element).overflowY)).toBe("auto")
+  }
+  await standalone.setViewportSize({ width: 1440, height: 1000 }); await cell.focus(); await standalone.keyboard.press("End")
+  await expect.poll(() => cell.evaluate((element) => element.scrollTop)).toBeGreaterThan(0)
+  await standalone.emulateMedia({ media: "print" })
+  expect(await grid.evaluate((element) => getComputedStyle(element).display)).toBe("block")
+  for (const block of await standalone.locator('.report-cell').all()) {
+    expect(await block.evaluate((element) => getComputedStyle(element).overflowY)).toBe("visible")
+    expect(await block.evaluate((element) => getComputedStyle(element).maxHeight)).toBe("none")
+    expect(await block.evaluate((element) => element.scrollHeight <= element.clientHeight + 1)).toBe(true)
+  }
+  expect(await stored(page)).toBe(before)
+})
+
+test("failed Report preparation retains draft and controls, then Retry reaches the local artifact route and saves safely", async ({ page }, testInfo) => {
+  const mobile = testInfo.project.name === "mobile", state = harnesses.get(page.context())!
+  state.failFirst = true
+  await generateAndOpen(page, mobile)
+  const before = await stored(page), controls = downloadUI(page)
+  await activate(controls.getByRole("button", { name: "Download Report HTML", exact: true }), mobile)
+  await expect(controls.getByRole("alert")).toContainText("Your draft is still available")
+  await expect(controls.getByRole("button", { name: "Retry Report HTML", exact: true })).toBeEnabled()
+  await expect(controls.getByRole("link", { name: "Save Report HTML", exact: true })).toHaveCount(0)
+  expect(await stored(page)).toBe(before)
+  await expect(page.getByRole("heading", { name: TITLE, level: 1, exact: true })).toBeVisible()
+  await activate(controls.getByRole("button", { name: "Retry Report HTML", exact: true }), mobile)
+  await expect(controls.getByRole("link", { name: "Save Report HTML", exact: true })).toBeVisible()
+  await expect(controls.getByRole("alert")).toHaveCount(0)
+  const file = await saveNativeFile(page, mobile, testInfo)
+  expect(readFileSync(file, "utf8")).toContain("Authored source provenance, not a verification claim.")
+  expect(await stored(page)).toBe(before)
+  expect(state.artifacts).toBe(2); expect(state.actualArtifacts).toBe(1); expect(state.mocked503).toBe(1)
+})

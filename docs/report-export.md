@@ -65,6 +65,8 @@ An HTML file is not a hosted public Report. Workspace saving, publication,
 provider acceptance and data import/new immutable snapshots keep their existing
 gates. The local authoring bounds also apply to downloads. Browser download,
 file opening, pointer/focus behavior, chart appearance and print acceptance
-remain unverified until separately approved checks run. The existing inactive
-[Report editor browser proposal](proposals/report-editor-browser.md) does not
-exercise downloads or the real artifact endpoint.
+remain unverified until separately approved checks run. The inactive
+[four-check export proposal](proposals/report-export-browser.md) covers native
+file saving/opening, responsive/print CSS and the existing local artifact route.
+The [Report editor browser proposal](proposals/report-editor-browser.md) retains
+its separate scope and pending approval.

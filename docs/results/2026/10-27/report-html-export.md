@@ -1,9 +1,8 @@
 # Standalone Report HTML export
 
-27 October 2026 (UTC). Implementation and 87 focused checks are prepared;
-publication and hosted build/delivery verification are pending. Browser saving,
-file opening, chart appearance and print acceptance remain unverified. The
-all-project goal is active.
+27 October 2026 (UTC). Source published, 87 focused checks passed, and hosted
+build/delivery verified. Browser saving, file opening, chart appearance and print
+acceptance remain unverified. The all-project goal is active.
 
 The owning [implementation plan](../../../implementation-plan.md) and
 [Report authoring](../../../report-authoring.md) identified missing standalone
@@ -107,9 +106,41 @@ image delivery and provider acceptance remain separate work. The existing
 [Report editor browser proposal](../../../proposals/report-editor-browser.md)
 is unchanged and pending; it does not cover this new download flow.
 
+The separately prepared [four-check export proposal](../../../proposals/report-export-browser.md)
+does cover the actual local artifact route, native file saving/opening,
+responsive CSS, print-media flow and a failed preparation/retry. It is inactive,
+outside test discovery and workflows, pending explicit browser/backend/temporary-
+CI approval. Its two TS examples, YAML scope, six shell blocks, copied imports,
+seven local Markdown targets and whitespace passed static checks. Independent
+source review found no blocker; those checks did not start a server or browser.
+The four-file proposal SHA256 (sorted path, NUL, bytes, NUL) is
+`2dc9dee2cbae525dcac5fb94f5e0f33c6c4c8e8ae88f3a64518ad162eeb8f1e0`.
+
 ## Publication
 
-Exact source/GitHub readback, Vercel build and public delivery will be recorded
-after observation. Source publication uses `[skip actions]` to leave the existing
-broad backend/provider push suite unrun; no workflow is changed or green CI
-result inferred from that omission.
+Source
+[`19bf3130c181047458f34cd3ebcb84d7cc6247e9`](https://github.com/alvarovillalbaa/intelligent-visualization/commit/19bf3130c181047458f34cd3ebcb84d7cc6247e9)
+was pushed to personal-repository main. Immutable connected GitHub readback
+matches local blobs for ReportDownload (`421b8c814f3752ec8c466fcfa722aecbb59e05a0`),
+the compiler (`4bd22de9e8ff587881c27c0be38ec5ee7d9d6189`), chart renderer
+(`7bd237ed300121796862a86565a61e82f392169b`) and client helper
+(`062339d2d930c5074c26ad45d1d4ad402bf5342c`). The commit-specific
+`[skip actions]` leaves the broad backend/provider push suite unrun; the
+SHA/event-filtered Actions API returned zero push runs. No workflow is changed
+or green CI result inferred from that omission.
+
+Vercel production
+[`dpl_8LGaEaVpLuE2qrZ8sxLyNrAHjQzm`](https://vercel.com/my-team-4f230354/intelligent-visualization/8LGaEaVpLuE2qrZ8sxLyNrAHjQzm)
+reached READY at that exact source SHA and owns the canonical alias. Logs show
+successful compilation in 8.3 seconds, the TypeScript step, completed output in
+57 seconds and deployment. This is hosted locked-dependency build proof; it
+does not establish execution of the artifact endpoint.
+
+A public [homepage](https://intelligent-visualization.vercel.app/) GET returned
+200 and referenced that deployment in its script URLs. The delivered client
+chunk `/_next/static/chunks/61-90c5850d01979f3b.js` returned 200: 156,794 bytes,
+SHA256 `f160d3751859f1d59ae70b412a8d0b3b5cb6ed480a16bd36c5643e84b6db3424`.
+Its bytes contain Download Report HTML, Save Report HTML, Retry Report HTML,
+Preparing Report HTML and Report HTML download. This establishes source, build
+and client-code delivery, not interaction or an actual saved file. The
+documentation/proposal follow-up retains checked runtime/test bytes.
