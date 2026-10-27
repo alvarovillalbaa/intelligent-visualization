@@ -1,0 +1,307 @@
+// INACTIVE: separate browser/temporary-CI approval required. Copy only in the
+// approved runner to tests/tmp/report-editor.spec.ts; imports depend on that path.
+import { expect, test, type BrowserContext, type Locator, type Page } from "@playwright/test"
+
+import type { GeneratedDraft, StoredGuestDraft } from "../../lib/client/guest-draft"
+import type { ReportVisualizationDocument } from "../../packages/domain/entities"
+import { createStarterCourseDocument, createStarterReportDocument } from "../../packages/domain/fixtures"
+
+const KEY = "iv:guest-draft:v2"
+const SOURCE = "Authored Report browser-check source. No account, URL, upload or model request."
+const ORIGINAL_TITLE = "Authored Report before editing"
+type Harness = { unexpected: string[]; generation: string[]; artifacts: number; pageErrors: string[] }
+const harnesses = new WeakMap<BrowserContext, Harness>()
+
+function fixtures(): Record<"course" | "report", GeneratedDraft> {
+  const course = createStarterCourseDocument()
+  course.title = "Untouched authored Course"
+  const report = createStarterReportDocument()
+  report.title = ORIGINAL_TITLE
+  report.summary = "Authored report summary."
+  report.sourceManifest = [{ id: "authored-source", label: "Authored notes", kind: "paste", contentHash: "authored-hash", provenance: "Disposable browser fixture" }]
+  report.report.blocks = [
+    { id: "authored-heading", kind: "heading", level: 1, text: "Authored report heading" },
+    { id: "authored-text", kind: "rich-text", text: "Authored original narrative." },
+    { id: "authored-chart", kind: "chart", chart: {
+      id: "authored-chart-spec", type: "bar", title: "Authored chart title", description: "Disposable authored values.",
+      series: [{ key: "value", label: "Score", color: "#2563eb" }],
+      data: [{ label: "A", value: 10 }, { label: "B", value: 20 }], xKey: "label",
+      source: "Authored fixture source", provenance: "Authored chart provenance unchanged.",
+      accessibleLabel: "Two authored values, A ten and B twenty.", illustrative: true,
+    } },
+    { id: "authored-table", kind: "data-table", title: "Authored table", columns: ["Name", "Score"], rows: [["A", "10"]], provenance: "Authored table provenance unchanged." },
+    { id: "authored-tabs", kind: "tabs", tabs: [
+      { id: "authored-tab-one", label: "First evidence view", blocks: [{ id: "authored-nested-text", kind: "rich-text", text: "Authored original nested narrative." }] },
+      { id: "authored-tab-two", label: "Second evidence view", blocks: [{ id: "authored-nested-source", kind: "source-note", text: "Authored nested qualification unchanged." }] },
+    ] },
+  ]
+  const rows = [0, 8, 20, 30, 40], heights = [2, 3, 6, 5, 6]
+  report.report.layouts = {
+    lg: report.report.blocks.map((block, index) => ({ blockId: block.id, x: 0, y: rows[index], w: 12, h: heights[index] })),
+    md: report.report.blocks.map((block, index) => ({ blockId: block.id, x: 0, y: rows[index], w: 8, h: heights[index] })),
+    sm: report.report.blocks.map((block, index) => ({ blockId: block.id, x: 0, y: rows[index], w: 4, h: heights[index] })),
+  }
+  report.report.dataSources = [{ id: "immutable-authored-snapshot", label: "Authored evidence snapshot", contentHash: "authored-immutable-hash", rowCount: 2, provenance: "Authored snapshot provenance unchanged." }]
+  const metadata = { provider: "authored-browser-mock", modelName: "report-editor-fixture", generatedAt: Date.now(), deckSource: null, artifactHtml: null }
+  return { course: { ...metadata, kind: "course", document: course }, report: { ...metadata, kind: "report", document: report } }
+}
+
+test.beforeEach(async ({ context, page, baseURL }) => {
+  expect(baseURL).toBe("http://127.0.0.1:3100")
+  expect(await context.cookies()).toEqual([])
+  const origin = new URL(baseURL!).origin, authored = fixtures()
+  const state: Harness = { unexpected: [], generation: [], artifacts: 0, pageErrors: [] }
+  harnesses.set(context, state)
+  page.on("pageerror", (error) => state.pageErrors.push(error.message))
+  await context.route("**/*", async (route) => {
+    const request = route.request(), url = new URL(request.url())
+    if (url.origin !== origin) {
+      state.unexpected.push(`${request.method()} ${url.origin}${url.pathname}`)
+      await route.abort("blockedbyclient"); return
+    }
+    if (request.method() === "POST" && url.pathname === "/api/visualizations/generate") {
+      const body = request.postDataJSON() as { kind?: string; generationInput?: { rawText?: string } }
+      if ((body.kind !== "course" && body.kind !== "report") || body.generationInput?.rawText !== SOURCE) {
+        state.unexpected.push("Unexpected generation payload")
+        await route.fulfill({ status: 400, json: { error: "Authored harness rejected the payload." } })
+      } else {
+        state.generation.push(body.kind)
+        await route.fulfill({ status: 200, json: structuredClone(authored[body.kind]) })
+      }
+      return
+    }
+    if (request.method() === "POST" && url.pathname === "/api/visualizations/artifact") {
+      state.artifacts++
+      await route.fulfill({ status: 200, json: { artifactHtml: "<!doctype html><html><body>Unused authored artifact fixture.</body></html>" } })
+      return
+    }
+    if (!["GET", "HEAD"].includes(request.method()) || !(url.pathname === "/" || url.pathname.startsWith("/_next/") || url.pathname === "/favicon.ico")) {
+      state.unexpected.push(`${request.method()} ${url.pathname}`)
+      await route.abort("blockedbyclient"); return
+    }
+    await route.continue()
+  })
+})
+
+test.afterEach(async ({ context }) => {
+  const state = harnesses.get(context)!
+  expect(state.unexpected, "No unmocked API, mutation, navigation or external request").toEqual([])
+  expect(state.generation, "Only two intercepted fixture responses").toEqual(["course", "report"])
+  expect(state.artifacts, "Course/Report use their real React previews").toBe(0)
+  expect(state.pageErrors).toEqual([])
+})
+
+function card(page: Page, kind: "Course" | "Report") {
+  return page.getByRole("region", { name: "Generation results", exact: true }).getByRole("listitem")
+    .filter({ has: page.getByRole("heading", { name: kind, level: 3, exact: true }) })
+}
+function editor(page: Page) { return page.getByRole("dialog", { name: "Edit report", exact: true }) }
+function chooseBlock(page: Page, label: string) {
+  return editor(page).getByRole("group", { name: "Choose a report block", exact: true }).getByRole("button", { name: label, exact: true })
+}
+async function stored(page: Page): Promise<StoredGuestDraft> {
+  return page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), KEY)
+}
+function reportOf(snapshot: StoredGuestDraft): ReportVisualizationDocument {
+  const document = snapshot.batch?.results.find((result) => result.kind === "report")?.draft?.document
+  if (!document || document.kind !== "report") throw new Error("Missing authored stored Report")
+  return document
+}
+async function activate(control: Locator, mobile: boolean) { if (mobile) await control.tap(); else await control.click() }
+async function generate(page: Page) {
+  await page.goto("/")
+  await page.getByRole("textbox", { name: "Text or link", exact: true }).fill(SOURCE)
+  await page.getByRole("button", { name: "Continue", exact: true }).click()
+  const formats = page.getByRole("group", { name: "Draft formats", exact: true })
+  await formats.getByRole("button", { name: /^Slides deck\b/ }).click()
+  await formats.getByRole("button", { name: /^Course\b/ }).click()
+  await formats.getByRole("button", { name: /^Report\b/ }).click()
+  await page.getByRole("button", { name: "Create drafts", exact: true }).click()
+  await expect(card(page, "Course")).toContainText("Course draft ready")
+  await expect(card(page, "Report")).toContainText("Report draft ready")
+  await expect.poll(async () => (await stored(page)).batch?.results.map((result) => result.status)).toEqual(["completed", "completed"])
+}
+async function openEditor(page: Page, mobile: boolean) {
+  const trigger = card(page, "Report").getByRole("button", { name: "Edit Report", exact: true })
+  await trigger.focus(); await activate(trigger, mobile); await expect(editor(page)).toBeVisible()
+  return trigger
+}
+async function expectFit(page: Page) {
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
+  expect(await editor(page).evaluate((element) => {
+    const box = element.getBoundingClientRect()
+    return box.left >= -1 && box.right <= innerWidth + 1 && box.top >= -1 && box.bottom <= innerHeight + 1 && element.scrollWidth <= element.clientWidth + 1
+  })).toBe(true)
+}
+async function expectTarget(control: Locator) {
+  const box = await control.boundingBox(); expect(box).not.toBeNull()
+  expect(box!.height).toBeGreaterThanOrEqual(44); expect(box!.width).toBeGreaterThanOrEqual(44)
+}
+async function dragHandle(page: Page, control: Locator, mobile: boolean, dx: number, dy: number) {
+  await control.scrollIntoViewIfNeeded()
+  await control.evaluate((element) => element.scrollIntoView({ block: "center", inline: "nearest" }))
+  const box = await control.boundingBox(); expect(box).not.toBeNull()
+  const x = box!.x + box!.width / 2, y = box!.y + box!.height / 2
+  expect(y + dy).toBeLessThan(page.viewportSize()!.height - 1)
+  if (!mobile) {
+    await page.mouse.move(x, y); await page.mouse.down()
+    await page.mouse.move(x + dx, y + dy, { steps: 6 }); await page.mouse.up()
+  } else {
+    // Chromium translates these real touch events into the application's pointer path.
+    const session = await page.context().newCDPSession(page)
+    try {
+      await session.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y, id: 1, force: 1 }] })
+      for (let step = 1; step <= 6; step++) await session.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x + dx * step / 6, y: y + dy * step / 6, id: 1, force: 1 }] })
+      await session.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] })
+    } finally { await session.detach() }
+  }
+}
+
+test("Report pointer move/resize, keyboard position, locks, duplication and undo/redo preserve other breakpoints and Course", async ({ page }, testInfo) => {
+  const mobile = testInfo.project.name === "mobile"
+  await generate(page)
+  const before = await stored(page), original = reportOf(before)
+  await openEditor(page, mobile)
+  const dialog = editor(page), row = dialog.getByRole("spinbutton", { name: "Row position", exact: true })
+  await dragHandle(page, dialog.getByRole("button", { name: "Drag selected block", exact: true }), mobile, 0, 104)
+  await expect(row).toHaveValue("2")
+  await dragHandle(page, dialog.getByRole("button", { name: "Resize selected block", exact: true }), mobile, 0, 52)
+  await expect(dialog.getByRole("spinbutton", { name: "Height in rows", exact: true })).toHaveValue("3")
+  await row.focus(); await page.keyboard.press("ArrowUp"); await expect(row).toHaveValue("3")
+  await dialog.getByRole("button", { name: "Apply position and size", exact: true }).click()
+  await expect(dialog.getByRole("button", { name: "Apply position and size", exact: true })).toBeDisabled()
+  await expect(row).toHaveValue("3")
+  const lock = dialog.getByRole("checkbox", { name: "Lock block in lg layout", exact: true })
+  await lock.check()
+  await expect(row).toBeDisabled()
+  await expect(dialog.getByRole("button", { name: "Drag selected block", exact: true })).toBeDisabled()
+  await expect(dialog.getByRole("button", { name: "Resize selected block", exact: true })).toBeDisabled()
+  await expect(dialog.getByRole("button", { name: "Remove block", exact: true })).toBeDisabled()
+  await lock.uncheck()
+  await dialog.getByRole("button", { name: "Duplicate block", exact: true }).click()
+  await expect(chooseBlock(page, "6. Heading")).toBeVisible()
+  await dialog.getByRole("button", { name: "Undo", exact: true }).click()
+  await expect(chooseBlock(page, "6. Heading")).toHaveCount(0)
+  await dialog.getByRole("button", { name: "Redo", exact: true }).click()
+  await expect(chooseBlock(page, "6. Heading")).toBeVisible()
+  await dialog.getByRole("button", { name: "Medium · 8 columns", exact: true }).click()
+  await expect(row).toHaveValue("0")
+  await expect(dialog.getByRole("spinbutton", { name: "Height in rows", exact: true })).toHaveValue("2")
+  await dialog.getByRole("button", { name: "Small · 4 columns", exact: true }).click(); await expect(row).toHaveValue("0")
+  await dialog.getByRole("button", { name: "Large · 12 columns", exact: true }).click(); await expect(row).toHaveValue("3")
+  await dialog.getByRole("button", { name: "Apply changes", exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect.poll(async () => reportOf(await stored(page)).report.blocks.length).toBe(6)
+  const after = await stored(page), edited = reportOf(after)
+  expect(edited.report.layouts.lg.find((item) => item.blockId === "authored-heading")).toMatchObject({ x: 0, y: 3, w: 12, h: 3, locked: false })
+  const originalIDs = original.report.blocks.map((block) => block.id)
+  for (const breakpoint of ["md", "sm"] as const) expect(edited.report.layouts[breakpoint].filter((item) => originalIDs.includes(item.blockId))).toEqual(original.report.layouts[breakpoint])
+  expect(edited.report.blocks.at(-1)!.id).not.toBe("authored-heading")
+  expect(edited.report.dataSources).toEqual(original.report.dataSources)
+  expect(after.batch!.results.find((result) => result.kind === "course")).toEqual(before.batch!.results.find((result) => result.kind === "course"))
+})
+
+test("typed chart/table/nested edits reject invalid data and retain qualifications and immutable snapshots", async ({ page }, testInfo) => {
+  await generate(page)
+  const before = await stored(page), original = reportOf(before)
+  await openEditor(page, testInfo.project.name === "mobile")
+  const dialog = editor(page)
+  await chooseBlock(page, "3. Chart").click()
+  await dialog.getByRole("textbox", { name: "Chart title", exact: true }).fill("Edited authored chart")
+  await dialog.getByRole("combobox", { name: "Row 1, value type", exact: true }).selectOption("text")
+  await dialog.getByRole("textbox", { name: "Row 1, value", exact: true }).fill("Invalid numeric series text")
+  await dialog.getByRole("button", { name: "Apply changes", exact: true }).click()
+  await expect(dialog.getByRole("alert")).toContainText("number or null")
+  await expect(dialog.getByRole("textbox", { name: "Row 1, value", exact: true })).toHaveValue("Invalid numeric series text")
+  expect(reportOf(await stored(page))).toEqual(original)
+  await dialog.getByRole("combobox", { name: "Row 1, value type", exact: true }).selectOption("number")
+  const numericCell = dialog.getByRole("textbox", { name: "Row 1, value", exact: true })
+  await numericCell.fill("")
+  await numericCell.pressSequentially("37.25")
+  await expect(numericCell).toHaveValue("37.25")
+  await chooseBlock(page, "4. Data table").click()
+  await dialog.getByRole("textbox", { name: "Table row 1, Score", exact: true }).fill("37.25")
+  await chooseBlock(page, "5. Tabs").click()
+  await dialog.getByRole("textbox", { name: "Tab 1 label", exact: true }).fill("Edited evidence view")
+  await dialog.getByRole("textbox", { name: "Text", exact: true }).fill("Edited authored nested narrative.")
+  await dialog.getByRole("button", { name: "Preview draft", exact: true }).click()
+  const preview = dialog.getByRole("region", { name: "Unapplied report preview", exact: true })
+  await expect(preview.getByText("Edited authored chart", { exact: true })).toBeVisible()
+  await expect(preview.getByText("Edited authored nested narrative.", { exact: true })).toBeVisible()
+  await expect(preview.getByText("Authored chart provenance unchanged.", { exact: true })).toBeVisible()
+  await expect(preview.getByText("Authored table provenance unchanged.", { exact: true })).toBeVisible()
+  await expect(preview.getByText("Illustrative values.", { exact: true })).toBeVisible()
+  await dialog.getByRole("button", { name: "Apply changes", exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect.poll(async () => reportOf(await stored(page)).report.blocks[2]).toMatchObject({ kind: "chart", chart: { title: "Edited authored chart", data: [{ label: "A", value: 37.25 }, { label: "B", value: 20 }] } })
+  const edited = reportOf(await stored(page)), chart = edited.report.blocks[2], table = edited.report.blocks[3], tabs = edited.report.blocks[4]
+  if (chart.kind !== "chart" || table.kind !== "data-table" || tabs.kind !== "tabs") throw new Error("Authored block types changed")
+  expect(chart.chart.provenance).toBe("Authored chart provenance unchanged."); expect(chart.chart.illustrative).toBe(true)
+  expect(table.rows).toEqual([["A", "37.25"]]); expect(table.provenance).toBe("Authored table provenance unchanged.")
+  expect(tabs.tabs[0]).toMatchObject({ label: "Edited evidence view", blocks: [{ kind: "rich-text", text: "Edited authored nested narrative." }] })
+  expect(tabs.tabs[1]).toEqual((original.report.blocks[4] as typeof tabs).tabs[1])
+  expect(edited.report.dataSources).toEqual(original.report.dataSources); expect(edited.sourceManifest).toEqual(original.sourceManifest)
+})
+
+test("pristine Cancel and dirty Escape/backdrop keep or discard, restore focus and fit desktop/mobile targets", async ({ page }, testInfo) => {
+  const mobile = testInfo.project.name === "mobile"
+  await generate(page)
+  const before = reportOf(await stored(page))
+  let trigger = await openEditor(page, mobile)
+  await expectFit(page)
+  await expectTarget(editor(page).getByRole("button", { name: "Cancel", exact: true }))
+  await expectTarget(editor(page).getByRole("button", { name: "Preview draft", exact: true }))
+  await activate(editor(page).getByRole("button", { name: "Cancel", exact: true }), mobile)
+  await expect(editor(page)).toHaveCount(0); await expect(trigger).toBeFocused()
+  trigger = await openEditor(page, mobile)
+  const title = editor(page).getByRole("textbox", { name: "Report title", exact: true })
+  await title.fill("Unapplied Report title")
+  await page.keyboard.press("Escape")
+  const confirmation = editor(page).getByRole("group", { name: "Discard unapplied report changes?", exact: true })
+  await expect(confirmation).toBeVisible()
+  await expectTarget(confirmation.getByRole("button", { name: "Keep editing", exact: true }))
+  await activate(confirmation.getByRole("button", { name: "Keep editing", exact: true }), mobile)
+  await expect(confirmation).toHaveCount(0); await expect(title).toHaveValue("Unapplied Report title"); await expect(title).toBeFocused()
+  if (mobile) await page.touchscreen.tap(1, 1); else await page.mouse.click(1, 1)
+  await expect(confirmation).toBeVisible(); await expectFit(page)
+  await activate(confirmation.getByRole("button", { name: "Discard changes", exact: true }), mobile)
+  await expect(editor(page)).toHaveCount(0); await expect(trigger).toBeFocused()
+  expect(reportOf(await stored(page))).toEqual(before)
+  await openEditor(page, mobile)
+  await expect(editor(page).getByRole("textbox", { name: "Report title", exact: true })).toHaveValue(ORIGINAL_TITLE)
+  await activate(editor(page).getByRole("button", { name: "Cancel", exact: true }), mobile)
+})
+
+test("Report guest edits survive four-hour snapshot reload; quota failure retains prior bytes and new in-memory content", async ({ page }, testInfo) => {
+  const mobile = testInfo.project.name === "mobile"
+  await generate(page)
+  const before = await stored(page)
+  await openEditor(page, mobile)
+  await editor(page).getByRole("textbox", { name: "Report title", exact: true }).fill("Durable authored Report edit")
+  await editor(page).getByRole("button", { name: "Apply changes", exact: true }).click()
+  await expect(editor(page)).toHaveCount(0)
+  await expect.poll(async () => reportOf(await stored(page)).title).toBe("Durable authored Report edit")
+  const after = await stored(page)
+  expect(after.expiresAt - after.savedAt).toBe(4 * 60 * 60 * 1000)
+  expect(after.batch!.results.find((result) => result.kind === "course")).toEqual(before.batch!.results.find((result) => result.kind === "course"))
+  await page.reload(); await expect(card(page, "Report")).toContainText("Durable authored Report edit")
+  expect(reportOf(await stored(page))).toEqual(reportOf(after))
+  const previousRaw = await page.evaluate((key) => localStorage.getItem(key), KEY)
+  await openEditor(page, mobile)
+  await editor(page).getByRole("textbox", { name: "Report title", exact: true }).fill("Quota-only in-memory Report")
+  await page.evaluate((key) => {
+    const original = Storage.prototype.setItem
+    Storage.prototype.setItem = function (name: string, value: string) {
+      if (this === localStorage && name === key) throw new DOMException("Authored quota failure", "QuotaExceededError")
+      return original.call(this, name, value)
+    }
+  }, KEY)
+  await editor(page).getByRole("button", { name: "Apply changes", exact: true }).click()
+  await expect(editor(page)).toHaveCount(0)
+  await expect(page.getByRole("heading", { name: "Quota-only in-memory Report", exact: true })).toBeVisible()
+  await expect(page.locator('[role="status"][aria-live="polite"]').filter({ hasText: "Browser storage is unavailable or full." })).toContainText("have not been saved for reload")
+  expect(await page.evaluate((key) => localStorage.getItem(key), KEY)).toBe(previousRaw)
+  await page.reload() // The prototype injection ends with this disposable document.
+  await expect(card(page, "Report")).toContainText("Durable authored Report edit")
+  expect(reportOf(await stored(page))).toEqual(reportOf(after))
+})

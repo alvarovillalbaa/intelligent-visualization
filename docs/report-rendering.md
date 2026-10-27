@@ -15,3 +15,10 @@ text, including nested tab blocks. Charts marked illustrative visibly say
 “Illustrative values.” separately from their source. Empty charts keep their
 title and qualifications with an explicit missing-data message and no graph.
 See the [preview repair and focused proof limits](results/2026/10-27/report-qualifications.md).
+
+The [Report editor](report-authoring.md) and React preview now use the canonical
+12/8/4-column layouts. Preview cells scroll and accept keyboard focus; container
+queries choose layouts from the preview's available width. The editor can force
+a breakpoint for its unapplied preview. Missing or invalid legacy placements
+fall back to readable source order. The standalone artifact compiler still
+renders source order without grid placement; it is not changed by this editor.

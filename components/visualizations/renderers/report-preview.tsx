@@ -18,6 +18,7 @@ import {
 } from "recharts"
 
 import type { ChartSpec, ReportBlock, ReportVisualizationDocument } from "@/packages/domain/entities"
+import { REPORT_GRID_COLUMNS, REPORT_GRID_GAP, REPORT_GRID_ROW_HEIGHT, type ReportBreakpoint } from "@/lib/client/report-grid"
 
 const CHART_FALLBACK_COLORS = ["#ff6f4d", "#7cd3ff", "#3c8f5b", "#a15cff", "#ffbf69"]
 
@@ -107,7 +108,7 @@ function ChartBlock({ spec }: { spec: ChartSpec }) {
   )
 }
 
-function ReportBlockView({ block }: { block: ReportBlock }) {
+export function ReportBlockView({ block }: { block: ReportBlock }) {
   switch (block.kind) {
     case "heading": {
       if (block.level === 1) {
@@ -127,17 +128,17 @@ function ReportBlockView({ block }: { block: ReportBlock }) {
       return <h4 className="text-lg font-semibold">{block.text}</h4>
     }
     case "rich-text":
-      return <p className="leading-7 opacity-90">{block.text}</p>
+      return <p className="whitespace-pre-wrap break-words leading-7 opacity-90">{block.text}</p>
     case "callout":
       return (
         <div className="rounded-lg border-l-4 p-4" style={{ borderColor: "var(--iv-accent)", backgroundColor: "var(--iv-muted)" }}>
           <p className="text-sm font-semibold">{block.title}</p>
-          <p className="mt-1 text-sm leading-6 opacity-90">{block.body}</p>
+          <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 opacity-90">{block.body}</p>
         </div>
       )
     case "quote":
       return (
-        <blockquote className="border-l-2 pl-4 italic leading-7 opacity-90" style={{ borderColor: "var(--iv-accent)" }}>
+        <blockquote className="whitespace-pre-wrap break-words border-l-2 pl-4 italic leading-7 opacity-90" style={{ borderColor: "var(--iv-accent)" }}>
           “{block.quote}”
           <footer className="mt-2 text-sm not-italic opacity-70">{block.byline}</footer>
         </blockquote>
@@ -200,7 +201,10 @@ function ReportBlockView({ block }: { block: ReportBlock }) {
         </div>
       )
     case "image":
-      return block.caption ? <p className="text-sm italic opacity-70">{block.alt || block.caption}</p> : null
+      return block.alt || block.caption ? <div className="grid gap-2 text-sm italic opacity-70">
+        {block.alt ? <p>{block.alt}</p> : null}
+        {block.caption ? <p>{block.caption}</p> : null}
+      </div> : null
     case "list":
       return (
         <ul className="grid gap-2">
@@ -239,10 +243,10 @@ function ReportBlockView({ block }: { block: ReportBlock }) {
         </div>
       )
     case "source-note":
-      return <p className="text-xs leading-5 opacity-60">{block.text}</p>
+      return <p className="whitespace-pre-wrap break-words text-xs leading-5 opacity-60">{block.text}</p>
     case "cta":
       return (
-        <a
+        <div className="grid justify-items-start gap-2"><a
           href={block.cta.href}
           target="_blank"
           rel="noreferrer"
@@ -251,14 +255,33 @@ function ReportBlockView({ block }: { block: ReportBlock }) {
         >
           {block.cta.label}
         </a>
+        {block.cta.helperText ? <p className="text-sm leading-6 opacity-70">{block.cta.helperText}</p> : null}</div>
       )
     default:
       return null
   }
 }
 
-export function ReportPreview({ document }: { document: ReportVisualizationDocument }) {
+// Legacy/generated reports can have empty layouts. Keep those reports readable
+// in source order until the authoring preparer supplies complete placements.
+function hasGridLayouts(report: ReportVisualizationDocument["report"]) {
+  return (Object.keys(REPORT_GRID_COLUMNS) as ReportBreakpoint[]).every((breakpoint) => {
+    const items = report.layouts?.[breakpoint]
+    if (!Array.isArray(items) || items.length !== report.blocks.length) return false
+    const seen = new Set<string>()
+    return items.every((item, index) => {
+      if (seen.has(item.blockId) || !report.blocks.some((block) => block.id === item.blockId)) return false
+      seen.add(item.blockId)
+      const { x, y, w, h } = item
+      if (![x, y, w, h].every(Number.isSafeInteger) || x < 0 || y < 0 || w < 1 || h < 1 || x + w > REPORT_GRID_COLUMNS[breakpoint] || y + h > 256) return false
+      return !items.slice(0, index).some((other) => x < other.x + other.w && other.x < x + w && y < other.y + other.h && other.y < y + h)
+    })
+  })
+}
+
+export function ReportPreview({ document, breakpoint }: { document: ReportVisualizationDocument; breakpoint?: ReportBreakpoint }) {
   const { theme, report } = document
+  const grid = hasGridLayouts(report)
 
   return (
     <div
@@ -268,6 +291,8 @@ export function ReportPreview({ document }: { document: ReportVisualizationDocum
           backgroundColor: theme.background,
           color: theme.foreground,
           fontFamily: theme.bodyFont,
+          containerType: "inline-size",
+          containerName: "iv-report",
           "--iv-accent": theme.accent,
           "--iv-muted": theme.muted,
           "--iv-border": theme.border,
@@ -276,24 +301,58 @@ export function ReportPreview({ document }: { document: ReportVisualizationDocum
         } as React.CSSProperties
       }
     >
-      <div className="mx-auto grid max-w-3xl gap-8 px-6 py-16">
-        <header className="grid gap-4">
+      <style>{`
+        .iv-report-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); grid-auto-rows:${REPORT_GRID_ROW_HEIGHT}px; gap:${REPORT_GRID_GAP}px; }
+        .iv-report-cell { grid-column:var(--iv-sm-x) / span var(--iv-sm-w); grid-row:var(--iv-sm-y) / span var(--iv-sm-h); }
+        @container iv-report (min-width:768px) {
+          .iv-report-grid:not([data-breakpoint]) { grid-template-columns:repeat(8,minmax(0,1fr)); }
+          .iv-report-grid:not([data-breakpoint]) > .iv-report-cell { grid-column:var(--iv-md-x) / span var(--iv-md-w); grid-row:var(--iv-md-y) / span var(--iv-md-h); }
+        }
+        @container iv-report (min-width:1024px) {
+          .iv-report-grid:not([data-breakpoint]) { grid-template-columns:repeat(12,minmax(0,1fr)); }
+          .iv-report-grid:not([data-breakpoint]) > .iv-report-cell { grid-column:var(--iv-lg-x) / span var(--iv-lg-w); grid-row:var(--iv-lg-y) / span var(--iv-lg-h); }
+        }
+        .iv-report-grid[data-breakpoint="md"] { grid-template-columns:repeat(8,minmax(0,1fr)); }
+        .iv-report-grid[data-breakpoint="md"] > .iv-report-cell { grid-column:var(--iv-md-x) / span var(--iv-md-w); grid-row:var(--iv-md-y) / span var(--iv-md-h); }
+        .iv-report-grid[data-breakpoint="lg"] { grid-template-columns:repeat(12,minmax(0,1fr)); }
+        .iv-report-grid[data-breakpoint="lg"] > .iv-report-cell { grid-column:var(--iv-lg-x) / span var(--iv-lg-w); grid-row:var(--iv-lg-y) / span var(--iv-lg-h); }
+      `}</style>
+      <div className="mx-auto grid max-w-6xl gap-8 px-6 py-16">
+        <header className="grid max-w-3xl gap-4 break-words">
           <p className="text-xs uppercase tracking-[0.2em] opacity-60">Report</p>
           <h1 className="text-4xl font-semibold leading-tight" style={{ fontFamily: theme.displayFont }}>
             {document.title}
           </h1>
-          <p className="text-lg leading-8 opacity-80">{document.summary}</p>
+          {document.subtitle ? <p className="text-xl leading-8 opacity-80">{document.subtitle}</p> : null}
+          <p className="whitespace-pre-wrap text-lg leading-8 opacity-80">{document.summary}</p>
           {report.decisionQuestion ? (
-            <p className="rounded-lg p-4 text-sm font-medium leading-6" style={{ backgroundColor: theme.muted }}>
+            <p className="whitespace-pre-wrap rounded-lg p-4 text-sm font-medium leading-6" style={{ backgroundColor: theme.muted }}>
               {report.decisionQuestion}
             </p>
           ) : null}
-          {report.executiveSummary ? <p className="leading-7 opacity-90">{report.executiveSummary}</p> : null}
+          {report.executiveSummary ? <p className="whitespace-pre-wrap leading-7 opacity-90">{report.executiveSummary}</p> : null}
         </header>
 
-        {report.blocks.map((block) => (
-          <ReportBlockView key={block.id} block={block} />
-        ))}
+        <div className={grid ? "iv-report-grid" : "grid gap-8"} data-breakpoint={grid ? breakpoint : undefined}>
+          {report.blocks.map((block, index) => {
+            const placement: Record<string, number> = {}
+            if (grid) {
+              for (const size of Object.keys(REPORT_GRID_COLUMNS) as ReportBreakpoint[]) {
+                const item = report.layouts[size].find((entry) => entry.blockId === block.id)!
+                placement[`--iv-${size}-x`] = item.x + 1
+                placement[`--iv-${size}-y`] = item.y + 1
+                placement[`--iv-${size}-w`] = item.w
+                placement[`--iv-${size}-h`] = item.h
+              }
+            }
+            return (
+              <section key={block.id} className={grid ? "iv-report-cell min-w-0 overflow-auto rounded-lg border border-transparent p-3 focus-visible:border-current focus-visible:outline-none" : "min-w-0"}
+                aria-label={`Report block ${index + 1}: ${block.kind}`} tabIndex={grid ? 0 : undefined} style={placement as React.CSSProperties}>
+                <ReportBlockView block={block} />
+              </section>
+            )
+          })}
+        </div>
       </div>
     </div>
   )

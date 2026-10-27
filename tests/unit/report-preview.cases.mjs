@@ -30,6 +30,14 @@ const runtime = new Map([
   ['react/jsx-runtime', load('react/jsx-runtime')],
   ['recharts', load('recharts')],
 ]);
+const gridFile = path.join(repository, 'lib/client/report-grid.ts');
+const gridModule = { exports: {} };
+const gridCompiled = ts.transpileModule(await readFile(gridFile, 'utf8'), {
+  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }, reportDiagnostics: true,
+});
+assert.equal(gridCompiled.diagnostics.length, 0);
+vm.runInNewContext('(function(exports,module){\n' + gridCompiled.outputText + '\n})', {})(gridModule.exports, gridModule);
+runtime.set('@/lib/client/report-grid', gridModule.exports);
 const module = { exports: {} };
 vm.runInNewContext('(function (exports, require, module) {\n' + compiled.outputText + '\n})', {
   fetch() { throw new Error('Network is forbidden in report preview checks.'); },
@@ -167,5 +175,82 @@ export function registerReportPreviewChecks(test) {
     ])));
     assert.doesNotMatch(html, /Illustrative values\.|Source:|undefined|null|Authored .* qualification/);
     assert.ok(html.includes(spec.title)); assert.ok(html.includes('42%')); assert.ok(html.includes('Authored cell'));
+  });
+
+  function positioned() {
+    const document = report([kpi(), table()]);
+    document.subtitle = 'Authored responsive subtitle';
+    document.report.layouts = {
+      lg: [{ blockId: 'authored-kpi', x: 8, y: 0, w: 4, h: 3 }, { blockId: 'authored-table', x: 0, y: 0, w: 8, h: 6 }],
+      md: [{ blockId: 'authored-kpi', x: 0, y: 0, w: 8, h: 3 }, { blockId: 'authored-table', x: 0, y: 3, w: 8, h: 6 }],
+      sm: [{ blockId: 'authored-kpi', x: 0, y: 6, w: 4, h: 3 }, { blockId: 'authored-table', x: 0, y: 0, w: 4, h: 6 }],
+    };
+    return document;
+  }
+
+  test('complete layouts render all three positions without reordering or mutating block content', () => {
+    const document = freeze(positioned()), before = structuredClone(document);
+    const html = render(document);
+    assert.match(html, /class="iv-report-grid"/);
+    assert.match(html, /--iv-lg-x:9;--iv-lg-y:1;--iv-lg-w:4;--iv-lg-h:3/);
+    assert.match(html, /--iv-sm-x:1;--iv-sm-y:7;--iv-sm-w:4;--iv-sm-h:3/);
+    assert.ok(html.indexOf('Authored metric label') < html.indexOf('Authored table title'));
+    assert.deepEqual(document, before);
+  });
+
+  test('grid regions keep chart/table qualifications scrollable and reachable by keyboard', () => {
+    const html = render(positioned());
+    assert.match(html, /<section[^>]*overflow-auto[^>]*aria-label="Report block 1: kpi"[^>]*tabindex="0"/);
+    assert.match(html, /<section[^>]*aria-label="Report block 2: data-table"[^>]*tabindex="0"/);
+    assert.ok(html.includes('Authored responsive subtitle'));
+    assert.ok(html.includes('Authored KPI qualification'));
+    assert.ok(html.includes('Authored table qualification'));
+  });
+
+  test('preview uses its container width and the same forty-pixel rows and twelve-pixel gaps as the editor', () => {
+    const html = render(positioned());
+    assert.match(html, /container-type:inline-size;container-name:iv-report/);
+    assert.match(html, /@container iv-report \(min-width:768px\)/);
+    assert.match(html, /@container iv-report \(min-width:1024px\)/);
+    assert.match(html, /grid-auto-rows:40px; gap:12px/);
+  });
+
+  test('editor preview can force each breakpoint regardless of container width', () => {
+    for (const breakpoint of ['lg', 'md', 'sm']) {
+      const html = renderToStaticMarkup(React.createElement(ReportPreview, { document: positioned(), breakpoint }));
+      assert.match(html, new RegExp('class="iv-report-grid" data-breakpoint="' + breakpoint + '"'));
+    }
+  });
+
+  test('missing, duplicate, out-of-bounds and overlapping layouts keep all blocks readable in source order', () => {
+    for (const change of [
+      (doc) => { doc.report.layouts.lg = []; },
+      (doc) => { doc.report.layouts.md[1].blockId = 'authored-kpi'; },
+      (doc) => { doc.report.layouts.sm[0].y = 257; },
+      (doc) => { doc.report.layouts.lg[0].x = 0; },
+    ]) {
+      const document = positioned(); change(document);
+      const html = render(freeze(document));
+      assert.doesNotMatch(html, /class="iv-report-grid"/);
+      assert.ok(html.includes('Authored metric label'));
+      assert.ok(html.includes('Authored table title'));
+      assert.doesNotMatch(html, /tabindex="0"/);
+    }
+  });
+
+  test('edited narrative text keeps paragraph breaks with escaped content', () => {
+    const html = render(report([{ id: 'narrative', kind: 'rich-text', text: 'First paragraph\n\n<script>authored</script>' }]));
+    assert.match(html, /whitespace-pre-wrap break-words/);
+    assert.match(html, /First paragraph\n\n&lt;script&gt;authored&lt;\/script&gt;/);
+  });
+
+  test('edited link helper text and image description/caption remain visible as text', () => {
+    const html = render(report([
+      { id: 'authored-link', kind: 'cta', cta: { label: 'Read evidence', href: 'https://example.com/authored', helperText: 'Authored link context <supplied>' } },
+      { id: 'authored-image', kind: 'image', assetId: 'attached-image', alt: 'Authored image description', caption: 'Authored independent caption' },
+      { id: 'authored-alt-only', kind: 'image', assetId: 'attached-image', alt: 'Authored alt without caption' },
+    ]));
+    for (const value of ['Read evidence', 'Authored link context &lt;supplied&gt;', 'Authored image description', 'Authored independent caption', 'Authored alt without caption']) assert.ok(html.includes(value), value);
+    assert.doesNotMatch(html, /<img/);
   });
 }

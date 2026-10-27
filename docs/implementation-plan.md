@@ -23,7 +23,7 @@ This repository is being migrated from a Convex-coupled slide-deck app into `Int
 4. Add Supabase Postgres, Storage, and optional Auth adapters.
 5. Complete Cloudflare Worker + D1 RPC, signed requests, D1 migrations, and R2 storage.
 6. Replace deck-facing product UI and APIs with visualization terminology.
-7. Add the report editor grid. Course browser-draft authoring is implemented; hosted saving/publication remains gated separately.
+7. Complete browser acceptance for the implemented Course editor and Report grid editor; add Report grid artifact export. Hosted saving/publication remains gated separately.
 8. Migrate AI SDK structured generation to `generateText`/`streamText` with `Output.object`.
 9. Add Workflows, local workflow adapter, Eve agent, Sandbox QA, and optional Queues.
 10. Complete CI, Playwright, portability checks, and provider SDK leakage checks.

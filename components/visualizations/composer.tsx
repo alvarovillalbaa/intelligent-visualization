@@ -20,7 +20,9 @@ import { StylePanel } from "@/components/visualizations/style-panel"
 import { VisualizationPreview } from "@/components/visualizations/preview"
 import { GenerationResults, isExampleDraft } from "@/components/visualizations/generation-results"
 import { CourseEditor } from "@/components/visualizations/course-editor"
+import { ReportEditor } from "@/components/visualizations/report-editor"
 import { applyCourseDraftEdit } from "@/lib/client/course-authoring"
+import { applyReportDraftEdit } from "@/lib/client/report-authoring"
 import {
   clearGuestDraft,
   loadGuestDraft,
@@ -40,7 +42,7 @@ import {
 import { extractUrls, urlDomain } from "@/lib/detect-urls"
 import { remixTheme, themeLibrary } from "@/lib/deck-runtime"
 import type { BrandKit, GenerationInput, ThemeTokens } from "@/lib/types"
-import type { CourseVisualizationDocument, VisualizationDocument, VisualizationKind } from "@/packages/domain/entities"
+import type { CourseVisualizationDocument, ReportVisualizationDocument, VisualizationDocument, VisualizationKind } from "@/packages/domain/entities"
 import { cn } from "@/lib/utils"
 
 const DEFAULT_PROMPT = "Create a polished visual document from this source."
@@ -61,6 +63,14 @@ type CourseEditContext = {
   resultId: string
   expectedDraft: GeneratedDraft
   document: CourseVisualizationDocument
+}
+
+type ReportEditContext = {
+  id: string
+  batchId: string
+  resultId: string
+  expectedDraft: GeneratedDraft
+  document: ReportVisualizationDocument
 }
 
 type StyleState =
@@ -124,6 +134,7 @@ export function Composer(props: ComposerProps) {
   const batchRef = useRef<GenerationBatch | null>(null)
   const savingRef = useRef(new Set<string>())
   const courseEditorRef = useRef<CourseEditContext | null>(null)
+  const reportEditorRef = useRef<ReportEditContext | null>(null)
 
   const [step, setStep] = useState<"source" | "configure">("source")
   const [textEntries, setTextEntries] = useState<string[]>([])
@@ -141,6 +152,7 @@ export function Composer(props: ComposerProps) {
   const [batch, setBatch] = useState<GenerationBatch | null>(null)
   const [previewResultId, setPreviewResultId] = useState<string | null>(null)
   const [courseEditing, setCourseEditing] = useState<CourseEditContext | null>(null)
+  const [reportEditing, setReportEditing] = useState<ReportEditContext | null>(null)
   const [storageNotice, setStorageNotice] = useState<string | null>(null)
   const [recoveryRequired, setRecoveryRequired] = useState(false)
   const rawText = useMemo(() => serializeSourceText({ entries: textEntries, pending: pendingText }), [textEntries, pendingText])
@@ -160,6 +172,7 @@ export function Composer(props: ComposerProps) {
       pendingImportsRef.current = 0
       requestRef.current?.abort()
       courseEditorRef.current = null
+      reportEditorRef.current = null
     }
   }, [])
 
@@ -233,6 +246,7 @@ export function Composer(props: ComposerProps) {
     const current = batchRef.current
     const result = current?.results.find((candidate) => candidate.id === resultId)
     if (!current || result?.status !== "completed" || result.kind !== "course" || !result.draft || result.draft.document.kind !== "course" || isExampleDraft(result.draft)) return
+    replaceReportEditor(null)
     replaceCourseEditor({
       id: crypto.randomUUID(), batchId: current.id, resultId,
       expectedDraft: structuredClone(result.draft), document: structuredClone(result.draft.document),
@@ -258,6 +272,43 @@ export function Composer(props: ComposerProps) {
 
   function closeCourseEditor(context: CourseEditContext) {
     if (courseEditorRef.current?.id === context.id) replaceCourseEditor(null)
+  }
+
+  function replaceReportEditor(next: ReportEditContext | null) {
+    reportEditorRef.current = next
+    setReportEditing(next)
+  }
+
+  function editReport(resultId: string) {
+    const current = batchRef.current
+    const result = current?.results.find((candidate) => candidate.id === resultId)
+    if (!current || result?.status !== "completed" || result.kind !== "report" || !result.draft || result.draft.document.kind !== "report" || isExampleDraft(result.draft)) return
+    replaceCourseEditor(null)
+    replaceReportEditor({
+      id: crypto.randomUUID(), batchId: current.id, resultId,
+      expectedDraft: structuredClone(result.draft), document: structuredClone(result.draft.document),
+    })
+    setPreviewOpen(false)
+    setPreviewResultId(null)
+  }
+
+  function applyReportChanges(context: ReportEditContext, document: ReportVisualizationDocument): string | null {
+    const current = batchRef.current
+    if (!mountedRef.current || reportEditorRef.current?.id !== context.id || !current || current.id !== context.batchId) {
+      return "This draft changed while you were editing. Keep a copy of your changes, then reopen its editor."
+    }
+    try {
+      replaceBatch(applyReportDraftEdit(current, context.resultId, context.expectedDraft, document))
+      replaceReportEditor(null)
+      setPreviewResultId(context.resultId)
+      return null
+    } catch (error) {
+      return error instanceof Error ? error.message : "The Report changes could not be applied. Your edits remain here."
+    }
+  }
+
+  function closeReportEditor(context: ReportEditContext) {
+    if (reportEditorRef.current?.id === context.id) replaceReportEditor(null)
   }
 
   function patchResult(batchId: string, resultId: string, patch: Partial<Omit<GenerationResult, "id" | "kind">>) {
@@ -522,6 +573,7 @@ export function Composer(props: ComposerProps) {
     setRecoveryRequired(false)
     replaceBatch(next)
     replaceCourseEditor(null)
+    replaceReportEditor(null)
     setDraft(null)
     setPreviewOpen(false)
     setPreviewResultId(null)
@@ -557,6 +609,7 @@ export function Composer(props: ComposerProps) {
     setPreviewResultId(null)
     replaceBatch(null)
     replaceCourseEditor(null)
+    replaceReportEditor(null)
     setRecoveryRequired(false)
     setStorageNotice(null)
     setError(null)
@@ -817,7 +870,7 @@ export function Composer(props: ComposerProps) {
 
       {batch ? (
         <GenerationResults batch={batch} busy={generating} workspaceSlug={props.mode === "workspace" ? props.workspaceSlug : undefined}
-          onPreview={(id) => { setPreviewResultId(id); setPreviewOpen(false) }} onEditCourse={editCourse} onRetry={retryResult} onStartOver={startOver} />
+          onPreview={(id) => { setPreviewResultId(id); setPreviewOpen(false) }} onEditCourse={editCourse} onEditReport={editReport} onRetry={retryResult} onStartOver={startOver} />
       ) : null}
 
       {props.mode === "guest" && draft && !batch ? (
@@ -864,6 +917,15 @@ export function Composer(props: ComposerProps) {
             : "Apply updates this browser draft for its existing four-hour retention when storage is available. Check any browser-storage notice after applying."}
           onApply={(document) => applyCourseChanges(courseEditing, document)}
           onCancel={() => closeCourseEditor(courseEditing)} />
+      ) : null}
+
+      {reportEditing ? (
+        <ReportEditor key={reportEditing.id} document={reportEditing.document}
+          persistenceNote={props.mode === "workspace"
+            ? "Apply updates this draft in this tab. Report workspace saving and publication are not available yet."
+            : "Apply updates this browser draft for its existing four-hour retention when storage is available. Check any browser-storage notice after applying."}
+          onApply={(document) => applyReportChanges(reportEditing, document)}
+          onCancel={() => closeReportEditor(reportEditing)} />
       ) : null}
     </div>
   )

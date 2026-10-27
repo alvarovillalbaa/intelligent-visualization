@@ -7,7 +7,7 @@ This migration is not complete.
 - Convex provider-contract adapter is not implemented.
 - Supabase provider is not implemented.
 - Cloudflare Worker + D1 provider is only a skeleton.
-- Report editor grid is not implemented.
+- Report browser-draft grid authoring is implemented; browser interaction acceptance, hosted saving/publication and grid artifact export remain unverified or unfinished.
 - Course browser-draft authoring is implemented; hosted Course saving/publication and browser interaction acceptance remain unverified.
 - AI SDK deprecated object APIs still exist in `lib/ai/generate-deck.ts`.
 - Eve, Workflows, Sandbox QA, and Queues are not implemented.

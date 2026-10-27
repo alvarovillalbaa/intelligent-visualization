@@ -22,6 +22,7 @@ Implemented in the current migration slice:
 - Local setup, doctor, reset, export, verify, and import scripts.
 - First Vitest suites for domain, artifact, storage, and local provider behavior.
 - [Course authoring](docs/course-authoring.md) for generated browser drafts, with typed content/practice fields, isolated preview and guarded Apply.
+- [Report authoring](docs/report-authoring.md) for responsive browser-draft layouts, typed blocks, locks and local undo/redo.
 
 Still in progress:
 
@@ -29,7 +30,7 @@ Still in progress:
 - Convex provider-contract adapter and in-place Convex deck migration.
 - Supabase provider.
 - Cloudflare Worker + D1 provider.
-- Report grid editor.
+- Report browser interaction acceptance, grid artifact export and hosted saving/publication.
 - Hosted Course saving/publication and learner analytics; browser draft authoring is implemented.
 - AI SDK structured-output migration.
 - Eve, Workflows, Sandbox QA, and Queues.
