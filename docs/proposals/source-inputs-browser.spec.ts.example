@@ -1,0 +1,257 @@
+// INACTIVE acceptance proposal. This .example file is not a project test or build input.
+// Explicit app-specific browser/CI/runner-package approval is required before running it.
+// The reviewed runner copies it to tests/browser/source-inputs.spec.ts after installing
+// its separate @playwright/test@1.61.1 dependency. No production source is changed.
+import { expect, test, type BrowserContext, type Locator, type Page } from "@playwright/test"
+
+const STORAGE_KEY = "iv:guest-draft:v2"
+const unexpectedRequests = new WeakMap<BrowserContext, string[]>()
+type SavedInput = { rawText: string; files: unknown[]; textEntries?: string[]; pendingText?: string }
+
+test.use({
+  viewport: { width: 1440, height: 1000 },
+  isMobile: false,
+  hasTouch: false,
+  storageState: { cookies: [], origins: [] },
+  serviceWorkers: "block",
+})
+
+test.beforeEach(async ({ context, baseURL }) => {
+  expect(baseURL, "The owned runner must supply a loopback baseURL").toBeTruthy()
+  const origin = new URL(baseURL!)
+  expect(origin.protocol).toBe("http:")
+  expect(["127.0.0.1", "localhost"]).toContain(origin.hostname)
+  const blocked: string[] = []
+  unexpectedRequests.set(context, blocked)
+  await context.route("**/*", async (route) => {
+    const request = route.request()
+    const url = new URL(request.url())
+    if (!["127.0.0.1", "localhost"].includes(url.hostname) || !["GET", "HEAD"].includes(request.method())) {
+      blocked.push(`${request.method()} ${url.origin}${url.pathname}`)
+      await route.abort("blockedbyclient")
+    } else {
+      await route.continue()
+    }
+  })
+})
+
+test.afterEach(async ({ context }) => {
+  // This HTTP guard does not intercept Next's development WebSocket. No Create,
+  // URL extraction, upload, account, model, or other mutating endpoint is exercised.
+  expect(unexpectedRequests.get(context) ?? [], "No external requests or HTTP mutations are expected").toEqual([])
+})
+
+function sourceInput(page: Page) {
+  return page.getByRole("textbox", { name: "Text or link", exact: true })
+}
+
+function sourceCards(page: Page) {
+  return page.getByRole("list", { name: "Text sources", exact: true }).getByRole("listitem")
+}
+
+async function expectSources(page: Page, expected: string[]) {
+  await expect(sourceCards(page)).toHaveCount(expected.length)
+  await expect.poll(() => sourceCards(page).evaluateAll((cards) => cards.map((card) => {
+    // The final paragraph is the source body; the preceding paragraph labels its position.
+    return card.querySelector("div > p:last-child")?.textContent ?? null
+  }))).toEqual(expected)
+}
+
+async function savedInput(page: Page): Promise<SavedInput | null> {
+  return page.evaluate((key) => {
+    const stored = localStorage.getItem(key)
+    return stored ? (JSON.parse(stored) as { input: SavedInput }).input : null
+  }, STORAGE_KEY)
+}
+
+async function expectSavedInput(page: Page, rawText: string, entries: string[], pending: string) {
+  await expect.poll(async () => {
+    const input = await savedInput(page)
+    return input && { rawText: input.rawText, entries: input.textEntries, pending: input.pendingText, files: input.files }
+  }).toEqual({ rawText, entries, pending, files: [] })
+}
+
+async function openSource(page: Page) {
+  await page.goto("/")
+  await expect(sourceInput(page)).toBeVisible()
+}
+
+async function editSources(page: Page, touch = false) {
+  const edit = page.getByRole("button", { name: /\bEdit$/ })
+  if (touch) await edit.tap()
+  else await edit.click()
+  await expect(sourceInput(page)).toBeVisible()
+}
+
+async function expectTouchTarget(control: Locator) {
+  const box = await control.boundingBox()
+  expect(box).not.toBeNull()
+  expect(box!.width).toBeGreaterThanOrEqual(44)
+  expect(box!.height).toBeGreaterThanOrEqual(44)
+}
+
+test("desktop preserves ordered duplicates, removal and pending context through Continue and Edit", async ({ page }) => {
+  await openSource(page)
+  const input = sourceInput(page)
+  const first = "  First authored source with preserved spaces  "
+  const duplicate = "Repeated authored source"
+  const pending = "Pending authored context  "
+
+  await input.fill("   ")
+  await expect(page.getByRole("button", { name: "Add", exact: true })).toBeDisabled()
+  await input.press("Enter")
+  await expectSources(page, [])
+  await expect(input).toHaveValue("   ")
+  await input.fill(first)
+  await page.getByRole("button", { name: "Add", exact: true }).click()
+  await expect(input).toHaveValue("")
+  await expect(input).toBeFocused()
+  await input.fill(duplicate)
+  await input.press("Enter")
+  await input.fill(duplicate)
+  await page.getByRole("button", { name: "Add", exact: true }).click()
+  await expectSources(page, [first, duplicate, duplicate])
+  await page.getByRole("button", { name: "Remove text source 2", exact: true }).click()
+  await expectSources(page, [first, duplicate])
+
+  await input.fill(pending)
+  const canonical = `${first}\n\n${duplicate}\n\n${pending}`
+  await expectSavedInput(page, canonical, [first, duplicate], pending)
+  await page.getByRole("button", { name: "Continue", exact: true }).click()
+  await expect(page.getByRole("button", { name: "Create draft", exact: true })).toBeVisible()
+  await expectSavedInput(page, canonical, [first, duplicate, pending], "")
+  await editSources(page)
+  await expectSources(page, [first, duplicate, pending])
+  await expect(sourceInput(page)).toHaveValue("")
+  await expectSavedInput(page, canonical, [first, duplicate, pending], "")
+})
+
+test("synthetic multiline paste preserves selection boundaries and synthetic IME or repeat does not commit", async ({ page }) => {
+  await openSource(page)
+  const input = sourceInput(page)
+  const prefix = "  Authored prefix "
+  const replaced = "replace this"
+  const suffix = " authored suffix  "
+  const pasted = "first pasted line\r\nsecond pasted line\n\nlast pasted line"
+  const combined = prefix + pasted + suffix
+  await input.fill(prefix + replaced + suffix)
+  // Deliberately synthetic page-owned clipboard data. This does not test native
+  // clipboard permissions, an operating-system paste gesture, or physical IME input.
+  const pasteResult = await input.evaluate((element, fixture) => {
+    const target = element as HTMLInputElement
+    target.focus()
+    target.setSelectionRange(fixture.start, fixture.end)
+    const data = new DataTransfer()
+    data.setData("text/plain", fixture.text)
+    const event = new ClipboardEvent("paste", { bubbles: true, cancelable: true, clipboardData: data })
+    target.dispatchEvent(event)
+    return { trusted: event.isTrusted, prevented: event.defaultPrevented }
+  }, { start: prefix.length, end: prefix.length + replaced.length, text: pasted })
+  expect(pasteResult).toEqual({ trusted: false, prevented: true })
+  await expectSources(page, [combined])
+  await expect(input).toHaveValue("")
+  await expectSavedInput(page, combined, [combined], "")
+  await page.reload()
+  await expectSources(page, [combined])
+
+  const composing = "Authored text kept pending during composition"
+  await sourceInput(page).fill(composing)
+  const synthetic = await sourceInput(page).evaluate((element) => {
+    const events = [
+      new CompositionEvent("compositionstart", { bubbles: true, data: "a" }),
+      new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Enter", code: "Enter", isComposing: true }),
+      new CompositionEvent("compositionend", { bubbles: true, data: "a" }),
+      new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Enter", code: "Enter", repeat: true }),
+    ]
+    for (const event of events) element.dispatchEvent(event)
+    return events.map((event) => event.isTrusted)
+  })
+  expect(synthetic).toEqual([false, false, false, false])
+  await expectSources(page, [combined])
+  await expect(sourceInput(page)).toHaveValue(composing)
+  await expectSavedInput(page, `${combined}\n\n${composing}`, [combined], composing)
+  await sourceInput(page).press("Enter")
+  await expectSources(page, [combined, composing])
+  await expectSavedInput(page, `${combined}\n\n${composing}`, [combined, composing], "")
+  await page.reload()
+  await expectSources(page, [combined, composing])
+})
+
+test("legacy v2 multiline text restores as one source and later pending text survives reload", async ({ page, context }) => {
+  const legacy = "  Legacy authored first line\r\n\nSecond legacy paragraph  "
+  // The context is empty before this owned legacy fixture is installed. Do not
+  // reseed on reload: later edits must be read back from the app's own persistence.
+  await context.addInitScript(({ key, rawText }) => {
+    if (!["127.0.0.1", "localhost"].includes(location.hostname) || localStorage.getItem(key) !== null) return
+    const now = Date.now()
+    localStorage.setItem(key, JSON.stringify({
+      version: 2,
+      input: { rawText, files: [] },
+      selectedKind: "slides",
+      draft: null,
+      savedAt: now,
+      expiresAt: now + 60 * 60 * 1000,
+    }))
+  }, { key: STORAGE_KEY, rawText: legacy })
+  await openSource(page)
+  await expectSources(page, [legacy])
+  await expect(sourceInput(page)).toHaveValue("")
+  await expectSavedInput(page, legacy, [legacy], "")
+  await page.reload()
+  await expectSources(page, [legacy])
+
+  const pending = "  Pending after the legacy import  "
+  await sourceInput(page).fill(pending)
+  await expectSavedInput(page, `${legacy}\n\n${pending}`, [legacy], pending)
+  await page.reload()
+  await expectSources(page, [legacy])
+  await expect(sourceInput(page)).toHaveValue(pending)
+  await expectSavedInput(page, `${legacy}\n\n${pending}`, [legacy], pending)
+
+  // Matching v2 metadata may also contain multiline pending text. Hydration must
+  // promote it intact before a single-line input can sanitize its line separators.
+  const multilinePending = "  Restored pending first line\r\nRestored pending second line  "
+  await page.evaluate(({ key, legacy, pending }) => {
+    const stored = JSON.parse(localStorage.getItem(key)!)
+    stored.input = { rawText: `${legacy}\n\n${pending}`, files: [], textEntries: [legacy], pendingText: pending }
+    localStorage.setItem(key, JSON.stringify(stored))
+  }, { key: STORAGE_KEY, legacy, pending: multilinePending })
+  await page.reload()
+  await expectSources(page, [legacy, multilinePending])
+  await expect(sourceInput(page)).toHaveValue("")
+  await expectSavedInput(page, `${legacy}\n\n${multilinePending}`, [legacy, multilinePending], "")
+})
+
+test.describe("mobile source entry", () => {
+  test.use({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
+
+  test("touch Add remove Continue and Edit retain sources after reload without horizontal overflow", async ({ page }) => {
+    await openSource(page)
+    const first = "Mobile authored first source"
+    const second = `Authored-mobile-${"planning-".repeat(16)}`
+    const pending = "Mobile authored pending source"
+    const add = page.getByRole("button", { name: "Add", exact: true })
+    await sourceInput(page).fill(first)
+    await expectTouchTarget(add)
+    await add.tap()
+    await sourceInput(page).fill(second)
+    await add.tap()
+    await expectSources(page, [first, second])
+    const remove = page.getByRole("button", { name: "Remove text source 1", exact: true })
+    await expectTouchTarget(remove)
+    await remove.tap()
+    await expectSources(page, [second])
+    await sourceInput(page).fill(pending)
+    const next = page.getByRole("button", { name: "Continue", exact: true })
+    await expectTouchTarget(next)
+    await next.tap()
+    await expect(page.getByRole("button", { name: "Create draft", exact: true })).toBeVisible()
+    await editSources(page, true)
+    await expectSources(page, [second, pending])
+    await expect(sourceInput(page)).toHaveValue("")
+    await expectSavedInput(page, `${second}\n\n${pending}`, [second, pending], "")
+    await page.reload()
+    await expectSources(page, [second, pending])
+    expect(await page.evaluate(() => ({ width: innerWidth, overflow: document.documentElement.scrollWidth > innerWidth }))).toEqual({ width: 390, overflow: false })
+  })
+})

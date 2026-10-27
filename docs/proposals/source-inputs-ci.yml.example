@@ -1,0 +1,169 @@
+# INACTIVE PROPOSAL. Requires explicit Intelligent Visualization browser/CI/tooling approval.
+# Install only on qa/source-inputs-acceptance; remove the active workflow after acceptance.
+name: Temporary source inputs acceptance
+on:
+  push:
+    branches: [qa/source-inputs-acceptance]
+    paths:
+      - .github/workflows/source-inputs-acceptance.yml
+      - docs/proposals/source-inputs-browser.spec.ts.example
+      - tests/unit/source-inputs.test.ts
+      - components/visualizations/composer.tsx
+      - lib/client/composer-source-input.ts
+      - lib/client/guest-draft.ts
+permissions:
+  contents: read
+jobs:
+  source-inputs:
+    if: github.repository == 'alvarovillalbaa/intelligent-visualization' && github.event.repository.private == false && github.ref == 'refs/heads/qa/source-inputs-acceptance'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      CI: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+      DO_NOT_TRACK: "1"
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3100
+      PERSISTENCE_PROVIDER: local
+      STORAGE_PROVIDER: auto
+      AUTH_PROVIDER: portable
+      REALTIME_PROVIDER: auto
+      AI_ENABLED: "false"
+      EVE_ENABLED: "false"
+      WORKFLOWS_ENABLED: "false"
+      QUEUES_ENABLED: "false"
+      SANDBOX_QA_ENABLED: "false"
+      CONVEX_URL: ""
+      NEXT_PUBLIC_CONVEX_URL: ""
+      CONVEX_DEPLOYMENT: ""
+      CONVEX_DEPLOY_KEY: ""
+      CONVEX_SERVER_TOKEN: ""
+      CONVEX_ADMIN_KEY: ""
+      DATABASE_URL: ""
+      SUPABASE_URL: ""
+      NEXT_PUBLIC_SUPABASE_URL: ""
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ""
+      SUPABASE_SERVICE_ROLE_KEY: ""
+      CLOUDFLARE_DATA_API_URL: ""
+      CLOUDFLARE_DATA_API_SECRET: ""
+      CLOUDFLARE_ACCOUNT_ID: ""
+      CLOUDFLARE_API_TOKEN: ""
+      CLOUDFLARE_D1_DATABASE_ID: ""
+      CLOUDFLARE_R2_BUCKET: ""
+      CLOUDFLARE_R2_ACCESS_KEY_ID: ""
+      CLOUDFLARE_R2_SECRET_ACCESS_KEY: ""
+      BLOB_READ_WRITE_TOKEN: ""
+      AI_GATEWAY_API_KEY: ""
+      VERCEL_OIDC_TOKEN: ""
+      VERCEL: ""
+      OPENAI_API_KEY: ""
+      ANTHROPIC_API_KEY: ""
+      GOOGLE_GENERATIVE_AI_API_KEY: ""
+      FIRECRAWL_API_KEY: ""
+      AI_GENERATION_MODEL: ""
+      AI_PLANNING_MODEL: ""
+      AI_CRITIQUE_MODEL: ""
+      AI_VISION_MODEL: ""
+      OPENAI_MODEL: ""
+      ANTHROPIC_MODEL: ""
+      GOOGLE_MODEL: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24.21.0
+          package-manager-cache: false
+      - name: Verify the reviewed baseline and log source identity
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          if (process.version !== 'v24.21.0' || pkg.dependencies.next !== '16.1.6') throw new Error('Re-review the changed runtime baseline.');
+          if (!pkg.devDependencies.vitest || pkg.dependencies['@playwright/test'] || pkg.devDependencies['@playwright/test']) throw new Error('Re-review changed test dependencies.');
+          for (const file of ['package-lock.json', 'tests/unit/source-inputs.test.ts', 'docs/proposals/source-inputs-browser.spec.ts.example']) {
+            if (!fs.existsSync(file)) throw new Error('Required reviewed source is missing: ' + file);
+          }
+          NODE
+          git rev-parse HEAD
+          sha256sum package.json package-lock.json components/visualizations/composer.tsx lib/client/composer-source-input.ts lib/client/guest-draft.ts tests/unit/source-inputs.test.ts docs/proposals/source-inputs-browser.spec.ts.example
+      - name: Name disposable runner tooling and browser output paths
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          if (!process.env.RUNNER_TEMP || !process.env.GITHUB_ENV) throw new Error('Runner paths unavailable.');
+          const root = path.join(process.env.RUNNER_TEMP, 'iv-source-inputs-' + process.env.GITHUB_RUN_ID + '-' + process.env.GITHUB_RUN_ATTEMPT);
+          fs.appendFileSync(process.env.GITHUB_ENV, [
+            'IV_SOURCE_TOOL_PREFIX=' + path.join(root, 'tools'),
+            'PLAYWRIGHT_BROWSERS_PATH=' + path.join(root, 'browsers'),
+            'IV_SOURCE_TEST_RESULTS=' + path.join(root, 'results'),
+          ].join('\n') + '\n');
+          NODE
+      - name: Install only existing locked application dependencies without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Lint only the four changed frontend files
+        run: >-
+          ./node_modules/.bin/eslint
+          components/visualizations/composer.tsx
+          lib/client/composer-source-input.ts
+          lib/client/guest-draft.ts
+          tests/unit/source-inputs.test.ts
+      - name: Run only the twelve native frontend source preservation cases
+        run: ./node_modules/.bin/vitest run tests/unit/source-inputs.test.ts
+      - name: Install the exact browser test tool outside the repository manifest
+        run: |
+          npm install --prefix "$IV_SOURCE_TOOL_PREFIX" --no-save --package-lock=false --ignore-scripts --no-audit --no-fund @playwright/test@1.61.1
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const target = path.join(process.env.IV_SOURCE_TOOL_PREFIX, 'node_modules', '@playwright', 'test');
+          const pkg = JSON.parse(fs.readFileSync(path.join(target, 'package.json'), 'utf8'));
+          if (pkg.version !== '1.61.1') throw new Error('Unexpected browser tool version.');
+          const link = path.join(process.cwd(), 'node_modules', '@playwright', 'test');
+          try {
+            fs.lstatSync(link);
+            throw new Error('Refusing to replace an existing browser tool path.');
+          } catch (error) {
+            if (error.code !== 'ENOENT') throw error;
+          }
+          fs.mkdirSync(path.dirname(link), { recursive: true });
+          fs.symlinkSync(target, link, 'dir');
+          process.stdout.write('Runner-only @playwright/test ' + pkg.version + '\n');
+          NODE
+          git diff --exit-code -- package.json package-lock.json
+      - name: Install only Chromium and its Linux dependencies in the disposable runner
+        run: node "$IV_SOURCE_TOOL_PREFIX/node_modules/@playwright/test/cli.js" install --with-deps chromium
+      - name: Copy only the reviewed browser source and prepare a focused runner configuration
+        run: |
+          mkdir -p tests/browser
+          test ! -e tests/browser/source-inputs.spec.ts
+          cp docs/proposals/source-inputs-browser.spec.ts.example tests/browser/source-inputs.spec.ts
+          cat > .source-inputs-ci.playwright.config.ts <<'CONFIG'
+          import { defineConfig, devices } from '@playwright/test';
+          const baseURL = 'http://127.0.0.1:3100';
+          export default defineConfig({
+            testDir: './tests/browser',
+            testMatch: '**/source-inputs.spec.ts',
+            forbidOnly: true,
+            fullyParallel: false,
+            workers: 1,
+            retries: 0,
+            timeout: 45_000,
+            globalTimeout: 300_000,
+            expect: { timeout: 10_000 },
+            reporter: 'line',
+            outputDir: process.env.IV_SOURCE_TEST_RESULTS,
+            use: { baseURL, trace: 'off', screenshot: 'off', video: 'off', serviceWorkers: 'block' },
+            projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+            webServer: {
+              command: 'npm run dev -- --hostname 127.0.0.1 --port 3100',
+              url: baseURL,
+              reuseExistingServer: false,
+              timeout: 120_000,
+              env: { NODE_ENV: 'development', AI_ENABLED: 'false', NEXT_TELEMETRY_DISABLED: '1' },
+            },
+          });
+          CONFIG
+      - name: Run only the four anonymous desktop and mobile source entry scenarios
+        run: node "$IV_SOURCE_TOOL_PREFIX/node_modules/@playwright/test/cli.js" test --config .source-inputs-ci.playwright.config.ts --project chromium
