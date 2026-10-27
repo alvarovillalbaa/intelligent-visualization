@@ -1,0 +1,255 @@
+// INACTIVE: requires separate browser/temporary-CI approval. Copy only in the
+// approved runner to tests/tmp/course-editor.spec.ts; relative imports depend on it.
+import { expect, test, type BrowserContext, type Locator, type Page } from "@playwright/test"
+
+import type { GeneratedDraft, StoredGuestDraft } from "../../lib/client/guest-draft"
+import type { CourseVisualizationDocument } from "../../packages/domain/entities"
+import { createStarterCourseDocument, createStarterReportDocument } from "../../packages/domain/fixtures"
+
+const KEY = "iv:guest-draft:v2"
+const SOURCE = "Authored browser-check source. No account, URL, uploaded file or model request."
+const ORIGINAL_TITLE = "Authored Course before editing"
+type Harness = { unexpected: string[]; generation: string[]; artifacts: number; pageErrors: string[] }
+const harnesses = new WeakMap<BrowserContext, Harness>()
+
+function fixtures(): Record<"course" | "report", GeneratedDraft> {
+  const course = createStarterCourseDocument()
+  course.title = ORIGINAL_TITLE
+  course.summary = "Authored course summary."
+  const lesson = course.course.modules[0].lessons[0]
+  lesson.title = "Authored lesson"
+  lesson.blocks = [{ id: "authored-content", kind: "prose", text: "Authored original prose." }]
+  lesson.practice = [{
+    id: "authored-question", kind: "multiple-choice-check", prompt: "Which authored choice is correct?",
+    options: ["Authored first choice", "Authored correct choice", "Authored third choice"], answerIndex: 1,
+    explanation: "The authored second choice is correct.",
+  }]
+  course.sourceManifest = [{ id: "authored-source", label: "Authored notes", kind: "paste", contentHash: "authored-hash", provenance: "Disposable browser fixture" }]
+  const report = createStarterReportDocument()
+  report.title = "Untouched authored Report"
+  report.report.blocks = [{ id: "authored-report-heading", kind: "heading", level: 1, text: "Untouched authored report evidence" }]
+  report.report.layouts = {
+    lg: [{ blockId: "authored-report-heading", x: 0, y: 0, w: 12, h: 2 }],
+    md: [{ blockId: "authored-report-heading", x: 0, y: 0, w: 8, h: 2 }],
+    sm: [{ blockId: "authored-report-heading", x: 0, y: 0, w: 4, h: 2 }],
+  }
+  report.report.dataSources = []
+  const metadata = { provider: "authored-browser-mock", modelName: "course-editor-fixture", generatedAt: Date.now(), deckSource: null, artifactHtml: null }
+  return { course: { ...metadata, kind: "course", document: course }, report: { ...metadata, kind: "report", document: report } }
+}
+
+test.beforeEach(async ({ context, page, baseURL }) => {
+  expect(baseURL).toBe("http://127.0.0.1:3100")
+  expect(await context.cookies()).toEqual([])
+  const origin = new URL(baseURL!).origin
+  const authored = fixtures()
+  const state: Harness = { unexpected: [], generation: [], artifacts: 0, pageErrors: [] }
+  harnesses.set(context, state)
+  page.on("pageerror", (error) => state.pageErrors.push(error.message))
+  await context.route("**/*", async (route) => {
+    const request = route.request(), url = new URL(request.url())
+    if (url.origin !== origin) {
+      state.unexpected.push(`${request.method()} ${url.origin}${url.pathname}`)
+      await route.abort("blockedbyclient")
+      return
+    }
+    if (request.method() === "POST" && url.pathname === "/api/visualizations/generate") {
+      const body = request.postDataJSON() as { kind?: string; generationInput?: { rawText?: string } }
+      if ((body.kind !== "course" && body.kind !== "report") || body.generationInput?.rawText !== SOURCE) {
+        state.unexpected.push("Unexpected generation payload")
+        await route.fulfill({ status: 400, json: { error: "Authored harness rejected the payload." } })
+      } else {
+        state.generation.push(body.kind)
+        await route.fulfill({ status: 200, json: structuredClone(authored[body.kind]) })
+      }
+      return
+    }
+    if (request.method() === "POST" && url.pathname === "/api/visualizations/artifact") {
+      state.artifacts++
+      await route.fulfill({ status: 200, json: { artifactHtml: "<!doctype html><html><body>Unused authored artifact fixture.</body></html>" } })
+      return
+    }
+    // No other app page, API read, server action or HTTP mutation is allowed.
+    if (!["GET", "HEAD"].includes(request.method()) || !(url.pathname === "/" || url.pathname.startsWith("/_next/") || url.pathname === "/favicon.ico")) {
+      state.unexpected.push(`${request.method()} ${url.pathname}`)
+      await route.abort("blockedbyclient")
+      return
+    }
+    await route.continue()
+  })
+})
+
+test.afterEach(async ({ context }) => {
+  const state = harnesses.get(context)!
+  expect(state.unexpected, "No unmocked API, mutation, navigation or external request").toEqual([])
+  expect(state.generation, "Only the two intercepted fixture responses").toEqual(["course", "report"])
+  expect(state.artifacts, "Course and Report use the actual React previews").toBe(0)
+  expect(state.pageErrors).toEqual([])
+})
+
+function card(page: Page, kind: "Course" | "Report") {
+  return page.getByRole("region", { name: "Generation results", exact: true }).getByRole("listitem")
+    .filter({ has: page.getByRole("heading", { name: kind, level: 3, exact: true }) })
+}
+function editor(page: Page) { return page.getByRole("dialog", { name: "Edit course", exact: true }) }
+async function stored(page: Page): Promise<StoredGuestDraft> {
+  return page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), KEY)
+}
+function courseOf(snapshot: StoredGuestDraft): CourseVisualizationDocument {
+  const document = snapshot.batch?.results.find((result) => result.kind === "course")?.draft?.document
+  if (!document || document.kind !== "course") throw new Error("Missing authored stored Course")
+  return document
+}
+async function activate(control: Locator, mobile: boolean) { if (mobile) await control.tap(); else await control.click() }
+async function generate(page: Page) {
+  await page.goto("/")
+  await page.getByRole("textbox", { name: "Text or link", exact: true }).fill(SOURCE)
+  await page.getByRole("button", { name: "Continue", exact: true }).click()
+  const formats = page.getByRole("group", { name: "Draft formats", exact: true })
+  await formats.getByRole("button", { name: /^Slides deck\b/ }).click()
+  await formats.getByRole("button", { name: /^Course\b/ }).click()
+  await formats.getByRole("button", { name: /^Report\b/ }).click()
+  await page.getByRole("button", { name: "Create drafts", exact: true }).click()
+  await expect(card(page, "Course")).toContainText("Course draft ready")
+  await expect(card(page, "Report")).toContainText("AI draft ready")
+  await expect.poll(async () => (await stored(page)).batch?.results.map((result) => result.status)).toEqual(["completed", "completed"])
+}
+async function openEditor(page: Page, mobile: boolean) {
+  const trigger = card(page, "Course").getByRole("button", { name: "Edit Course", exact: true })
+  await trigger.focus()
+  await activate(trigger, mobile)
+  await expect(editor(page)).toBeVisible()
+  return trigger
+}
+async function expectFit(page: Page) {
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
+  expect(await editor(page).evaluate((element) => {
+    const box = element.getBoundingClientRect()
+    return box.left >= -1 && box.right <= innerWidth + 1 && box.top >= -1 && box.bottom <= innerHeight + 1 && element.scrollWidth <= element.clientWidth + 1
+  })).toBe(true)
+}
+async function expectTarget(control: Locator) {
+  const box = await control.boundingBox()
+  expect(box).not.toBeNull()
+  expect(box!.height).toBeGreaterThanOrEqual(44)
+  expect(box!.width).toBeGreaterThanOrEqual(44)
+}
+
+test("typed Course edits preview and apply, retain sibling Report and survive the four-hour guest snapshot reload", async ({ page }, testInfo) => {
+  await generate(page)
+  const before = await stored(page)
+  const report = before.batch!.results.find((result) => result.kind === "report")
+  await openEditor(page, testInfo.project.name === "mobile")
+  const dialog = editor(page)
+  await dialog.getByRole("textbox", { name: "Title", exact: true }).fill("Edited authored Course")
+  await dialog.getByRole("textbox", { name: "Subtitle", exact: true }).fill("Edited authored subtitle")
+  await dialog.getByRole("textbox", { name: "Lesson feedback", exact: true }).fill("Edited authored feedback")
+  const content = dialog.getByRole("region", { name: "Content", exact: true })
+  await content.getByRole("textbox", { name: "Prose text", exact: true }).fill("Edited authored prose")
+  await content.getByRole("combobox", { name: "New content block type", exact: true }).selectOption("heading")
+  await content.getByRole("button", { name: "Add content block", exact: true }).click()
+  await content.getByRole("textbox", { name: "Heading text", exact: true }).fill("Edited authored heading")
+  const practice = dialog.getByRole("region", { name: "Practice", exact: true })
+  await practice.getByRole("textbox", { name: "Option 2", exact: true }).fill("Edited correct choice")
+  await practice.getByRole("button", { name: "Move option 2 up", exact: true }).click()
+  await expect(practice.getByRole("radio", { name: "Correct answer: option 1", exact: true })).toBeChecked()
+  await practice.getByRole("button", { name: "Add answer option", exact: true }).click()
+  await practice.getByRole("textbox", { name: "Option 4", exact: true }).fill("Authored fourth choice")
+  await dialog.getByRole("button", { name: "Preview draft", exact: true }).click()
+  const preview = dialog.getByRole("region", { name: "Unapplied course preview", exact: true })
+  await expect(preview.getByRole("heading", { name: "Edited authored Course", exact: true })).toBeVisible()
+  await expect(preview.getByRole("heading", { name: "Edited authored heading", exact: true })).toBeVisible()
+  await expect(preview.getByText("Edited authored subtitle", { exact: true })).toBeVisible()
+  await expect(preview.getByText("Edited authored feedback", { exact: true })).toBeVisible()
+  await expect(preview.getByText("Edited authored prose", { exact: true })).toBeVisible()
+  await expect(preview.getByRole("button", { name: "Edited correct choice", exact: true })).toBeVisible()
+  expect(courseOf(await stored(page))).toEqual(courseOf(before))
+  await dialog.getByRole("button", { name: "Apply changes", exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect(page.getByRole("heading", { name: "Edited authored Course", exact: true })).toBeVisible()
+  await expect.poll(async () => courseOf(await stored(page)).title).toBe("Edited authored Course")
+  const after = await stored(page)
+  const edited = courseOf(after), lesson = edited.course.modules[0].lessons[0]
+  expect(edited.subtitle).toBe("Edited authored subtitle")
+  expect(lesson.feedback).toBe("Edited authored feedback")
+  expect(lesson.blocks).toHaveLength(2)
+  expect(lesson.blocks[0]).toEqual({ id: "authored-content", kind: "prose", text: "Edited authored prose" })
+  expect(lesson.blocks[1]).toMatchObject({ kind: "heading", text: "Edited authored heading" })
+  const question = lesson.practice[0]
+  if (question.kind !== "multiple-choice-check") throw new Error("The authored question type changed")
+  expect(question.options).toEqual(["Edited correct choice", "Authored first choice", "Authored third choice", "Authored fourth choice"])
+  expect(question.answerIndex).toBe(0)
+  expect(after.expiresAt - after.savedAt).toBe(4 * 60 * 60 * 1000)
+  expect(after.batch!.results.find((result) => result.kind === "report")).toEqual(report)
+  expect(courseOf(after).sourceManifest).toEqual(courseOf(before).sourceManifest)
+  expect(courseOf(after).theme).toEqual(courseOf(before).theme)
+  await page.reload()
+  await expect(card(page, "Course")).toContainText("Edited authored Course")
+  expect(courseOf(await stored(page))).toEqual(courseOf(after))
+  expect((await stored(page)).batch!.results.find((result) => result.kind === "report")).toEqual(report)
+})
+
+test("pristine Cancel and dirty Escape/backdrop keep or discard without replacing the original, with focus return and no horizontal overflow", async ({ page }, testInfo) => {
+  const mobile = testInfo.project.name === "mobile"
+  await generate(page)
+  const before = courseOf(await stored(page))
+  let trigger = await openEditor(page, mobile)
+  await expectFit(page)
+  await expectTarget(editor(page).getByRole("button", { name: "Cancel", exact: true }))
+  await activate(editor(page).getByRole("button", { name: "Cancel", exact: true }), mobile)
+  await expect(editor(page)).toHaveCount(0)
+  await expect(trigger).toBeFocused()
+  trigger = await openEditor(page, mobile)
+  const title = editor(page).getByRole("textbox", { name: "Title", exact: true })
+  await title.fill("Unapplied title to discard")
+  await page.keyboard.press("Escape")
+  const confirmation = editor(page).getByRole("group", { name: "Discard unapplied changes?", exact: true })
+  await expect(confirmation).toBeVisible()
+  await expectTarget(confirmation.getByRole("button", { name: "Keep editing", exact: true }))
+  await activate(confirmation.getByRole("button", { name: "Keep editing", exact: true }), mobile)
+  await expect(confirmation).toHaveCount(0)
+  await expect(title).toHaveValue("Unapplied title to discard")
+  await expect(title).toBeFocused()
+  if (mobile) await page.touchscreen.tap(1, 1); else await page.mouse.click(1, 1)
+  await expect(confirmation).toBeVisible()
+  await expectFit(page)
+  await activate(confirmation.getByRole("button", { name: "Discard changes", exact: true }), mobile)
+  await expect(editor(page)).toHaveCount(0)
+  await expect(trigger).toBeFocused()
+  expect(courseOf(await stored(page))).toEqual(before)
+  await openEditor(page, mobile)
+  await expect(editor(page).getByRole("textbox", { name: "Title", exact: true })).toHaveValue(ORIGINAL_TITLE)
+  await activate(editor(page).getByRole("button", { name: "Cancel", exact: true }), mobile)
+})
+
+test("invalid question and minutes block Apply; quota failure keeps the old saved copy and exposes the new in-memory draft warning", async ({ page }, testInfo) => {
+  await generate(page)
+  const beforeRaw = await page.evaluate((key) => localStorage.getItem(key), KEY)
+  await openEditor(page, testInfo.project.name === "mobile")
+  const dialog = editor(page), practice = dialog.getByRole("region", { name: "Practice", exact: true })
+  await practice.getByRole("button", { name: "Remove option 2", exact: true }).click()
+  await dialog.getByRole("button", { name: "Apply changes", exact: true }).click()
+  await expect(dialog.getByRole("alert")).toContainText(/answer|option/i)
+  await expect(dialog).toBeVisible()
+  await practice.getByRole("radio", { name: "Correct answer: option 1", exact: true }).check()
+  await dialog.getByRole("spinbutton", { name: "Estimated lesson minutes", exact: true }).fill("0")
+  await dialog.getByRole("button", { name: "Apply changes", exact: true }).click()
+  await expect(dialog.getByRole("alert")).toContainText(/estimatedMinutes|duration|positive|greater/i)
+  await dialog.getByRole("spinbutton", { name: "Estimated lesson minutes", exact: true }).fill("5")
+  await dialog.getByRole("textbox", { name: "Title", exact: true }).fill("Quota-only in-memory Course")
+  await page.evaluate((key) => {
+    const original = Storage.prototype.setItem
+    Storage.prototype.setItem = function (name: string, value: string) {
+      if (this === localStorage && name === key) throw new DOMException("Authored quota failure", "QuotaExceededError")
+      return original.call(this, name, value)
+    }
+  }, KEY)
+  await dialog.getByRole("button", { name: "Apply changes", exact: true }).click()
+  await expect(dialog).toHaveCount(0)
+  await expect(page.getByRole("heading", { name: "Quota-only in-memory Course", exact: true })).toBeVisible()
+  // The root status also has this copy. Select the actual preview's live note.
+  await expect(page.locator('[role="status"][aria-live="polite"]').filter({ hasText: "Browser storage is unavailable or full." })).toContainText("have not been saved for reload")
+  expect(await page.evaluate((key) => localStorage.getItem(key), KEY)).toBe(beforeRaw)
+  await page.reload() // Authored fixture only; the injected prototype failure ends with this document.
+  await expect(card(page, "Course")).toContainText(ORIGINAL_TITLE)
+})

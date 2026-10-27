@@ -1,7 +1,8 @@
 # Course draft authoring
 
-27 October 2026. Source implementation and 63 focused checks complete;
-publication/build verification pending. The all-project goal is active.
+27 October 2026 (UTC). Source published, 63 focused checks passed, and hosted
+build/delivery verified. Browser acceptance remains pending. The all-project
+goal is active.
 
 The owning [Course authoring](../../../course-authoring.md) and implementation
 plan identified an absent editor. The latest fetched Notion child lists the
@@ -84,6 +85,43 @@ helper/cache-loader/case-entry source SHA256 is
 
 No local install,
 full Next build, broad TypeScript program, browser, model, provider or backend
-test ran. Hosted build/source delivery will be recorded after publication;
-browser acceptance, real generation and durable all-format workflows remain
-unverified. Existing generation-check approval requests remain pending.
+test ran. Browser acceptance, real generation and durable all-format workflows
+remain unverified. Existing generation-check approval requests remain pending.
+
+## Publication and hosted proof
+
+Source
+[`58d21fdf346538d74660a6473684c55f39be55f0`](https://github.com/alvarovillalbaa/intelligent-visualization/commit/58d21fdf346538d74660a6473684c55f39be55f0)
+was pushed to personal-repository `main`. Immutable connected GitHub readback
+matches local blobs for CourseEditor (`ca8cf08c71768c82e12b58bc7a4e3c3080d936d9`),
+the authoring helper (`7693937aa8695c34ac70704fccacb4e19b23d297`) and Composer
+(`0710f7f1974f7cc48ad01713cdcab07ba586f3c5`).
+
+The commit-specific `[skip actions]` annotation leaves the broad backend/provider
+workflow unrun; its file is unchanged. The SHA/event-filtered Actions API
+returned zero push runs. No green GitHub CI claim is made.
+
+Vercel production
+[`dpl_9rEY2epv61sazMVHVnWnCDFpyYx7`](https://vercel.com/my-team-4f230354/intelligent-visualization/9rEY2epv61sazMVHVnWnCDFpyYx7)
+is READY at that exact source SHA. Logs confirm successful compilation, a
+TypeScript step, completed build output and deployment. This is the actual
+locked-dependency hosted build; the earlier borrowed-toolchain semantic checks
+are not substituted for it. The canonical alias lookup identifies the same
+deployment. Public homepage and client chunk requests returned 200.
+
+The served editor chunk `447-acb9e0b4c7e0f042.js` contains Edit Course, Apply
+changes, Preview draft, Discard changes, original-generation provenance and
+storage-warning code. Its SHA256 is
+`9a452c40067a54410e2201a4182149892ac3b79e6d951c36be30072c4774973e`.
+Six checked client chunks totalled under 1 MiB; source/delivery inspection is not
+rendered browser proof. The default-range connected runtime-error query returned
+no errors, without establishing browser telemetry or continuous monitoring.
+Task-owned public downloads and baseline copies were removed after inspection.
+A docs/proposal-only follow-up can redeploy these same runtime/test bytes.
+
+The [six-check browser proposal](../../../proposals/course-editor-browser.md)
+is prepared on 28 October local time with an exact inactive spec/config/workflow.
+Its TS syntax, YAML, embedded shell syntax, paths and selectors were reviewed;
+the browser checks and runner have not executed. Approval is required by the
+supplied AGENTS.md sections 7 and 14. This new authoring scope does not consume
+or replace the separately pending generation-check proposal.

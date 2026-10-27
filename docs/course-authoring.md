@@ -52,7 +52,8 @@ remain freeform text. Unrecognized fields and non-JSON values reject.
 
 These are client authoring bounds, not a schema/provider migration. Native
 browser interaction and the production storage effect still need browser checks;
-see the [focused source receipt](results/2026/10-27/course-editor.md).
+see the [focused source receipt](results/2026/10-27/course-editor.md) and
+[inactive six-check browser proposal](proposals/course-editor-browser.md).
 
 Remaining work includes additional block kinds beyond the existing six,
 hosted Course saving/publication, generation/provider acceptance and progress
