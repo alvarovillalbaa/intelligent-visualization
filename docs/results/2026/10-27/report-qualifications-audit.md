@@ -1,6 +1,6 @@
 # Source audit: report qualifications are hidden in preview
 
-27 October 2026. **Open finding; the renderer is not fixed by this record.**
+27 October 2026. Historical finding, now addressed by the [preview repair](report-qualifications.md). That receipt owns focused checks, publication status and remaining acceptance limits.
 Inspected Git revision: `6c88958046e45d9c856514f69430355f19d7627e`; checkout was clean before this documentation change.
 
 ## Contract and trigger
@@ -23,4 +23,4 @@ Do not infer that this UI correction completes all-format persistence or publica
 ## Evidence boundary
 
 Read-only source inspection only: no tests, build, browser, generation, model call or provider operation ran for this audit. No production data was read or changed; provider/model cost was zero.
-Only this findings document was added. `git diff --check` and the untracked-file whitespace check passed; all six local file links resolve. Implementation and focused rendering acceptance remain future work.
+Only this findings document was added during the original audit. `git diff --check` and the untracked-file whitespace check passed; all six local file links resolved. The later repair has its own receipt and does not turn the original inspection into browser or provider acceptance.

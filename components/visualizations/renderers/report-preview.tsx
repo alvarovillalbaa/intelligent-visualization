@@ -26,15 +26,12 @@ function seriesColor(spec: ChartSpec, index: number) {
 }
 
 function ChartBlock({ spec }: { spec: ChartSpec }) {
-  if (!spec.data.length || !spec.series.length) {
-    return null
-  }
-
+  const hasChart = spec.data.length > 0 && spec.series.length > 0
   const xKey = spec.xKey ?? Object.keys(spec.data[0] ?? {})[0]
 
   let chart: React.ReactNode = null
 
-  if (spec.type === "pie" || spec.type === "donut") {
+  if (hasChart && (spec.type === "pie" || spec.type === "donut")) {
     const valueKey = spec.series[0].key
     chart = (
       <PieChart>
@@ -52,7 +49,7 @@ function ChartBlock({ spec }: { spec: ChartSpec }) {
         <Tooltip />
       </PieChart>
     )
-  } else if (spec.type === "line") {
+  } else if (hasChart && spec.type === "line") {
     chart = (
       <LineChart data={spec.data}>
         <CartesianGrid strokeDasharray="3 3" stroke="var(--iv-border)" />
@@ -64,7 +61,7 @@ function ChartBlock({ spec }: { spec: ChartSpec }) {
         ))}
       </LineChart>
     )
-  } else if (spec.type === "area") {
+  } else if (hasChart && spec.type === "area") {
     chart = (
       <AreaChart data={spec.data}>
         <CartesianGrid strokeDasharray="3 3" stroke="var(--iv-border)" />
@@ -76,7 +73,7 @@ function ChartBlock({ spec }: { spec: ChartSpec }) {
         ))}
       </AreaChart>
     )
-  } else {
+  } else if (hasChart) {
     chart = (
       <BarChart data={spec.data}>
         <CartesianGrid strokeDasharray="3 3" stroke="var(--iv-border)" />
@@ -96,11 +93,15 @@ function ChartBlock({ spec }: { spec: ChartSpec }) {
         <p className="text-sm font-semibold">{spec.title}</p>
         {spec.description ? <p className="mt-1 text-sm leading-6 opacity-70">{spec.description}</p> : null}
       </figcaption>
-      <div className="h-64 w-full" role="img" aria-label={spec.accessibleLabel}>
-        <ResponsiveContainer width="100%" height="100%">
-          {chart as React.ReactElement}
-        </ResponsiveContainer>
-      </div>
+      {chart ? (
+        <div className="h-64 w-full" role="img" aria-label={spec.accessibleLabel}>
+          <ResponsiveContainer width="100%" height="100%">
+            {chart as React.ReactElement}
+          </ResponsiveContainer>
+        </div>
+      ) : <p className="text-sm opacity-70">No chart data available.</p>}
+      {spec.illustrative ? <p className="text-xs font-medium">Illustrative values.</p> : null}
+      {spec.provenance ? <p className="break-words text-xs leading-5 opacity-70">{spec.provenance}</p> : null}
       {spec.source ? <p className="text-xs opacity-60">Source: {spec.source}</p> : null}
     </figure>
   )
@@ -151,6 +152,7 @@ function ReportBlockView({ block }: { block: ReportBlock }) {
             {block.value}
           </p>
           <p className="mt-1 text-sm leading-6 opacity-70">{block.detail}</p>
+          {block.provenance ? <p className="mt-2 break-words text-xs leading-5 opacity-70">{block.provenance}</p> : null}
         </div>
       )
     case "chart":
@@ -181,6 +183,7 @@ function ReportBlockView({ block }: { block: ReportBlock }) {
               ))}
             </tbody>
           </table>
+          {block.provenance ? <p className="break-words text-xs leading-5 opacity-70">{block.provenance}</p> : null}
         </div>
       )
     case "tabs":

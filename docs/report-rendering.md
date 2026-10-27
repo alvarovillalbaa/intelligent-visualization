@@ -9,3 +9,9 @@ Rationale:
 - Inline SVG keeps the artifact deterministic and easy to hash.
 
 The editor may continue to use shadcn charts over Recharts. The artifact compiler owns the standalone rendering strategy.
+
+The React report preview displays chart, KPI and table provenance as supplied
+text, including nested tab blocks. Charts marked illustrative visibly say
+“Illustrative values.” separately from their source. Empty charts keep their
+title and qualifications with an explicit missing-data message and no graph.
+See the [preview repair and focused proof limits](results/2026/10-27/report-qualifications.md).
