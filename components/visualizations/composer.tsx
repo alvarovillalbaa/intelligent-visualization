@@ -57,6 +57,11 @@ type ComposerProps = { introduction?: ReactNode } & (
 
 type StyleDecision = "accepted" | "shuffled" | "skipped" | null
 
+type ExtractionRequest = {
+  controller: AbortController
+  timer?: ReturnType<typeof setTimeout>
+}
+
 type CourseEditContext = {
   id: string
   batchId: string
@@ -129,6 +134,7 @@ export function Composer(props: ComposerProps) {
   const mountedRef = useRef(true)
   const generationBusyRef = useRef(false)
   const requestRef = useRef<AbortController | null>(null)
+  const extractionRef = useRef<ExtractionRequest | null>(null)
   const importEpochRef = useRef(0)
   const pendingImportsRef = useRef(0)
   const batchRef = useRef<GenerationBatch | null>(null)
@@ -171,6 +177,7 @@ export function Composer(props: ComposerProps) {
       importEpochRef.current++
       pendingImportsRef.current = 0
       requestRef.current?.abort()
+      invalidateExtraction()
       courseEditorRef.current = null
       reportEditorRef.current = null
     }
@@ -362,11 +369,35 @@ export function Composer(props: ComposerProps) {
     setFiles((current) => current.filter((file) => file.name !== name))
   }
 
+  function invalidateExtraction() {
+    const pending = extractionRef.current
+    extractionRef.current = null
+    clearTimeout(pending?.timer)
+    pending?.controller.abort()
+  }
+
   function startExtraction(url: string) {
+    if (!mountedRef.current) return
+    invalidateExtraction()
+    const controller = new AbortController()
+    const request: ExtractionRequest = { controller }
+    extractionRef.current = request
     setStyle({ status: "loading", url })
 
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), EXTRACTION_TIMEOUT_MS)
+    const isCurrent = () => mountedRef.current && extractionRef.current === request
+    const markUnavailable = () => {
+      if (!isCurrent()) return
+      setStyle((current) =>
+        isCurrent() && current.status === "loading" && current.url === url
+          ? { status: "unavailable", url }
+          : current,
+      )
+    }
+    request.timer = setTimeout(() => {
+      if (!isCurrent()) return
+      controller.abort()
+      markUnavailable()
+    }, EXTRACTION_TIMEOUT_MS)
 
     fetch("/api/brand/extract", {
       method: "POST",
@@ -382,8 +413,9 @@ export function Composer(props: ComposerProps) {
           proposedTheme?: ThemeTokens
         }
 
+        if (!isCurrent() || controller.signal.aborted) return
         setStyle((current) => {
-          if (current.status !== "loading" || current.url !== url) {
+          if (!isCurrent() || controller.signal.aborted || current.status !== "loading" || current.url !== url) {
             return current
           }
           if (payload.available && payload.brandKit && payload.proposedTheme) {
@@ -401,14 +433,9 @@ export function Composer(props: ComposerProps) {
           return { status: "unavailable", url, markdown: payload.markdown }
         })
       })
-      .catch(() => {
-        setStyle((current) =>
-          current.status === "loading" && current.url === url
-            ? { status: "unavailable", url }
-            : current,
-        )
-      })
-      .finally(() => clearTimeout(timer))
+      .catch(markUnavailable)
+      // Retain the handle until invalidation so queued React updaters keep ownership.
+      .finally(() => clearTimeout(request.timer))
   }
 
   function handleContinue() {
@@ -420,8 +447,9 @@ export function Composer(props: ComposerProps) {
     if (detectedUrl && (style.status === "idle" || ("url" in style && style.url !== detectedUrl))) {
       startExtraction(detectedUrl)
     }
-    if (!detectedUrl && style.status !== "idle") {
-      setStyle({ status: "idle" })
+    if (!detectedUrl) {
+      invalidateExtraction()
+      if (style.status !== "idle") setStyle({ status: "idle" })
     }
   }
 
@@ -594,6 +622,7 @@ export function Composer(props: ComposerProps) {
 
   function startOver() {
     if (generationBusyRef.current) return
+    invalidateExtraction()
     importEpochRef.current++
     pendingImportsRef.current = 0
     setImporting(false)
