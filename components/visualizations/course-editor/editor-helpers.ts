@@ -12,8 +12,8 @@ export function moveAt<T>(items: T[], index: number, offset: -1 | 1): T[] {
 }
 
 export function removeLessonLinks(draft: CourseVisualizationDocument, removedIDs: Set<string>) {
-  for (const module of draft.course.modules) {
-    for (const lesson of module.lessons) {
+  for (const courseModule of draft.course.modules) {
+    for (const lesson of courseModule.lessons) {
       lesson.prerequisiteIds = lesson.prerequisiteIds.filter((id) => !removedIDs.has(id))
     }
   }

@@ -61,22 +61,22 @@ for (const relative of helperFiles) {
   // a new helper that did not exist in that immutable revision.
   if (source.includes('@/' + relative.slice(0, -3))) actualHelper(relative);
 }
-const module = { exports: {} };
+const moduleRecord = { exports: {} };
 vm.runInNewContext('(function (exports, require, module) {\n' + compiled.outputText + '\n})', {
   fetch() { throw new Error('Network is forbidden in report preview checks.'); },
 }, { filename: sourcePath })(
-  module.exports,
+  moduleRecord.exports,
   (specifier) => {
     assert.ok(runtime.has(specifier), 'Unexpected renderer runtime import: ' + specifier);
     return runtime.get(specifier);
   },
-  module,
+  moduleRecord,
 );
-const { ReportPreview } = module.exports;
+const { ReportPreview } = moduleRecord.exports;
 
 export const reportPreviewHarness = {
-  React, Recharts: runtime.get('recharts'), ChartBlock: module.exports.__ChartBlock,
-  sourceFunctions: new Set(module.exports.__SourceFunctions),
+  React, Recharts: runtime.get('recharts'), ChartBlock: moduleRecord.exports.__ChartBlock,
+  sourceFunctions: new Set(moduleRecord.exports.__SourceFunctions),
 };
 
 function chart(overrides = {}) {

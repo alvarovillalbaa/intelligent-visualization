@@ -1,5 +1,8 @@
 // Tier 2: authored inputs through actual React SSR and direct source callbacks.
 // UI hosts and a bounded hook harness do not prove browser events/focus/layout.
+// Layout-effect callbacks commit only after a completed render; commit:false
+// discards pending layout effects and replaced state cells. Ref objects remain
+// shared so eager render-time ref mutations are still observable regressions.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -12,10 +15,12 @@ const repository = fileURLToPath(new URL('../../', import.meta.url));
 const load = createRequire(path.join(process.env.IV_TEST_PROJECT_ROOT || repository, 'package.json'));
 const ts = load('typescript'), React = load('react');
 const { renderToStaticMarkup } = load('react-dom/server');
-let activeHarness = null, sequence = 0;
+const harnessStack = [];
+let sequence = 0;
 function cell(initial) {
-  assert.ok(activeHarness, 'Hooks require the authored source harness.');
-  const harness = activeHarness, index = harness.cursor++;
+  const harness = harnessStack.at(-1);
+  assert.ok(harness, 'Hooks require the authored source harness.');
+  const index = harness.cursor++;
   if (!(index in harness.cells)) harness.cells[index] = typeof initial === 'function' ? initial() : initial;
   return [harness, index];
 }
@@ -23,12 +28,27 @@ const callbackReact = {
   ...React,
   useState(initial) { const [h, i] = cell(initial); return [h.cells[i], (next) => { h.cells[i] = typeof next === 'function' ? next(h.cells[i]) : next; }]; },
   useRef(initial) { const [h, i] = cell(() => ({ current: initial })); return h.cells[i]; },
-  useId() { const [h, i] = cell(() => `report-${activeHarness.id}-${activeHarness.cursor}`); return h.cells[i]; },
+  useId() { const [h, i] = cell(() => `report-${harnessStack.at(-1).id}-${harnessStack.at(-1).cursor}`); return h.cells[i]; },
   useEffect() { cell(undefined); },
+  useLayoutEffect(callback, deps) {
+    const [h, i] = cell(() => ({ deps: null, cleanup: null })), prior = h.cells[i];
+    if (!prior.deps || !deps || deps.length !== prior.deps.length || deps.some((value, index) => !Object.is(value, prior.deps[index]))) h.layoutEffects.push({ slot: prior, deps, callback });
+  },
 };
 class Harness {
-  constructor(Component, props) { this.Component = Component; this.props = props; this.cells = []; this.cursor = 0; this.id = ++sequence; }
-  render() { const previous = activeHarness; activeHarness = this; this.cursor = 0; try { return this.Component(this.props); } finally { activeHarness = previous; } }
+  constructor(Component, props) { this.Component = Component; this.props = props; this.cells = []; this.cursor = 0; this.id = ++sequence; this.layoutEffects = []; }
+  render({ commit = true } = {}) {
+    const previousCells = this.cells.slice();
+    harnessStack.push(this); this.cursor = 0; this.layoutEffects = [];
+    let tree;
+    try { tree = this.Component(this.props); } finally { harnessStack.pop(); }
+    const pending = this.layoutEffects; this.layoutEffects = [];
+    if (!commit) { this.cells = previousCells; return tree; }
+    for (const effect of pending) {
+      effect.slot.cleanup?.(); effect.slot.cleanup = effect.callback(); effect.slot.deps = effect.deps;
+    }
+    return tree;
+  }
 }
 function host(tag) { return function Host({ children, variant, size, showCloseButton, open, onOpenChange, ...props }) { return React.createElement(tag, props, children); }; }
 const ui = {
@@ -45,7 +65,7 @@ function runtime(react) {
     const compiled = ts.transpileModule(readFileSync(filename, 'utf8'), { fileName: filename, reportDiagnostics: true,
       compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } });
     assert.equal(compiled.diagnostics.length, 0, filename + ' must transpile without syntax diagnostics.');
-    const module = { exports: {} }; modules.set(filename, module);
+    const moduleRecord = { exports: {} }; modules.set(filename, moduleRecord);
     const require = (specifier) => {
       if (specifier === 'react') return react;
       if (specifier === 'react/jsx-runtime' || specifier === 'recharts') return load(specifier);
@@ -57,8 +77,8 @@ function runtime(react) {
       for (const extension of ['.ts', '.tsx']) { try { readFileSync(base + extension); } catch { continue; } return source(base + extension); }
       throw new Error('No source module for ' + specifier);
     };
-    vm.runInContext('(function(exports,require,module){\n' + compiled.outputText + '\n})', context, { filename })(module.exports, require, module);
-    return module.exports;
+    vm.runInContext('(function(exports,require,module){\n' + compiled.outputText + '\n})', context, { filename })(moduleRecord.exports, require, moduleRecord);
+    return moduleRecord.exports;
   }
   return { source };
 }
@@ -225,7 +245,7 @@ export function registerReportEditorChecks(test) {
     const tree = h.render(); one(tree, (element) => element.props.ref && element.props['aria-label'] === 'lg layout, 12 columns').props.ref.current = { getBoundingClientRect() { return { width }; } };
     const event = (x, y, pointerId = 1) => ({ button: 0, isPrimary: true, pointerId, clientX: x, clientY: y, currentTarget: node, preventDefault() {} });
     const handle = (mode = 'Drag') => one(h.render(), (element) => element.props['aria-label'] === `${mode} selected block`);
-    return { h, event, handle, changes, errors, resize(widthValue) { width = widthValue; } };
+    return { h, event, handle, changes, errors, isCaptured() { return captured; }, resize(widthValue) { width = widthValue; } };
   }
   test('pointer move stays transient and only the owning release commits one snapped change', () => {
     const p = pointerHarness(); p.handle().props.onPointerDown(p.event(100, 100)); p.handle().props.onPointerMove(p.event(47, 152));
@@ -243,5 +263,41 @@ export function registerReportEditorChecks(test) {
     assert.deepEqual(plain(p.changes[0].patch), { x: 8, y: 2, w: 3, h: 4 });
     const stale = pointerHarness(); stale.handle().props.onPointerDown(stale.event(100, 100)); stale.h.props = { ...stale.h.props, document: freeze(report()) }; stale.h.render(); stale.handle().props.onPointerUp(stale.event(150, 150)); assert.equal(stale.changes.length, 0);
     const staged = pointerHarness(); staged.handle().props.onPointerDown(staged.event(100, 100)); staged.h.props = { ...staged.h.props, disabled: true }; staged.h.render(); staged.handle().props.onPointerUp(staged.event(150, 150)); assert.equal(staged.changes.length, 0);
+  });
+  test('an abandoned render cannot replace the committed pointer gesture owner', () => {
+    const p = pointerHarness(), committed = p.h.props, handle = p.handle();
+    handle.props.onPointerDown(p.event(100, 100));
+    p.h.props = { ...committed, document: freeze(report()) };
+    p.h.render({ commit: false });
+    p.h.props = committed;
+    handle.props.onPointerUp(p.event(47, 152));
+    assert.equal(p.changes.length, 1); assert.equal(p.errors.length, 0);
+    assert.equal(p.changes[0].id, committed.selectedId);
+    assert.deepEqual(plain(p.changes[0].patch), { x: 7, y: 3, w: 4, h: 3 });
+    handle.props.onPointerUp(p.event(47, 152)); assert.equal(p.changes.length, 1);
+  });
+  test('committed context changes clear the ghost and capture without reviving the old gesture', () => {
+    for (const change of [{ document: freeze(report()) }, { disabled: true }]) {
+      const p = pointerHarness(), committed = p.h.props, handle = p.handle(), release = p.event(47, 152);
+      handle.props.onPointerDown(p.event(100, 100)); handle.props.onPointerMove(release);
+      assert.equal(descendants(p.h.render()).filter(node => node.props.role === 'status').length, 1);
+      assert.equal(release.currentTarget.hasPointerCapture(release.pointerId), true);
+      assert.equal(p.isCaptured(), true);
+      p.h.props = { ...committed, ...change };
+      assert.equal(descendants(p.h.render()).filter(node => node.props.role === 'status').length, 0);
+      assert.equal(release.currentTarget.hasPointerCapture(release.pointerId), false);
+      assert.equal(p.isCaptured(), false);
+      handle.props.onPointerUp(release); assert.equal(p.changes.length, 0);
+      p.h.props = committed;
+      assert.equal(descendants(p.h.render()).filter(node => node.props.role === 'status').length, 0);
+      handle.props.onPointerUp(release);
+      assert.equal(p.changes.length, 0); assert.equal(p.errors.length, 0);
+      const next = p.handle(); next.props.onPointerDown(p.event(100, 100, 2));
+      assert.equal(p.isCaptured(), true);
+      handle.props.onPointerUp(release); assert.equal(p.changes.length, 0);
+      next.props.onPointerUp(p.event(47, 152, 2));
+      assert.equal(p.changes.length, 1); assert.equal(p.isCaptured(), false); assert.equal(p.errors.length, 0);
+      assert.deepEqual(plain(p.changes[0].patch), { x: 7, y: 3, w: 4, h: 3 });
+    }
   });
 }

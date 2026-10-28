@@ -19,10 +19,11 @@ function frozen(value) { if (value && typeof value === 'object' && !Object.isFro
 function deferred() { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; }
 function response(html = HTML) { return new Response(JSON.stringify({ artifactHtml: html }), { headers: { 'content-type': 'application/json' } }); }
 
-let active = null;
+const harnessStack = [];
 function cell(initial) {
-  assert.ok(active, 'Hooks require the direct callback harness.');
-  const h = active, index = h.cursor++;
+  const h = harnessStack.at(-1);
+  assert.ok(h, 'Hooks require the direct callback harness.');
+  const index = h.cursor++;
   if (!(index in h.cells)) h.cells[index] = typeof initial === 'function' ? initial() : initial;
   return [h, index];
 }
@@ -37,7 +38,7 @@ const hooks = {
 };
 class Harness {
   constructor(Component, props) { this.Component = Component; this.props = props; this.cells = []; this.cursor = 0; this.effects = []; }
-  render() { const previous = active; active = this; this.cursor = 0; try { return this.Component(this.props); } finally { active = previous; } }
+  render() { harnessStack.push(this); this.cursor = 0; try { return this.Component(this.props); } finally { harnessStack.pop(); } }
   flushEffects() { const pending = this.effects.splice(0); for (const effect of pending) { effect.slot.cleanup?.(); effect.slot.deps = effect.deps; effect.slot.cleanup = effect.callback(); } }
   mount() { this.render(); this.flushEffects(); return this.render(); }
   unmount() { for (const value of this.cells) if (value && typeof value.cleanup === 'function') { value.cleanup(); value.cleanup = null; } }
@@ -63,7 +64,7 @@ function runtime(react = hooks) {
     const compiled = ts.transpileModule(readFileSync(file, 'utf8'), { fileName: file, reportDiagnostics: true,
       compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX } });
     assert.equal(compiled.diagnostics.length, 0, file + ' must transpile without syntax diagnostics.');
-    const module = { exports: {} }; modules.set(file, module);
+    const moduleRecord = { exports: {} }; modules.set(file, moduleRecord);
     const require = (specifier) => {
       if (specifier === 'react') return react;
       if (specifier === 'react/jsx-runtime') return load(specifier);
@@ -76,8 +77,8 @@ function runtime(react = hooks) {
       for (const extension of ['.ts', '.tsx']) { try { readFileSync(base + extension); } catch { continue; } return source(base + extension); }
       throw new Error('Missing source dependency ' + specifier);
     };
-    vm.runInContext('(function(exports,require,module){\n' + compiled.outputText + '\n})', context, { filename: file })(module.exports, require, module);
-    return module.exports;
+    vm.runInContext('(function(exports,require,module){\n' + compiled.outputText + '\n})', context, { filename: file })(moduleRecord.exports, require, moduleRecord);
+    return moduleRecord.exports;
   }
   const helper = source('lib/client/report-download.ts');
   const { createStarterReportDocument } = source('packages/domain/fixtures.ts');

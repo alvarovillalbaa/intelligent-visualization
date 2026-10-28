@@ -13,12 +13,13 @@ const load = createRequire(path.join(process.env.IV_TEST_PROJECT_ROOT || reposit
 const ts = load('typescript');
 const React = load('react');
 const { renderToStaticMarkup } = load('react-dom/server');
-let activeHarness = null;
+const harnessStack = [];
 let harnessID = 0;
 
 function cell(initial) {
-  assert.ok(activeHarness, 'Hooks must run inside the source callback harness.');
-  const harness = activeHarness, index = harness.cursor++;
+  const harness = harnessStack.at(-1);
+  assert.ok(harness, 'Hooks must run inside the source callback harness.');
+  const index = harness.cursor++;
   if (!(index in harness.cells)) harness.cells[index] = typeof initial === 'function' ? initial() : initial;
   return [harness, index];
 }
@@ -32,17 +33,16 @@ const callbackReact = {
     }];
   },
   useRef(initial) { const [harness, index] = cell(() => ({ current: initial })); return harness.cells[index]; },
-  useId() { const [harness, index] = cell(() => `authored-${activeHarness.id}-${activeHarness.cursor}`); return harness.cells[index]; },
+  useId() { const [harness, index] = cell(() => `authored-${harnessStack.at(-1).id}-${harnessStack.at(-1).cursor}`); return harness.cells[index]; },
   useEffect() { cell(undefined); },
 };
 
 class Harness {
   constructor(Component, props) { this.Component = Component; this.props = props; this.cells = []; this.cursor = 0; this.id = ++harnessID; }
   render() {
-    const previous = activeHarness;
-    activeHarness = this;
+    harnessStack.push(this);
     this.cursor = 0;
-    try { return this.Component(this.props); } finally { activeHarness = previous; }
+    try { return this.Component(this.props); } finally { harnessStack.pop(); }
   }
 }
 
@@ -73,8 +73,8 @@ function sourceRuntime(react) {
   function source(file) {
     file = path.resolve(repository, file);
     if (modules.has(file)) return modules.get(file).exports;
-    const module = { exports: {} };
-    modules.set(file, module);
+    const moduleRecord = { exports: {} };
+    modules.set(file, moduleRecord);
     const compiled = ts.transpileModule(readFileSync(file, 'utf8'), {
       fileName: file, reportDiagnostics: true,
       compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022, jsx: ts.JsxEmit.ReactJSX },
@@ -95,8 +95,8 @@ function sourceRuntime(react) {
       }
       throw new Error(`No source module for ${specifier}`);
     };
-    vm.runInContext('(function(exports,require,module){\n' + compiled.outputText + '\n})', context, { filename: file })(module.exports, requireSource, module);
-    return module.exports;
+    vm.runInContext('(function(exports,require,module){\n' + compiled.outputText + '\n})', context, { filename: file })(moduleRecord.exports, requireSource, moduleRecord);
+    return moduleRecord.exports;
   }
   return { source };
 }
@@ -264,8 +264,8 @@ export function registerCourseEditorChecks(test) {
   });
 
   test('actual lesson removal cleans dependent links while retaining one lesson per module', () => {
-    const document = course(), module = document.course.modules[0], removedID = module.lessons[0].id;
-    const second = createCourseLesson(); second.prerequisiteIds = [removedID]; module.lessons.push(second);
+    const document = course(), courseModule = document.course.modules[0], removedID = courseModule.lessons[0].id;
+    const second = createCourseLesson(); second.prerequisiteIds = [removedID]; courseModule.lessons.push(second);
     const editor = new Harness(CourseEditor, { document: freeze(document), onApply() { return null; }, onCancel() {} });
     one(editor.render(), (node) => node.type?.name === 'ModuleEditor').props.onRemoveLesson(removedID);
     let draft = fields(editor.render()).props.draft;

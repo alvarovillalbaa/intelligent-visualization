@@ -145,11 +145,11 @@ export function validateCourseEdit(value: unknown): CourseVisualizationDocument 
     }
     if (value.kind === "summary") boundedList(value.items, "Summary items")
   }
-  for (const module of course.modules) {
-    identify(module.id, "Module")
-    nonblank(module.title, "Module title")
-    if (!module.lessons.length) invalid(`Add a lesson to “${module.title}” before applying the course.`)
-    for (const lesson of module.lessons) {
+  for (const courseModule of course.modules) {
+    identify(courseModule.id, "Module")
+    nonblank(courseModule.title, "Module title")
+    if (!courseModule.lessons.length) invalid(`Add a lesson to “${courseModule.title}” before applying the course.`)
+    for (const lesson of courseModule.lessons) {
       identify(lesson.id, "Lesson")
       nonblank(lesson.title, "Lesson title")
       lessons.set(lesson.id, lesson)

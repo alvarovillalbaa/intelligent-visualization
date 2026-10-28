@@ -24,7 +24,7 @@ function actual(relative) {
   const compiled = ts.transpileModule(source, { fileName: filename,
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }, reportDiagnostics: true });
   assert.equal(compiled.diagnostics.length, 0, filename + ' must transpile without syntax diagnostics.');
-  const module = { exports: {} }; modules.set(filename, module);
+  const moduleRecord = { exports: {} }; modules.set(filename, moduleRecord);
   const require = (specifier) => {
     if (specifier.startsWith('@/')) return actual(specifier.slice(2));
     if (specifier.startsWith('.')) return actual(path.relative(repository, path.resolve(path.dirname(filename), specifier)));
@@ -33,8 +33,8 @@ function actual(relative) {
     assert.equal(specifier, 'zod', 'Unexpected artifact runtime import: ' + specifier);
     return external(process.env.IV_TEST_ZOD_ENTRY || specifier);
   };
-  vm.runInContext('(function(exports,require,module){\n' + compiled.outputText + '\n})', context, { filename })(module.exports, require, module);
-  return module.exports;
+  vm.runInContext('(function(exports,require,module){\n' + compiled.outputText + '\n})', context, { filename })(moduleRecord.exports, require, moduleRecord);
+  return moduleRecord.exports;
 }
 const { compileVisualizationArtifact } = actual('lib/artifacts/compiler');
 const { createStarterCourseDocument, createStarterReportDocument, createStarterSlidesDocument } = actual('packages/domain/fixtures');

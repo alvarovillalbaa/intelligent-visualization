@@ -1,12 +1,13 @@
 "use client"
 
-import { useEffect, useRef, useState, type PointerEvent } from "react"
+import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { REPORT_GRID_COLUMNS, REPORT_GRID_GAP, REPORT_GRID_ROW_HEIGHT, type ReportBreakpoint } from "@/lib/client/report-authoring"
 import type { ReportLayoutItem, ReportVisualizationDocument } from "@/packages/domain/entities"
 import { ReportBlockView } from "../renderers/report-preview"
 
 type LayoutPatch = Pick<ReportLayoutItem, "x" | "y" | "w" | "h">
+type Ghost = { id: string; item: ReportLayoutItem }
 interface Gesture {
   pointerId: number; blockId: string; breakpoint: ReportBreakpoint; mode: "move" | "resize";
   startX: number; startY: number; width: number; columnStep: number; original: ReportLayoutItem;
@@ -20,29 +21,44 @@ export function GridCanvas({ document, breakpoint, selectedId, onChange, onError
   const canvasRef = useRef<HTMLDivElement>(null)
   const gesture = useRef<Gesture | null>(null)
   const latest = useRef({ document, breakpoint, selectedId, disabled })
-  latest.current = { document, breakpoint, selectedId, disabled }
-  const [ghost, setGhost] = useState<{ id: string; item: ReportLayoutItem } | null>(null)
+  const [canvas, setCanvas] = useState({ document, breakpoint, selectedId, disabled, ghost: null as Ghost | null })
+  const currentCanvas = canvas.document === document && canvas.breakpoint === breakpoint && canvas.selectedId === selectedId && canvas.disabled === disabled
+  if (!currentCanvas) setCanvas({ document, breakpoint, selectedId, disabled, ghost: null })
+  const ghost = currentCanvas ? canvas.ghost : null
   const columns = REPORT_GRID_COLUMNS[breakpoint]
   const layout = document.report.layouts[breakpoint]
   const selected = layout.find((item) => item.blockId === selectedId)
   const rows = Math.max(8, ...layout.map((item) => Number.isSafeInteger(item.y + item.h) ? item.y + item.h : 0), ghost ? ghost.item.y + ghost.item.h : 0) + 4
 
-  function cancelGesture() {
+  function setGhost(next: Ghost | null) {
+    setCanvas((current) => ({ ...current, ghost: next }))
+  }
+
+  function releaseGesture() {
     const active = gesture.current
     gesture.current = null
-    setGhost(null)
     if (active?.node.hasPointerCapture?.(active.pointerId)) active.node.releasePointerCapture(active.pointerId)
   }
 
-  useEffect(() => { cancelGesture() }, [document, breakpoint, selectedId, disabled])
+  function cancelGesture() {
+    releaseGesture()
+    setGhost(null)
+  }
+
+  useLayoutEffect(() => {
+    latest.current = { document, breakpoint, selectedId, disabled }
+    releaseGesture()
+  }, [document, breakpoint, selectedId, disabled])
+
   useEffect(() => {
-    const cancel = () => cancelGesture()
+    const cancel = () => {
+      releaseGesture()
+      setCanvas((current) => ({ ...current, ghost: null }))
+    }
     window.addEventListener("blur", cancel)
     return () => {
       window.removeEventListener("blur", cancel)
-      const active = gesture.current
-      gesture.current = null
-      if (active?.node.hasPointerCapture?.(active.pointerId)) active.node.releasePointerCapture(active.pointerId)
+      releaseGesture()
     }
   }, [])
 

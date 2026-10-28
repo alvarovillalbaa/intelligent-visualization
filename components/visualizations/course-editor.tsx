@@ -94,9 +94,9 @@ export function CourseEditor({ document: initialDocument, onApply, onCancel, per
   function removeModule(moduleID: string) {
     update((next) => {
       if (next.course.modules.length <= 1) return
-      const module = next.course.modules.find((entry) => entry.id === moduleID)
-      if (!module) return
-      const removedIDs = new Set(module.lessons.map((lesson) => lesson.id))
+      const courseModule = next.course.modules.find((entry) => entry.id === moduleID)
+      if (!courseModule) return
+      const removedIDs = new Set(courseModule.lessons.map((lesson) => lesson.id))
       next.course.modules = next.course.modules.filter((entry) => entry.id !== moduleID)
       removeLessonLinks(next, removedIDs)
     })
@@ -105,9 +105,9 @@ export function CourseEditor({ document: initialDocument, onApply, onCancel, per
 
   function removeLesson(moduleID: string, lessonID: string) {
     update((next) => {
-      const module = next.course.modules.find((entry) => entry.id === moduleID)
-      if (!module || module.lessons.length <= 1) return
-      module.lessons = module.lessons.filter((entry) => entry.id !== lessonID)
+      const courseModule = next.course.modules.find((entry) => entry.id === moduleID)
+      if (!courseModule || courseModule.lessons.length <= 1) return
+      courseModule.lessons = courseModule.lessons.filter((entry) => entry.id !== lessonID)
       removeLessonLinks(next, new Set([lessonID]))
     })
     setNotice("Lesson removed. Prerequisite links to it were also removed from this draft.")

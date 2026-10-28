@@ -29,8 +29,8 @@ function actual(relative) {
     reportDiagnostics: true,
   });
   assert.equal(compiled.diagnostics.length, 0, filename + ' must transpile without syntax diagnostics.');
-  const module = { exports: {} };
-  modules.set(filename, module);
+  const moduleRecord = { exports: {} };
+  modules.set(filename, moduleRecord);
   const require = (specifier) => {
     if (specifier.startsWith('@/')) return actual(specifier.slice(2));
     if (specifier.startsWith('.')) return actual(path.relative(repository, path.resolve(path.dirname(filename), specifier)));
@@ -38,8 +38,8 @@ function actual(relative) {
     assert.equal(specifier, 'zod', 'Unexpected runtime dependency: ' + specifier);
     return external(process.env.IV_TEST_ZOD_ENTRY || specifier);
   };
-  vm.runInContext('(function(exports,require,module){\n' + compiled.outputText + '\n})', context, { filename })(module.exports, require, module);
-  return module.exports;
+  vm.runInContext('(function(exports,require,module){\n' + compiled.outputText + '\n})', context, { filename })(moduleRecord.exports, require, moduleRecord);
+  return moduleRecord.exports;
 }
 
 const { validateCourseEdit, applyCourseDraftEdit, createCourseBlock, createCourseLesson, createCourseModule, COURSE_AUTHORING_LIMITS } = actual('lib/client/course-authoring');
@@ -285,8 +285,8 @@ export function registerCourseAuthoringChecks(test) {
 
   for (const location of ['module', 'lesson', 'block', 'glossary', 'reference', 'source', 'asset', 'theme']) {
     test(`blank ${location} ID rejects the entire authored document`, () => {
-      const value = course(), module = value.course.modules[0], lesson = module.lessons[0];
-      if (location === 'module') module.id = ' ';
+      const value = course(), courseModule = value.course.modules[0], lesson = courseModule.lessons[0];
+      if (location === 'module') courseModule.id = ' ';
       if (location === 'lesson') lesson.id = ' ';
       if (location === 'block') lesson.blocks[0].id = ' ';
       if (location === 'glossary') value.course.glossary[0].id = ' ';

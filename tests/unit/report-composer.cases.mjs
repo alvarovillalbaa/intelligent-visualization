@@ -18,15 +18,15 @@ function actual(relative) {
   if (modules.has(file)) return modules.get(file).exports;
   const result = ts.transpileModule(readFileSync(file, 'utf8'), { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }, reportDiagnostics: true });
   assert.equal(result.diagnostics.length, 0);
-  const module = { exports: {} }; modules.set(file, module);
-  vm.runInContext('(function(exports,require,module){\n' + result.outputText + '\n})', sourceContext, { filename: file })(module.exports, (specifier) => {
+  const moduleRecord = { exports: {} }; modules.set(file, moduleRecord);
+  vm.runInContext('(function(exports,require,module){\n' + result.outputText + '\n})', sourceContext, { filename: file })(moduleRecord.exports, (specifier) => {
     if (specifier.startsWith('@/')) return actual(specifier.slice(2));
     if (specifier.startsWith('.')) return actual(path.relative(repository, path.resolve(path.dirname(file), specifier)));
     if (specifier === 'uuid') return { v7: () => webcrypto.randomUUID() };
     assert.equal(specifier, 'zod');
     return load(process.env.IV_TEST_ZOD_ENTRY || 'zod');
-  }, module);
-  return module.exports;
+  }, moduleRecord);
+  return moduleRecord.exports;
 }
 const { applyReportDraftEdit, prepareReportEdit } = actual('lib/client/report-authoring');
 const { createStarterReportDocument, createStarterCourseDocument } = actual('packages/domain/fixtures');

@@ -10,7 +10,7 @@ Guest drafts retain sources in the current browser for the existing four-hour ex
 
 After Continue, the page introduction is hidden. Select any combination of Slides, Course, and Report, then create the selected drafts from the same captured sources and style. Each result can be previewed separately. A failed format can be retried without regenerating successful results. See [AI generation](ai-generation.md) for request, recovery, and saving behavior.
 
-URL extraction belongs to its individual request. Replacing the URL, continuing
+URL extraction belongs to its individual request. Continuing with a replacement URL,
 without a URL, starting over or leaving the composer invalidates pending work;
 an older response cannot replace the current style or extracted source text,
 even when the same URL is selected again. The existing 15-second timeout makes

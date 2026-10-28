@@ -16,18 +16,18 @@ const modules = new Map();
 function actual(relative) {
   assert.ok(['lib/client/report-chart-model.ts', 'lib/client/report-chart-projection.ts'].includes(relative));
   if (modules.has(relative)) return modules.get(relative).exports;
-  const filename = path.join(repository, relative), module = { exports: {} };
-  modules.set(relative, module);
+  const filename = path.join(repository, relative), moduleRecord = { exports: {} };
+  modules.set(relative, moduleRecord);
   const result = ts.transpileModule(readFileSync(filename, 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }, reportDiagnostics: true,
   });
   assert.equal(result.diagnostics.length, 0, 'Actual projection helpers must transpile without syntax diagnostics.');
-  vm.runInNewContext('(function(exports,require,module){\n' + result.outputText + '\n})', {})(module.exports,
+  vm.runInNewContext('(function(exports,require,module){\n' + result.outputText + '\n})', {})(moduleRecord.exports,
     (specifier) => {
       assert.equal(specifier, './report-chart-model');
       return actual('lib/client/report-chart-model.ts');
-    }, module);
-  return module.exports;
+    }, moduleRecord);
+  return moduleRecord.exports;
 }
 const { createReportChartProjection } = actual('lib/client/report-chart-projection.ts');
 

@@ -1,12 +1,13 @@
 // Optional offline test runtime. No package installation or disk extraction.
 // IV_TEST_ZOD_ENTRY can point here while borrowing a TypeScript/React toolchain.
-const assert = require('node:assert/strict');
-const { createHash } = require('node:crypto');
-const { readFileSync } = require('node:fs');
-const { homedir } = require('node:os');
-const path = require('node:path');
-const vm = require('node:vm');
-const { gunzipSync } = require('node:zlib');
+// Built-in access uses Node 22.3+ process.getBuiltinModule.
+const assert = process.getBuiltinModule('node:assert/strict');
+const { createHash } = process.getBuiltinModule('node:crypto');
+const { readFileSync } = process.getBuiltinModule('node:fs');
+const { homedir } = process.getBuiltinModule('node:os');
+const path = process.getBuiltinModule('node:path');
+const vm = process.getBuiltinModule('node:vm');
+const { gunzipSync } = process.getBuiltinModule('node:zlib');
 
 const repository = path.resolve(__dirname, '../..');
 const locked = JSON.parse(readFileSync(path.join(repository, 'package-lock.json'), 'utf8')).packages['node_modules/zod'];
@@ -45,16 +46,16 @@ const modules = new Map();
 function load(filename) {
   assert.ok(filename.startsWith('package/') && files.has(filename), 'Missing or unsupported cached CommonJS member: ' + filename);
   if (modules.has(filename)) return modules.get(filename).exports;
-  const module = { exports: {} };
-  modules.set(filename, module);
+  const moduleRecord = { exports: {} };
+  modules.set(filename, moduleRecord);
   const requireMember = (specifier) => {
     assert.ok(specifier.startsWith('.'), 'The cached Zod runtime must not load external modules.');
     return load(path.posix.normalize(path.posix.join(path.posix.dirname(filename), specifier)));
   };
   const source = files.get(filename).toString('utf8');
   const execute = new vm.Script('(function(exports,require,module,__filename,__dirname){\n' + source + '\n})', { filename: 'locked-zod-4.4.3/' + filename }).runInThisContext();
-  execute(module.exports, requireMember, module, filename, path.posix.dirname(filename));
-  return module.exports;
+  execute(moduleRecord.exports, requireMember, moduleRecord, filename, path.posix.dirname(filename));
+  return moduleRecord.exports;
 }
 
 module.exports = load('package/index.cjs');

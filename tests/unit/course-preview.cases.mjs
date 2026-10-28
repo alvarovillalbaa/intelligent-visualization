@@ -23,11 +23,11 @@ const compiled = ts.transpileModule(source, {
 });
 assert.equal(compiled.diagnostics.length, 0, 'The actual preview must transpile without syntax diagnostics.');
 const runtime = new Map([['react', React], ['react/jsx-runtime', load('react/jsx-runtime')]]);
-const module = { exports: {} };
+const moduleRecord = { exports: {} };
 vm.runInNewContext('(function (exports, require, module) {\n' + compiled.outputText + '\n})', {}, { filename: sourcePath })(
-  module.exports,
+  moduleRecord.exports,
   (specifier) => { assert.ok(runtime.has(specifier), 'Unexpected preview import: ' + specifier); return runtime.get(specifier); },
-  module,
+  moduleRecord,
 );
 
 function lesson(id, overrides = {}) {
@@ -67,7 +67,7 @@ function freeze(value) {
 
 function render(document) {
   const before = structuredClone(document);
-  const html = renderToStaticMarkup(React.createElement(module.exports.CoursePreview, { document: freeze(document) }));
+  const html = renderToStaticMarkup(React.createElement(moduleRecord.exports.CoursePreview, { document: freeze(document) }));
   assert.deepEqual(document, before, 'Preview must not annotate or alter the authored document.');
   return html;
 }
