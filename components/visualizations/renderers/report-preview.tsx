@@ -7,6 +7,7 @@ import {
   BarChart,
   CartesianGrid,
   Cell,
+  ComposedChart,
   Line,
   LineChart,
   Pie,
@@ -18,92 +19,173 @@ import {
 } from "recharts"
 
 import type { ChartSpec, ReportBlock, ReportVisualizationDocument } from "@/packages/domain/entities"
+import {
+  REPORT_CHART_COLORS,
+  reportChartCategoryKey,
+  reportChartColumns,
+  reportChartProblem,
+  reportRadialProblem,
+  reportSeriesColor,
+} from "@/lib/client/report-chart-model"
+import { createReportChartProjection } from "@/lib/client/report-chart-projection"
 import { REPORT_GRID_COLUMNS, REPORT_GRID_GAP, REPORT_GRID_ROW_HEIGHT, type ReportBreakpoint } from "@/lib/client/report-grid"
 
-const CHART_FALLBACK_COLORS = ["#ff6f4d", "#7cd3ff", "#3c8f5b", "#a15cff", "#ffbf69"]
+function zeroInclusiveDomain([minimum, maximum]: [number, number]): [number, number] {
+  return [Math.min(0, minimum), Math.max(0, maximum)]
+}
 
-function seriesColor(spec: ChartSpec, index: number) {
-  return spec.series[index]?.color ?? CHART_FALLBACK_COLORS[index % CHART_FALLBACK_COLORS.length]
+function ChartDataTable({ spec, categoryKey }: { spec: ChartSpec; categoryKey: string | undefined }) {
+  const keys = reportChartColumns(spec, categoryKey)
+  return (
+    <div className="min-w-0 overflow-x-auto">
+      <table className="w-full table-fixed border-collapse text-sm">
+        <caption className="py-2 text-left font-semibold">Data: {spec.title}</caption>
+        <thead>
+          <tr>
+            <th scope="col" className="border-b px-3 py-2 text-left" style={{ borderColor: "var(--iv-border)" }}>Row</th>
+            {keys.map((key) => {
+              const labels = spec.series.filter((series) => series.key === key).map((series) => series.label)
+              return <th key={key} scope="col" className="break-words border-b px-3 py-2 text-left" style={{ borderColor: "var(--iv-border)" }}>
+                {labels.length ? <>{labels.join(" / ")}<small className="block font-normal">({key})</small></> : key}
+              </th>
+            })}
+          </tr>
+        </thead>
+        <tbody>
+          {spec.data.map((row, index) => <tr key={index}>
+            <th scope="row" className="border-b px-3 py-2 text-left font-normal" style={{ borderColor: "var(--iv-border)" }}>{index + 1}</th>
+            {keys.map((key) => {
+              const present = Object.hasOwn(row, key), value = row[key]
+              const type = !present ? "missing" : value === null ? "null" : typeof value
+              const text = !present ? "Missing" : value === null ? "Empty" : String(value)
+              return <td key={key} data-column-key={key} data-value-type={type} className="break-words border-b px-3 py-2 align-top" style={{ borderColor: "var(--iv-border)" }}>{text}</td>
+            })}
+          </tr>)}
+        </tbody>
+      </table>
+    </div>
+  )
 }
 
 function ChartBlock({ spec }: { spec: ChartSpec }) {
-  const hasChart = spec.data.length > 0 && spec.series.length > 0
-  const xKey = spec.xKey ?? Object.keys(spec.data[0] ?? {})[0]
-
+  const empty = spec.data.length === 0 || spec.series.length === 0
+  const xKey = reportChartCategoryKey(spec)
+  const problem = empty ? null : reportChartProblem(spec)
+  const hasChart = !empty && !problem
+  const radial = spec.type === "pie" || spec.type === "donut"
+  const projection = createReportChartProjection(spec)
   let chart: React.ReactNode = null
 
-  if (hasChart && (spec.type === "pie" || spec.type === "donut")) {
-    const valueKey = spec.series[0].key
+  if (hasChart && spec.type === "line") {
     chart = (
-      <PieChart>
-        <Pie
-          data={spec.data}
-          dataKey={valueKey}
-          nameKey={xKey}
-          innerRadius={spec.type === "donut" ? "55%" : 0}
-          outerRadius="85%"
-        >
-          {spec.data.map((_, index) => (
-            <Cell key={index} fill={CHART_FALLBACK_COLORS[index % CHART_FALLBACK_COLORS.length]} />
-          ))}
-        </Pie>
-        <Tooltip />
-      </PieChart>
-    )
-  } else if (hasChart && spec.type === "line") {
-    chart = (
-      <LineChart data={spec.data}>
+      <LineChart data={projection.data}>
         <CartesianGrid strokeDasharray="3 3" stroke="var(--iv-border)" />
-        <XAxis dataKey={xKey} tick={{ fontSize: 12 }} />
-        <YAxis tick={{ fontSize: 12 }} width={40} />
-        <Tooltip />
+        <XAxis dataKey={projection.categoryDataKey} tick={{ fontSize: 12 }} />
+        <YAxis tick={{ fontSize: 12 }} width={40} domain={zeroInclusiveDomain} tickFormatter={projection.tickLabel} />
+        <Tooltip formatter={(value, _name, item) => projection.tooltipValue(value, item.dataKey, item.payload)} />
         {spec.series.map((series, index) => (
-          <Line key={series.key} type="monotone" dataKey={series.key} name={series.label} stroke={seriesColor(spec, index)} dot={false} strokeWidth={2} />
+          <Line key={series.key} type="linear" dataKey={projection.dataKeys[index]} name={series.label} stroke={reportSeriesColor(spec, index)} dot={{ r: 3 }} connectNulls={false} strokeWidth={2} />
         ))}
       </LineChart>
     )
   } else if (hasChart && spec.type === "area") {
     chart = (
-      <AreaChart data={spec.data}>
+      <AreaChart data={projection.data}>
         <CartesianGrid strokeDasharray="3 3" stroke="var(--iv-border)" />
-        <XAxis dataKey={xKey} tick={{ fontSize: 12 }} />
-        <YAxis tick={{ fontSize: 12 }} width={40} />
-        <Tooltip />
+        <XAxis dataKey={projection.categoryDataKey} tick={{ fontSize: 12 }} />
+        <YAxis tick={{ fontSize: 12 }} width={40} domain={zeroInclusiveDomain} tickFormatter={projection.tickLabel} />
+        <Tooltip formatter={(value, _name, item) => projection.tooltipValue(value, item.dataKey, item.payload)} />
         {spec.series.map((series, index) => (
-          <Area key={series.key} type="monotone" dataKey={series.key} name={series.label} stroke={seriesColor(spec, index)} fill={seriesColor(spec, index)} fillOpacity={0.25} />
+          <Area key={series.key} type="linear" dataKey={projection.dataKeys[index]} name={series.label} stroke={reportSeriesColor(spec, index)} fill={reportSeriesColor(spec, index)} fillOpacity={0.25} dot={{ r: 3 }} connectNulls={false} baseValue={0} />
         ))}
       </AreaChart>
     )
-  } else if (hasChart) {
+  } else if (hasChart && spec.type === "composed") {
     chart = (
-      <BarChart data={spec.data}>
+      <ComposedChart data={projection.data}>
         <CartesianGrid strokeDasharray="3 3" stroke="var(--iv-border)" />
-        <XAxis dataKey={xKey} tick={{ fontSize: 12 }} />
-        <YAxis tick={{ fontSize: 12 }} width={40} />
-        <Tooltip />
+        <XAxis dataKey={projection.categoryDataKey} tick={{ fontSize: 12 }} />
+        <YAxis tick={{ fontSize: 12 }} width={40} domain={zeroInclusiveDomain} tickFormatter={projection.tickLabel} />
+        <Tooltip formatter={(value, _name, item) => projection.tooltipValue(value, item.dataKey, item.payload)} />
+        {spec.series.map((series, index) => index === 0 ? (
+          <Bar key={series.key} dataKey={projection.dataKeys[index]} name={series.label} fill={reportSeriesColor(spec, index)} minPointSize={0} />
+        ) : (
+          <Line key={series.key} type="linear" dataKey={projection.dataKeys[index]} name={series.label} stroke={reportSeriesColor(spec, index)} dot={{ r: 3 }} connectNulls={false} strokeWidth={2} />
+        ))}
+      </ComposedChart>
+    )
+  } else if (hasChart && spec.type === "bar") {
+    chart = (
+      <BarChart data={projection.data}>
+        <CartesianGrid strokeDasharray="3 3" stroke="var(--iv-border)" />
+        <XAxis dataKey={projection.categoryDataKey} tick={{ fontSize: 12 }} />
+        <YAxis tick={{ fontSize: 12 }} width={40} domain={zeroInclusiveDomain} tickFormatter={projection.tickLabel} />
+        <Tooltip formatter={(value, _name, item) => projection.tooltipValue(value, item.dataKey, item.payload)} />
         {spec.series.map((series, index) => (
-          <Bar key={series.key} dataKey={series.key} name={series.label} fill={seriesColor(spec, index)} radius={[4, 4, 0, 0]} />
+          <Bar key={series.key} dataKey={projection.dataKeys[index]} name={series.label} fill={reportSeriesColor(spec, index)} minPointSize={0} />
         ))}
       </BarChart>
     )
   }
 
   return (
-    <figure className="grid gap-2">
+    <figure className="grid min-w-0 gap-2" data-chart-type={spec.type}>
       <figcaption>
         <p className="text-sm font-semibold">{spec.title}</p>
         {spec.description ? <p className="mt-1 text-sm leading-6 opacity-70">{spec.description}</p> : null}
       </figcaption>
-      {chart ? (
-        <div className="h-64 w-full" role="img" aria-label={spec.accessibleLabel}>
+      {spec.series.length ? <ul aria-label="Chart series" className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
+        {spec.series.map((series, index) => {
+          const mark = spec.type === "composed" ? index === 0 ? "bars" : "line" : spec.type
+          return <li key={`${series.key}:${index}`} data-series-key={series.key} data-mark={mark} className="flex min-w-0 items-center gap-2 break-words">
+            <span aria-hidden="true" className="size-3 shrink-0 rounded-sm border" style={{ backgroundColor: reportSeriesColor(spec, index), borderColor: "var(--iv-border)" }} />
+            <span>{series.label}{spec.type === "composed" ? ` (${mark})` : ""}</span>
+          </li>
+        })}
+      </ul> : null}
+      {hasChart && radial ? (
+        <div className="grid min-w-0 gap-5">
+          {spec.series.map((series, seriesIndex) => {
+            const radialProblem = reportRadialProblem(spec, seriesIndex)
+            const facetProjection = createReportChartProjection(spec, [seriesIndex])
+            const label = spec.series.length === 1 ? spec.accessibleLabel || spec.title : `${spec.accessibleLabel || spec.title} — ${series.label}`
+            return <section key={series.key} data-series-key={series.key} className="grid min-w-0 gap-2">
+              <h4 className="text-sm font-semibold">{series.label}</h4>
+              {radialProblem ? <p className="text-sm opacity-70">Chart unavailable. {radialProblem}</p> : (
+                <div className="h-64 w-full" role="img" aria-label={label}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie data={facetProjection.data} dataKey={facetProjection.dataKeys[seriesIndex]} nameKey={facetProjection.categoryDataKey} innerRadius={spec.type === "donut" ? "55%" : 0} outerRadius="85%">
+                        {spec.data.map((_, index) => <Cell key={index} fill={REPORT_CHART_COLORS[index % REPORT_CHART_COLORS.length]} />)}
+                      </Pie>
+                      <Tooltip formatter={(value, _name, item) => facetProjection.tooltipValue(value, item.dataKey, item.payload)} />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+              <ul aria-label={`${series.label} categories`} className="flex flex-wrap gap-x-4 gap-y-2 text-xs">
+                {spec.data.map((row, index) => {
+                  const category = xKey === undefined ? String(index + 1) : row[xKey] === null ? "Empty" : String(row[xKey])
+                  return <li key={index} className="flex min-w-0 items-center gap-2 break-words">
+                    <span aria-hidden="true" className="size-3 shrink-0 rounded-sm border" style={{ backgroundColor: REPORT_CHART_COLORS[index % REPORT_CHART_COLORS.length], borderColor: "var(--iv-border)" }} />
+                    <span>{category}: {row[series.key] === null ? "Empty" : String(row[series.key])}</span>
+                  </li>
+                })}
+              </ul>
+            </section>
+          })}
+        </div>
+      ) : chart ? (
+        <div className="h-64 w-full" role="img" aria-label={spec.accessibleLabel || spec.title}>
           <ResponsiveContainer width="100%" height="100%">
             {chart as React.ReactElement}
           </ResponsiveContainer>
         </div>
-      ) : <p className="text-sm opacity-70">No chart data available.</p>}
+      ) : <p className="text-sm opacity-70">{problem ? `Chart unavailable. ${problem}` : "No chart data available."}</p>}
       {spec.illustrative ? <p className="text-xs font-medium">Illustrative values.</p> : null}
       {spec.provenance ? <p className="break-words text-xs leading-5 opacity-70">{spec.provenance}</p> : null}
       {spec.source ? <p className="text-xs opacity-60">Source: {spec.source}</p> : null}
+      <ChartDataTable spec={spec} categoryKey={xKey} />
     </figure>
   )
 }

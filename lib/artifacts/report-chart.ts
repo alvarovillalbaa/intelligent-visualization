@@ -1,6 +1,13 @@
 import type { ChartSpec, ReportBlock } from "@/packages/domain/entities"
+import {
+  REPORT_CHART_COLORS,
+  reportChartCategoryKey,
+  reportChartColumns,
+  reportChartProblem,
+  reportRadialProblem,
+  reportSeriesColor,
+} from "@/lib/client/report-chart-model"
 
-const COLORS = ["#ff6f4d", "#7cd3ff", "#3c8f5b", "#a15cff", "#ffbf69", "#2563eb"]
 const WIDTH = 560, HEIGHT = 300, LEFT = 64, RIGHT = 16, TOP = 20, BOTTOM = 56
 
 function html(value: string): string {
@@ -8,7 +15,6 @@ function html(value: string): string {
 }
 
 function number(value: number): string { return String(Number(value.toFixed(6))) }
-function color(chart: ChartSpec, index: number): string { return chart.series[index].color ?? COLORS[index % COLORS.length] }
 function cssColor(value: string): string {
   return value.replace(/[<>{};\\]/g, (character) => `\\${character.charCodeAt(0).toString(16)} `).replace(/[\r\n]/g, " ")
 }
@@ -18,11 +24,7 @@ function category(chart: ChartSpec, key: string | undefined, index: number): str
 }
 
 function dataTable(chart: ChartSpec, categoryKey: string | undefined): string {
-  const keys = [...new Set([
-    ...(categoryKey === undefined ? [] : [categoryKey]),
-    ...chart.series.map((series) => series.key),
-    ...[...new Set(chart.data.flatMap((row) => Object.keys(row)))].sort(),
-  ])]
+  const keys = reportChartColumns(chart, categoryKey)
   const heading = (key: string) => {
     const labels = chart.series.filter((series) => series.key === key).map((series) => series.label)
     return labels.length ? `${labels.map(html).join(" / ")} <small>(${html(key)})</small>` : html(key)
@@ -39,34 +41,17 @@ function dataTable(chart: ChartSpec, categoryKey: string | undefined): string {
 function seriesLegend(chart: ChartSpec): string {
   return `<ul class="chart-legend" aria-label="Chart series">${chart.series.map((series, index) => {
     const mark = chart.type === "composed" ? index === 0 ? "bars" : "line" : chart.type
-    return `<li data-series-key="${html(series.key)}" data-mark="${mark}"><span class="chart-swatch" aria-hidden="true" style="background:${html(cssColor(color(chart, index)))}"></span>${html(series.label)}${chart.type === "composed" ? ` (${mark})` : ""}</li>`
+    return `<li data-series-key="${html(series.key)}" data-mark="${mark}"><span class="chart-swatch" aria-hidden="true" style="background:${html(cssColor(reportSeriesColor(chart, index)))}"></span>${html(series.label)}${chart.type === "composed" ? ` (${mark})` : ""}</li>`
   }).join("")}</ul>`
-}
-
-function invalidData(chart: ChartSpec, categoryKey: string | undefined): string | null {
-  if (!chart.series.length) return "No chart series were supplied."
-  const keys = new Set<string>()
-  for (const series of chart.series) {
-    if (!series.key.trim() || keys.has(series.key)) return "Chart series keys are missing or duplicated."
-    keys.add(series.key)
-    for (const row of chart.data) {
-      if (!Object.hasOwn(row, series.key)) return "A chart row is missing a series value."
-      const value = row[series.key]
-      if (value !== null && (typeof value !== "number" || !Number.isFinite(value))) return "Series values must be finite numbers or empty values."
-    }
-  }
-  if (categoryKey !== undefined && chart.data.some((row) => !Object.hasOwn(row, categoryKey))) return "A chart row is missing its category value."
-  return null
 }
 
 function cartesian(chart: ChartSpec, categoryKey: string | undefined): string {
   const innerWidth = WIDTH - LEFT - RIGHT, innerHeight = HEIGHT - TOP - BOTTOM
-  let magnitude = 0, numeric = false
+  let magnitude = 0
   for (const row of chart.data) for (const series of chart.series) {
     const value = row[series.key]
-    if (typeof value === "number") { magnitude = Math.max(magnitude, Math.abs(value)); numeric = true }
+    if (typeof value === "number") magnitude = Math.max(magnitude, Math.abs(value))
   }
-  if (!numeric) return `<p class="chart-unavailable">Chart unavailable. No numeric chart values were supplied.</p>`
   if (magnitude === 0) magnitude = 1
   let minimum = 0, maximum = 0
   for (const row of chart.data) for (const series of chart.series) {
@@ -89,7 +74,7 @@ function cartesian(chart: ChartSpec, categoryKey: string | undefined): string {
   const barWidth = step * 0.75 / barCount
   const marks = chart.series.map((series, seriesIndex) => {
     const mark = chart.type === "composed" ? seriesIndex === 0 ? "bar" : "line" : chart.type
-    const stroke = html(color(chart, seriesIndex))
+    const stroke = html(reportSeriesColor(chart, seriesIndex))
     let content: string
     if (mark === "bar") {
       content = chart.data.map((row, index) => {
@@ -123,13 +108,14 @@ function cartesian(chart: ChartSpec, categoryKey: string | undefined): string {
 
 function radial(chart: ChartSpec, categoryKey: string | undefined): string {
   return chart.series.map((series, seriesIndex) => {
-    let maximum = 0, negative = false
+    const problem = reportRadialProblem(chart, seriesIndex)
+    let maximum = 0
     for (const row of chart.data) {
       const value = row[series.key]
-      if (typeof value === "number") { maximum = Math.max(maximum, value); if (value < 0) negative = true }
+      if (typeof value === "number") maximum = Math.max(maximum, value)
     }
     const heading = `<h4>${html(series.label)}</h4>`
-    if (negative || maximum === 0) return `<section class="chart-facet" data-series-key="${html(series.key)}">${heading}<p class="chart-unavailable">Chart unavailable. ${negative ? "Pie and donut values must be nonnegative." : "This series has no positive values."}</p></section>`
+    if (problem) return `<section class="chart-facet" data-series-key="${html(series.key)}">${heading}<p class="chart-unavailable">Chart unavailable. ${problem}</p></section>`
     let total = 0
     for (const row of chart.data) { const value = row[series.key]; if (typeof value === "number") total += value / maximum }
     const cx = 160, cy = 140, outer = 104, inner = chart.type === "donut" ? 58 : 0
@@ -140,7 +126,7 @@ function radial(chart: ChartSpec, categoryKey: string | undefined): string {
       if (value === null || value === 0) return ""
       const numericValue = value as number, fraction = (numericValue / maximum) / total
       if (fraction === 0) return ""
-      const end = angle + fraction * 2 * Math.PI, fill = COLORS[index % COLORS.length]
+      const end = angle + fraction * 2 * Math.PI, fill = REPORT_CHART_COLORS[index % REPORT_CHART_COLORS.length]
       const title = `${html(series.label)}; ${html(category(chart, categoryKey, index))}: ${numericValue}`
       const attributes = `class="chart-slice" data-row-index="${index}" data-value="${numericValue}" fill="${fill}"`
       let slice: string
@@ -158,15 +144,15 @@ function radial(chart: ChartSpec, categoryKey: string | undefined): string {
       angle = end
       return slice
     }).join("")
-    const legend = `<ul class="chart-legend" aria-label="${html(series.label)} categories">${chart.data.map((row, index) => `<li><span class="chart-swatch" aria-hidden="true" style="background:${COLORS[index % COLORS.length]}"></span>${html(category(chart, categoryKey, index))}: ${row[series.key] === null ? "Empty" : html(String(row[series.key]))}</li>`).join("")}</ul>`
+    const legend = `<ul class="chart-legend" aria-label="${html(series.label)} categories">${chart.data.map((row, index) => `<li><span class="chart-swatch" aria-hidden="true" style="background:${REPORT_CHART_COLORS[index % REPORT_CHART_COLORS.length]}"></span>${html(category(chart, categoryKey, index))}: ${row[series.key] === null ? "Empty" : html(String(row[series.key]))}</li>`).join("")}</ul>`
     return `<section class="chart-facet" data-series-key="${html(series.key)}">${heading}<svg class="chart-${chart.type}" role="img" aria-label="${html(chart.accessibleLabel || chart.title)} — ${html(series.label)}" viewBox="0 0 320 280" xmlns="http://www.w3.org/2000/svg"><title>${html(chart.title)} — ${html(series.label)}</title><desc>${html(chart.description)} Values and empty cells are listed in the following data table.</desc>${slices}</svg>${legend}</section>`
   }).join("")
 }
 
 export function renderReportChart(block: Extract<ReportBlock, { kind: "chart" }>): string {
   const chart = block.chart
-  const categoryKey = chart.xKey ?? Object.keys(chart.data[0] ?? {})[0]
-  const invalid = invalidData(chart, categoryKey)
+  const categoryKey = reportChartCategoryKey(chart)
+  const invalid = reportChartProblem(chart)
   const plot = !chart.data.length ? `<p class="chart-unavailable">No chart data available.</p>`
     : invalid ? `<p class="chart-unavailable">Chart unavailable. ${html(invalid)}</p>`
       : chart.type === "pie" || chart.type === "donut" ? radial(chart, categoryKey) : cartesian(chart, categoryKey)

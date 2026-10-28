@@ -33,7 +33,7 @@ It retains every supplied series, source, provenance and illustrative-value
 flag. Line and area gaps preserve missing values; bars include negative values
 and zero. Pie/donut views use separate series panels, with an explicit unavailable
 message for values those charts cannot represent. The composed schema has no
-per-series mark definition: the standalone renderer uses first-series bars and
+per-series mark definition: both preview and standalone rendering use first-series bars and
 remaining-series lines, labelled in its legend. Empty or invalid chart data
 keeps metadata and the data table instead of inventing values.
 

@@ -2,6 +2,7 @@
 // ReactDOM run in SSR mode; no browser, chart layout, backend or model executes.
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,7 +17,13 @@ const { renderToStaticMarkup } = load('react-dom/server');
 const sourcePath = process.env.IV_REPORT_PREVIEW_SOURCE
   || path.join(repository, 'components/visualizations/renderers/report-preview.tsx');
 const source = await readFile(sourcePath, 'utf8');
-const compiled = ts.transpileModule(source, {
+const sourceTree = ts.createSourceFile(sourcePath, source, ts.ScriptTarget.Latest, true, ts.ScriptKind.TSX);
+const sourceFunctions = sourceTree.statements.filter((node) => ts.isFunctionDeclaration(node) && node.name).map((node) => node.name.text);
+assert.ok(sourceFunctions.includes('ChartBlock'), 'The actual chart renderer must be present in both current and baseline source.');
+// Test-only exposure of the existing declaration avoids changing production
+// exports and keeps baseline checks on its real ChartBlock implementation.
+const inspectedSource = source + '\nexports.__ChartBlock = ChartBlock;\nexports.__SourceFunctions = [' + sourceFunctions.join(',') + '];\n';
+const compiled = ts.transpileModule(inspectedSource, {
   fileName: sourcePath,
   compilerOptions: {
     module: ts.ModuleKind.CommonJS,
@@ -30,14 +37,30 @@ const runtime = new Map([
   ['react/jsx-runtime', load('react/jsx-runtime')],
   ['recharts', load('recharts')],
 ]);
-const gridFile = path.join(repository, 'lib/client/report-grid.ts');
-const gridModule = { exports: {} };
-const gridCompiled = ts.transpileModule(await readFile(gridFile, 'utf8'), {
-  compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }, reportDiagnostics: true,
-});
-assert.equal(gridCompiled.diagnostics.length, 0);
-vm.runInNewContext('(function(exports,module){\n' + gridCompiled.outputText + '\n})', {})(gridModule.exports, gridModule);
-runtime.set('@/lib/client/report-grid', gridModule.exports);
+const helperFiles = ['lib/client/report-grid.ts', 'lib/client/report-chart-model.ts', 'lib/client/report-chart-projection.ts'];
+function actualHelper(relative) {
+  assert.ok(helperFiles.includes(relative), 'Only the bounded chart/grid helper set may load.');
+  const specifier = '@/' + relative.slice(0, -3);
+  if (runtime.has(specifier)) return runtime.get(specifier);
+  const file = path.join(repository, relative), child = { exports: {} };
+  runtime.set(specifier, child.exports);
+  const result = ts.transpileModule(readFileSync(file, 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 }, reportDiagnostics: true,
+  });
+  assert.equal(result.diagnostics.length, 0);
+  vm.runInNewContext('(function(exports,require,module){\n' + result.outputText + '\n})', {})(child.exports,
+    (dependency) => {
+      if (dependency.startsWith('@/lib/client/')) return actualHelper(dependency.slice(2) + '.ts');
+      if (dependency.startsWith('./')) return actualHelper(path.posix.join(path.posix.dirname(relative), dependency) + '.ts');
+      throw new Error('Unexpected pure preview-helper runtime import: ' + dependency);
+    }, child);
+  return child.exports;
+}
+for (const relative of helperFiles) {
+  // Baseline source imports only report-grid; its comparison must not require
+  // a new helper that did not exist in that immutable revision.
+  if (source.includes('@/' + relative.slice(0, -3))) actualHelper(relative);
+}
 const module = { exports: {} };
 vm.runInNewContext('(function (exports, require, module) {\n' + compiled.outputText + '\n})', {
   fetch() { throw new Error('Network is forbidden in report preview checks.'); },
@@ -50,6 +73,11 @@ vm.runInNewContext('(function (exports, require, module) {\n' + compiled.outputT
   module,
 );
 const { ReportPreview } = module.exports;
+
+export const reportPreviewHarness = {
+  React, Recharts: runtime.get('recharts'), ChartBlock: module.exports.__ChartBlock,
+  sourceFunctions: new Set(module.exports.__SourceFunctions),
+};
 
 function chart(overrides = {}) {
   return {
