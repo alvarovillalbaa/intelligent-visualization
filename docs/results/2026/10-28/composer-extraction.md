@@ -1,9 +1,8 @@
 # Composer extraction ownership
 
-28 October 2026. The client repair is published; its first hosted build is READY.
-An existing lint gate exposed further source issues, addressed below. Final CI
-and hosted readback are pending at this preparation step; browser interaction
-remains separate proof.
+28 October 2026. Client repair and editor lint fixes are published. The final
+source passes the existing CI and is production READY with hosted client
+readback. Browser interaction and live-provider acceptance remain separate proof.
 
 ## Problem and change
 
@@ -56,8 +55,8 @@ node --input-type=module -e "import { test } from 'node:test'; import { register
 ```
 
 The [Vitest entry](../../../../tests/unit/composer-extraction.test.ts) registers
-the same cases in the repository's existing suite. Its native CI result will be
-recorded after publication. Source parsing reported zero syntax diagnostics and
+the same cases in the repository's existing suite. Its native CI result is
+recorded below. Source parsing reported zero syntax diagnostics and
 all 20 local imports resolve. New MJS syntax/newline/whitespace and
 `git diff --check` passed. Independent source/caller review found no further
 concrete blocker in the repair.
@@ -125,3 +124,42 @@ the source-only checkout has no installed React. This is a different lint
 toolchain from the repository's locked Next 16.1.6; the automatic CI remains the
 canonical lint/type/Vitest/build check. No package or configuration was installed
 or changed to run this supplemental check.
+
+## Verified release
+
+Published follow-up source
+[1e5e563](https://github.com/alvarovillalbaa/intelligent-visualization/commit/1e5e56353e262387f3b7c12fa12afea1439882f2).
+All seventeen changed files matched local Git blobs through immutable GitHub
+readback. The Report canvas blob is `b900d5a04a55846385a8014e1dca8607f86309b1`;
+the Report editor case blob is `d3e83c0d60852b23ded3e5ccd236107fe5045300`.
+Composer source remains the checked extraction repair from 91ded37.
+
+The unchanged automatic CI
+[run 40621130845](https://github.com/alvarovillalbaa/intelligent-visualization/actions/runs/40621130845),
+job `122595168485`, succeeded at that exact source SHA on Ubuntu 24.04.5,
+Node 22.23.3 and npm 10.9.9:
+
+- Lint: zero errors, thirteen warnings (one composer cleanup-ref warning and
+  twelve unused test-host props). Typecheck passed.
+- Native Vitest 4.1.9: **391 tests in 21 files passed**, including all 28
+  extraction cases and 19 Report editor cases, with both new canvas regressions.
+- The separate three local-provider cases passed; they are already included in
+  the 391 unique cases, not three additional tests.
+- Local setup/doctor and export verification passed; eighteen exported files
+  were verified. Next 16.1.6 webpack production build succeeded.
+
+No new workflow, dispatch, retry, check suppression or dependency/configuration
+change was used. These CI checks prove the current local/provider slice, not
+hosted database access, real extraction or model-provider behavior.
+
+Vercel release
+[dpl_Dce2F88vkugVYxVpwBEPiYuqMAbu](https://vercel.com/my-team-4f230354/intelligent-visualization/Dce2F88vkugVYxVpwBEPiYuqMAbu)
+is production READY at 1e5e563. The canonical alias lookup resolves to that
+release; the [public guest page](https://intelligent-visualization.vercel.app/)
+returned 200 and referenced that deployment. Its served composer chunk
+`/_next/static/chunks/587-70bba6942acee6c6.js` returned 200. The connector-returned
+UTF-8 body is 165,167 bytes, SHA256
+`8655ea5809947499f9b13de60a3e8a30cca0e950c30a95c88be8d45670dceea4`.
+Source inspection of that delivered client confirms distinct extraction handle
+identity, abort/timer cleanup and inner updater ownership checks. Its JavaScript
+syntax passes. This is build/static-delivery evidence, not browser race testing.
