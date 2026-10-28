@@ -1,9 +1,9 @@
 # Report chart preview parity
 
-28 October 2026 (UTC). Source implementation and 146 focused checks are
-prepared; publication and hosted build/delivery verification are pending.
-Browser painting, hover/touch behavior and layout remain unverified. The
-all-project goal remains active.
+28 October 2026 (UTC). Source published, 146 focused checks and 40 related
+regression checks passed, and hosted build/delivery verified. Browser painting,
+hover/touch behavior and layout remain unverified. The all-project goal remains
+active.
 
 Baseline: `2550180ba5867b536163c1325a0cb0c7904a8d22`. Inspection found that the
 React preview rendered composed charts as bars and showed only the first
@@ -49,6 +49,11 @@ The final combined run passed **146 checks, zero failures/skips/cancellations**:
 - 64 existing static artifact checks cover grid/SVG output and legacy
   Course/Slides preservation after extracting shared rules.
 
+Because the preview's import graph changed, the existing 17 Report editor and
+23 download cases were also run together: **40 passes, no failures/skips or
+cancellations**. They check the affected editor/preview and compiler/download
+paths through their authored harnesses. No browser or HTTP route was involved.
+
 The identical final 61 preview cases against the baseline renderer produced
 **25 passes and 36 failures**, with no skips/cancellations. They execute the
 existing ChartBlock function on both versions rather than failing on an absent
@@ -88,7 +93,7 @@ JS
 ```
 
 Six changed TS/TSX files passed syntax transpilation. `git diff --check` passed.
-Twelve owned text files, eight local Markdown targets and twelve local source
+Twelve owned text files and twelve local source
 imports passed whitespace/path checks.
 Frozen SHA256 groups use sorted relative path, NUL, bytes, NUL:
 
@@ -107,7 +112,27 @@ silently activated.
 
 ## Publication
 
-Exact GitHub readback, the existing Vercel hosted build and public delivery will
-be recorded after observation. Publication uses `[skip actions]` to leave broad
-unapproved backend/provider push checks unrun, with no workflow edit or inferred
-green CI result.
+Source
+[`b3decfac271fda5c4625389de2959d8551b3fdd1`](https://github.com/alvarovillalbaa/intelligent-visualization/commit/b3decfac271fda5c4625389de2959d8551b3fdd1)
+was pushed to personal-repository main. Immutable connected GitHub reads match
+local blobs for ReportPreview (`97f36b3510b8daa8229d32097d6ce4f9f67fb95c`),
+projection (`416860020db5dde8a44973ccc0a5c32d7dad1179`) and shared chart model
+(`1fd67e640b23fa147c9ca19b5a84eb59996e9496`). The commit-specific `[skip actions]`
+leaves broad unapproved backend/provider push checks unrun; the SHA/event-filtered
+Actions API returned zero push runs. No workflow edit or green CI claim is made.
+
+Vercel production
+[`dpl_85DNumgsQoxxjRXD5AFbFSubvhWm`](https://vercel.com/my-team-4f230354/intelligent-visualization/85DNumgsQoxxjRXD5AFbFSubvhWm)
+reached READY at that exact SHA and owns the canonical alias. Logs show
+successful compilation in 15.8 seconds, the TypeScript step, completed build
+output and deployment. This is the hosted locked-dependency build; it does not
+establish client chart painting or runtime requests.
+
+A public homepage GET returned 200 and referenced that deployment in its
+script URLs. Client chunk `/_next/static/chunks/587-be892f6faca71070.js` returned
+200: 164,662 bytes, SHA256
+`86a4e050484a5edda6b489cca29486f2509f9acc7ed04e336bab38fa87dbb4a6`.
+Its bytes contain both source-row projection symbols, Chart series, the radial
+validation message, typed-value attributes and Unavailable. Source/build/client-
+code delivery is verified; interactive behavior is not inferred from these GETs.
+The receipt-only follow-up retains checked runtime/test bytes.
