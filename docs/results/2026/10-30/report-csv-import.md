@@ -5,6 +5,14 @@
 table/source-record append to the Report editor. This is source preparation;
 the new domain, browser and temporary-CI scope has not been approved or run.
 
+Source is published at
+[`2235abe28fffd836f8c8751b60af81f06d75356a`](https://github.com/alvarovillalbaa/intelligent-visualization/commit/2235abe28fffd836f8c8751b60af81f06d75356a).
+Connected GitHub readback matched every path, mode, type and blob SHA across
+all 440 remote leaves, without truncation. Local main fast-forwarded cleanly.
+GitHub reports zero Actions runs at that source; no CSV workflow is active.
+Automatic Vercel deployment was observed building that exact commit as
+`dpl_5KPYfVx18jgTabDhaqgsuFaKuwyv`; terminal hosted evidence is separate below.
+
 The [owning reference](../../../report-csv-import.md) defines the bounded CSV
 profile, literal text behavior and two explicit actions: Add to the isolated
 editor draft, then Apply to the current batch. One history step owns the table,
@@ -70,6 +78,28 @@ service changed. Existing GitHub publication and automatic Vercel delivery are
 within the portfolio authorization.
 
 ## Remaining acceptance
+
+Production `dpl_5KPYfVx18jgTabDhaqgsuFaKuwyv` reached **READY** at the exact
+published source and owns `intelligent-visualization.vercel.app`. The bounded
+build-log read includes successful compilation, the TypeScript stage, fifteen
+static pages and completed deployment. The
+[hosted receipt](report-csv-import-hosted.json) preserves the selected events
+and deployment/source identities. Homepage connected GET and independent
+unauthenticated HEAD both returned 200.
+
+The actual feature lives in a shared client chunk, not the 278-character page
+loader. Its complete connected response returned 200; all 182,927 UTF-8 bytes
+passed V8/Node syntax parsing without execution and contained eight CSV/prefix
+guard markers. SHA-256 is
+`b44a957afce0e5238e47e8726d08546498232d71d03c1c0260c286d5012f5290`.
+A separate native client read hit DNS resolution failure; no partial response
+was accepted. One bounded owned public-client copy used for fingerprinting was
+removed immediately. This is build/type/delivery proof, not behavioral acceptance.
+
+The exact 176-check scope was requested once after publishing the immutable
+proposal at `2235abe`; it remains approval-pending and unrun. No earlier
+approval was reused. Subsequent result-only publication changes none of the
+373 sealed inputs.
 
 Actual file-chooser/FileReader behavior, focus, touch, draft/history controls,
 storage failures and reload behavior remain unverified until the new checks

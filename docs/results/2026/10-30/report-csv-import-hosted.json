@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "observedAtUtc": "2026-10-29 23:22:39 UTC",
+  "sourceCommit": "2235abe28fffd836f8c8751b60af81f06d75356a",
+  "sourceTree": "f2412519e8a286deabd63673b8a860ff436f47db",
+  "remoteLeafIdentities": 440,
+  "sourceActionsRunCount": 0,
+  "deployment": {
+    "id": "dpl_5KPYfVx18jgTabDhaqgsuFaKuwyv",
+    "url": "intelligent-visualization-g4du5h8an-my-team-4f230354.vercel.app",
+    "state": "READY",
+    "sha": "2235abe28fffd836f8c8751b60af81f06d75356a"
+  },
+  "canonicalAlias": {
+    "alias": "intelligent-visualization.vercel.app",
+    "deploymentId": "dpl_5KPYfVx18jgTabDhaqgsuFaKuwyv",
+    "projectId": "prj_HrrKVYcDrHajz290uNt7uTpU8DtA"
+  },
+  "buildEvidence": {
+    "readDirection": "backward",
+    "requestedLimit": 100,
+    "returnedEvents": 78,
+    "selectedEvents": [
+      {
+        "type": "stdout",
+        "text": "Cloning github.com/alvarovillalbaa/intelligent-visualization (Branch: main, Commit: 2235abe)"
+      },
+      {
+        "type": "stdout",
+        "text": "✓ Compiled successfully in 7.8s"
+      },
+      {
+        "type": "stdout",
+        "text": "  Running TypeScript ..."
+      },
+      {
+        "type": "stdout",
+        "text": "✓ Generating static pages using 3 workers (15/15) in 237.1ms"
+      },
+      {
+        "type": "stderr",
+        "text": "Build Completed in /vercel/output [44s]"
+      },
+      {
+        "type": "stdout",
+        "text": "Deployment completed"
+      }
+    ],
+    "compileAndTypeStageCompleted": true,
+    "browserAcceptance": false
+  },
+  "http": {
+    "canonicalRoot": {
+      "connectedGetStatus": 200,
+      "unauthenticatedHeadStatus": 200
+    },
+    "featureClient": {
+      "path": "/_next/static/chunks/169-54c405784620deeb.js?dpl=dpl_5KPYfVx18jgTabDhaqgsuFaKuwyv",
+      "connectedGetStatus": 200,
+      "bytes": 182927,
+      "characters": 182847,
+      "sha256": "b44a957afce0e5238e47e8726d08546498232d71d03c1c0260c286d5012f5290",
+      "syntax": "passed",
+      "markers": 8,
+      "missing": [],
+      "execution": false
+    },
+    "nativeClientRead": {
+      "status": "dns-resolution-failed",
+      "fallback": "Complete connected Vercel response parsed and fingerprinted without execution."
+    }
+  },
+  "checks": {
+    "authoredUnitCases": 168,
+    "authoredBrowserRuns": 8,
+    "total": 176,
+    "executed": 0,
+    "approval": "requested",
+    "activeCsvWorkflow": false
+  },
+  "temporaryArtifact": {
+    "kind": "one bounded public client copy for SHA-256 and Node syntax parsing",
+    "removed": true
+  },
+  "limits": [
+    "No CSV product function, unit case, browser interaction, server or CI was run locally.",
+    "Hosted build and delivered source do not prove file input, focus, history, storage or download behavior.",
+    "Provider/auth/schema/dependencies and existing workflows were not changed."
+  ]
+}
