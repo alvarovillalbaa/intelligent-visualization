@@ -52,7 +52,40 @@ browser proposal. Its thirteen protected dependency/schema/route/Auth/Report/
 workflow inputs match the inspected base. Dated delivery receipts are excluded
 from this seal. All new cases remain unexecuted; no golden was regenerated.
 
-GitHub publication and Vercel build/delivery observations will be appended when
-complete. Runtime file
-opening/saving, mobile behavior, hosted/provider acceptance and the full
-portfolio goal remain unverified or unfinished.
+## Published source and hosted build
+
+Source
+[`73295ee5bbcd02de0857de39919cbb864e171107`](https://github.com/alvarovillalbaa/intelligent-visualization/commit/73295ee5bbcd02de0857de39919cbb864e171107)
+is published on personal main. All 428 local/remote leaf paths, modes, types and
+blob SHAs matched without truncation, with a clean checkout. The connector's
+tree-root metadata repeated the commit SHA rather than the local tree object,
+so it was not used as a Merkle proof; direct exhaustive leaf comparison passed.
+The commit-specific workflow-run readback returned zero runs. This is not a
+green broad-CI result.
+
+Vercel production
+[`dpl_2ZQiMxP7EqDxTUcPpWPUFp6Ls4ax`](https://vercel.com/my-team-4f230354/intelligent-visualization/2ZQiMxP7EqDxTUcPpWPUFp6Ls4ax)
+reached READY at that exact commit, with the canonical
+[guest page](https://intelligent-visualization.vercel.app/) among its aliases.
+The existing Next.js 16.1.6 webpack build compiled successfully, completed its
+TypeScript step, generated 15/15 static pages and completed deployment. The
+build log reports 36 seconds in `/vercel/output`. No configuration or dependency
+was changed to obtain this build.
+
+Connected root GET returned 200 and references that deployment in its assets.
+Its delivered Course client chunk
+`/_next/static/chunks/791-7639c44a45abae92.js` returned 200: connector-decoded
+UTF-8 size 171,373 bytes, SHA256
+`3055bee12576907f8e6b67c9186148ffcfebb0c1fc5bc0d195bb1ea0c7d168af`.
+JavaScript syntax parsing passed; readback contains the prepare/save controls,
+finite response/deadline feedback and Object-URL/monotonic-clock guards. The
+owned temporary copy was removed after digest and syntax verification. It was
+never executed. Connected fetch may use a temporary share link; this does not
+establish independent anonymous browser acceptance.
+
+The [hosted machine record](course-html-export-hosted.json) preserves source,
+deployment, build and delivery evidence. The exact 110-check proposal was
+published and approval requested; its workflow remains inactive and every new
+case unexecuted. No artifact endpoint POST, native download/file opening,
+browser, local build or CI job ran. Hosted/provider persistence acceptance and
+the full portfolio goal remain unfinished.

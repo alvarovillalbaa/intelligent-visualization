@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-29",
+  "sourceCommit": "73295ee5bbcd02de0857de39919cbb864e171107",
+  "github": {
+    "head": "73295ee5bbcd02de0857de39919cbb864e171107",
+    "filesMatched": 428,
+    "truncated": false,
+    "clean": true,
+    "method": "Every local/remote leaf path, mode, type and blob SHA directly matched",
+    "treeRootMetadata": "Connector tree.sha repeats commit SHA; not used as Merkle-root proof."
+  },
+  "workflowRunsAtSource": 0,
+  "ciNote": "Existing workflow unchanged; commit-specific [skip actions] kept broad backend/provider CI unrun.",
+  "deployment": {
+    "id": "dpl_2ZQiMxP7EqDxTUcPpWPUFp6Ls4ax",
+    "url": "intelligent-visualization-m1vbh09ox-my-team-4f230354.vercel.app",
+    "canonical": "https://intelligent-visualization.vercel.app",
+    "target": "production",
+    "state": "READY",
+    "sourceCommit": "73295ee5bbcd02de0857de39919cbb864e171107",
+    "aliases": [
+      "intelligent-visualization.vercel.app",
+      "intelligent-visualization-my-team-4f230354.vercel.app",
+      "intelligent-visualization-git-main-my-team-4f230354.vercel.app"
+    ]
+  },
+  "build": {
+    "next": "16.1.6",
+    "compilation": "passed",
+    "typeScriptStep": "completed in successful production build",
+    "staticPages": "15/15",
+    "eventsReturned": 81,
+    "relevantLines": [
+      "Deployment completed",
+      "Build Completed in /vercel/output [36s]",
+      "✓ Generating static pages using 3 workers (15/15) in 251.3ms",
+      "  Running TypeScript ...",
+      "✓ Compiled successfully in 5.4s",
+      "▲ Next.js 16.1.6 (webpack)"
+    ],
+    "testsExecuted": 0
+  },
+  "http": {
+    "transport": "Connected Vercel fetch; account access may use temporary share link",
+    "rootStatus": 200,
+    "rootCharacters": 15212,
+    "rootReferencesDeployment": "dpl_2ZQiMxP7EqDxTUcPpWPUFp6Ls4ax",
+    "hasGuestIntroduction": true,
+    "client": {
+      "path": "/_next/static/chunks/791-7639c44a45abae92.js?dpl=dpl_2ZQiMxP7EqDxTUcPpWPUFp6Ls4ax",
+      "status": 200,
+      "bytes": 171373,
+      "characters": 171297,
+      "sha256": "3055bee12576907f8e6b67c9186148ffcfebb0c1fc5bc0d195bb1ea0c7d168af",
+      "javascriptSyntax": "passed",
+      "expectedCourseClientMarkers": 6,
+      "scriptExecuted": false,
+      "transport": "Connected Vercel response decoded as UTF-8; no anonymous browser or artifact endpoint acceptance"
+    },
+    "temporaryClientCopyRemoved": true,
+    "browserChecks": 0,
+    "artifactEndpointCalls": 0,
+    "independentAnonymousBrowserAccess": false
+  },
+  "approval": {
+    "status": "pending",
+    "proposalCommit": "73295ee5bbcd02de0857de39919cbb864e171107",
+    "proposalPath": "docs/proposals/course-export-browser.md",
+    "newCourseCases": 42,
+    "artifactRegressionCases": 64,
+    "browserCases": 4,
+    "total": 110,
+    "executed": 0,
+    "temporaryCIActivated": false
+  },
+  "limits": [
+    "Hosted build and delivered-client syntax/string readback do not prove Course compiler results, native downloading/file opening, React lifecycle or browser behavior.",
+    "No real generation/model call, database setup, hosted persistence/provider acceptance or paid enrollment.",
+    "Full application/portfolio goal remains incomplete."
+  ]
+}
