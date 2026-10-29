@@ -31,6 +31,12 @@ Workspace mode retains Course edits in this tab. Apply is not hosted saving or
 publication. The [all-format persistence proposal](proposals/all-formats-persistence.md)
 remains behind its existing provider, schema and authorization gates.
 
+After applying edits, open the completed Course preview and choose **Download
+Course HTML**, then **Save Course HTML**. This exports the committed document,
+including learner preparation, feedback, glossary and references. It does not
+export an unapplied editor draft or publish a hosted Course. See
+[Course HTML export](course-export.md).
+
 ## Validation and limits
 
 Authoring reuses the canonical Course schema and adds client edit invariants.

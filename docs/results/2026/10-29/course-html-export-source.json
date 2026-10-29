@@ -1,0 +1,308 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-29",
+  "project": "Intelligent Visualization",
+  "status": "course-export-source-prepared",
+  "baseCommit": "a13dfb2d49c226aea9d91329a57f2d8e99529dcb",
+  "requirements": [
+    "Standalone Course HTML from the committed draft, not an unapplied editor draft.",
+    "Preserve all currently authored learner content and six block kinds.",
+    "Distinct Course v2 output; retain Report v2/Slides v1 branches and original legacy fingerprints.",
+    "Existing artifact route and provider/auth/schema/dependency contracts remain unchanged."
+  ],
+  "rendererVersion": "visualization-course-html-v2",
+  "storagePreflight": {
+    "freeGiB": 24.9,
+    "requiredGiB": 34,
+    "reserveGiB": 30,
+    "needGiB": 4,
+    "exitCode": 2,
+    "localInstallOrBuild": false
+  },
+  "staticChecks": {
+    "node": "v24.21.0",
+    "typescript": "5.9.3",
+    "filesParsed": 12,
+    "importsResolved": 25,
+    "unchangedSharedReportSlidesFunctions": 9,
+    "courseInlineScriptsParsed": 2,
+    "courseCSSParsed": true,
+    "localMarkdownLinksResolved": 30,
+    "workflowYamlParsed": true,
+    "shellBodiesParsed": 8,
+    "inlineNodeProgramsParsed": 7,
+    "gitDiffCheck": "passed",
+    "productImports": 0,
+    "compilerInvocations": 0,
+    "testsExecuted": 0
+  },
+  "authoredCases": [
+    {
+      "path": "tests/unit/course-artifact.cases.mjs",
+      "names": [
+        "Course artifact: deterministic v2 compilation binds document and HTML hashes",
+        "Course artifact: frozen source asset theme and authored content remain unchanged",
+        "Course artifact: visible metadata and separate search metadata preserve authored values",
+        "Course artifact: mission learner preparation objectives and supplied durations survive export",
+        "Course artifact: module lesson content and practice follow authored reading order",
+        "Course artifact: all six block kinds retain their complete authored content",
+        "Course artifact: multiple-choice inputs share a safe group and preserve the actual answer index",
+        "Course artifact: free-recall labels and guidance name their actual response control",
+        "Course artifact: lesson feedback summaries and explicit practice regions remain visible",
+        "Course artifact: prerequisites resolve to lesson titles and retain unavailable references as escaped text",
+        "Course artifact: linked citations resolve internally while unmatched citations stay literal",
+        "Course artifact: HTTP and HTTPS reference URLs preserve notes with safe external-link attributes",
+        "Course artifact: unsafe reference schemes become inert readable entries",
+        "Course artifact: glossary and empty optional collections do not manufacture content",
+        "Course artifact: hostile authored IDs cannot become DOM IDs radio names or broken links",
+        "Course artifact: hostile metadata lesson prose citations and notes remain escaped text",
+        "Course artifact: theme text cannot close CSS and responsive print reduced-motion rules remain",
+        "Course artifact: preview includes only in-memory learner interactions and no persistent or network runtime",
+        "Course artifact: published runtime selection remains explicit and uses authored data identities",
+        "Course artifact: Report and Slides bytes are independent of Course rendering CSS and runtime"
+      ]
+    },
+    {
+      "path": "tests/unit/course-download.cases.mjs",
+      "names": [
+        "Course download: filenames normalize unsafe characters with a bounded Course prefix",
+        "Course download: request captures the complete validated clone and exact endpoint contract",
+        "Course download: actual compiler round-trips full authored fields and blocks through the helper",
+        "Course download: invalid or oversized Course input fails finitely before fetch",
+        "Course download: pre-abort avoids fetch and a late fetched response is canceled on abort",
+        "Course download: status media JSON and incomplete-envelope errors use finite codes",
+        "Course download: advertised and streamed response bounds cancel oversized bodies",
+        "Course download: chunked UTF-8 retains authored Unicode and malformed encoding fails finitely",
+        "Course download: abort cancels a stalled response reader instead of leaving pending owned work",
+        "Course download: SSR renders a labelled preparation control without requesting or saving a file",
+        "Course download: explicit preparation exposes a native Save link for the exact HTML bytes",
+        "Course download: synchronous duplicate preparation callbacks share one pending request",
+        "Course download: finite preparation failure retains the draft and allows an explicit retry",
+        "Course download: Blob allocation failure keeps the authored draft and releases pending state",
+        "Course download: committed A to B to A changes cannot revive a revoked ready URL",
+        "Course download: pending replacement aborts only on commit and old success cannot replace a newer file",
+        "Course download: an old rejection cannot attach errors to or unlock a newer pending request",
+        "Course download: unmount aborts pending work clears timers and fences late responses",
+        "Course download: timeout unlocks retry and the expired result cannot replace its successor",
+        "Course download: preparing another copy revokes the prior URL and unmount releases the final copy",
+        "Course download: a late acknowledgement cannot beat a delayed deadline timer",
+        "Course download: preview source binds the Course control to its current Course document only"
+      ]
+    }
+  ],
+  "proposedChecks": {
+    "newArtifactCases": 20,
+    "newDownloadCases": 22,
+    "artifactRegressionCases": 64,
+    "courseTransitionCasesIncludedInRegressions": 2,
+    "unitTotal": 106,
+    "browserCases": 4,
+    "total": 110,
+    "status": "unexecuted; awaiting explicit approval",
+    "runner": "ubuntu-24.04",
+    "timeoutMinutes": 20,
+    "node": "24.21.0",
+    "runnerOnlyPlaywright": "1.58.2",
+    "proposal": "docs/proposals/course-export-browser.md",
+    "workflow": "docs/proposals/course-export-browser.yml.example",
+    "activeWorkflowCopied": false
+  },
+  "protectedInputsMatchedBase": [
+    "package.json",
+    "package-lock.json",
+    ".github/workflows/ci.yml",
+    "app/api/visualizations/artifact/route.ts",
+    "packages/domain/schemas.ts",
+    "packages/domain/entities.ts",
+    "lib/client/course-authoring.ts",
+    "components/visualizations/report-download.tsx",
+    "lib/client/report-download.ts",
+    "lib/artifacts/report-grid.ts",
+    "lib/artifacts/report-chart.ts",
+    "lib/server-auth.ts",
+    "lib/repository.ts"
+  ],
+  "sources": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "sha256": "02cf694be09a858017d77e64c95bb60e981ad29e4fed9f574fab62a43af58741"
+    },
+    {
+      "path": "README.md",
+      "sha256": "b560755f83091d3939ef14bbf2b2daf5f56cee038ceb11ccbd62da89fa86ecd0"
+    },
+    {
+      "path": "app/api/visualizations/artifact/route.ts",
+      "sha256": "2bfdf76cf77e7ef5088fc02b08416d7e6b324a32f98a95a254ea77e3c5ffa0fc"
+    },
+    {
+      "path": "app/page.tsx",
+      "sha256": "6f396c0042b0d39304f66b139368fda820a45db7b38267b6f35dbe40013ede9a"
+    },
+    {
+      "path": "components/visualizations/course-download.tsx",
+      "sha256": "6d95d1032c40fca7dd3239d171a6cdcb1b717e7bba4d372e8779cb9d554ed0ea"
+    },
+    {
+      "path": "components/visualizations/preview.tsx",
+      "sha256": "64cb382303cdd2e75a4d8e13920c3745ff06762200e184f61ba9b753754d39d6"
+    },
+    {
+      "path": "components/visualizations/report-download.tsx",
+      "sha256": "4faa751e55baa0fc3cde1022689decec55b6548e83c64c15149eb4e3a0837749"
+    },
+    {
+      "path": "docs/artifact-runtime.md",
+      "sha256": "628ddca26edd9eec0d2712b1e510dc82e28dbd35c0468ce2621cc48ce0b05a22"
+    },
+    {
+      "path": "docs/course-authoring.md",
+      "sha256": "d2f722cf154e5c652bc3d20278a3242175f154875ea7360ce887c88ae4f85878"
+    },
+    {
+      "path": "docs/course-export.md",
+      "sha256": "369611ac2bd65dcc0e612b2a9c7a37486622f29593fb2ae7c1b7df698579aaf3"
+    },
+    {
+      "path": "docs/proposals/course-export-browser.config.ts.example",
+      "sha256": "274fab9608522a8cd54dc7b51d272eec07ff5357df7ba9a322aaa53961fa850d"
+    },
+    {
+      "path": "docs/proposals/course-export-browser.md",
+      "sha256": "e6a9614fd740b72cc1f7f9b54469f9c92b69e17f42f9ca89c746afe8222a9922"
+    },
+    {
+      "path": "docs/proposals/course-export-browser.test.ts.example",
+      "sha256": "26bd4dc2d13d64426dfa29b7c52d1aad3b12ba77e5a96f129bd1d523c1d0287a"
+    },
+    {
+      "path": "docs/proposals/course-export-browser.yml.example",
+      "sha256": "b4ea43704bc3ef415083a8602c02bdb5e0d37e2e5e6e8854b5d1d01cc72d6d3d"
+    },
+    {
+      "path": "docs/report-export.md",
+      "sha256": "a9d6d21caf906bf99554eb52d66d6ea168d2daa0d4e5ca1a99e4ebaa03a6a627"
+    },
+    {
+      "path": "eslint.config.mjs",
+      "sha256": "8b96e4f4e0b1138cc9ba1254b2f966456e75f42911d43326add014590f50b2b4"
+    },
+    {
+      "path": "lib/artifacts/compiler.ts",
+      "sha256": "9f84cf1b53d89601d40d927ca7f72fa1f6af6108238fd82c3cb19c2aec3d3980"
+    },
+    {
+      "path": "lib/artifacts/course.ts",
+      "sha256": "b09010390e90cea146c94387513ae991d54d614dff1f5de248bcfa37d8d13330"
+    },
+    {
+      "path": "lib/artifacts/report-chart.ts",
+      "sha256": "7324f2778aa3f2a43d5d6ae7aa58eeccff7b220bc92c9acbc7ba43ae8ab453f6"
+    },
+    {
+      "path": "lib/artifacts/report-grid.ts",
+      "sha256": "a51c2ab7965c415c7aea13eb68226c6380dfe705db602cfa32919a50700b3524"
+    },
+    {
+      "path": "lib/client/course-authoring.ts",
+      "sha256": "3e0e0156c7638dd200d81ed04428b570f4d5f8bc0c60ab01341aa31a6aca1eaa"
+    },
+    {
+      "path": "lib/client/course-download.ts",
+      "sha256": "b4e830620491ce51b98e3d2f35a7f79dba70dcd5d7b79f1ca06aaadde0ff26d1"
+    },
+    {
+      "path": "lib/client/report-download.ts",
+      "sha256": "8b9d40af251465fe6110066094cf0b88651be8c16907e98f7e3b5c3289059d71"
+    },
+    {
+      "path": "lib/demo-store.ts",
+      "sha256": "01ec7d5ddbe4e98cc327a6a482764b00aa75e75c78fa11bdea0da9d3db0ed575"
+    },
+    {
+      "path": "lib/repository.ts",
+      "sha256": "8c206a4b3acf76577c1f0dff7a899f4318117d28296d395a8d579e6c01321a74"
+    },
+    {
+      "path": "lib/seed.ts",
+      "sha256": "1abf34da14546f31142720502660db8ef4448c421c445b776a48f1d78a6e42de"
+    },
+    {
+      "path": "lib/server-auth.ts",
+      "sha256": "234224562ef3bffdaa8ba0ca9152240038f412737506b8345c2adc6a628334f9"
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "73d0d633911baf6313e344f7be032967c23c0902d21f7e7de8359ccc185c217a"
+    },
+    {
+      "path": "package.json",
+      "sha256": "8f903168a869c949ad27fba2eadf0fa20d6e081fba96d1bfd9e1afcd3030fbaf"
+    },
+    {
+      "path": "packages/domain/entities.ts",
+      "sha256": "3497d892a647865b4a837c7073e2f31a53974c82d4d5671d568332fa9927656a"
+    },
+    {
+      "path": "packages/domain/fixtures.ts",
+      "sha256": "7a4061dee526746e8243253e060cfc76abcf8e0b0387057e94cc49703acf9b12"
+    },
+    {
+      "path": "packages/domain/ids.ts",
+      "sha256": "21398813bb52c1b338affd89e383b09debd518a927e65366b3577c07e76806a4"
+    },
+    {
+      "path": "packages/domain/migrations.ts",
+      "sha256": "ca73f1e7c0f411ca50b9f25c90d5778abccd7d2081f5bc2b0e4b0e68c9291336"
+    },
+    {
+      "path": "packages/domain/schemas.ts",
+      "sha256": "63244c33ff0bc7702e51073ae19b0cae177ff46b17892332253e956bf62c3a82"
+    },
+    {
+      "path": "packages/domain/serialization.ts",
+      "sha256": "2b4b41d1d5c2585192747435f6a353517407491ceaec546275ce5ca765c439e1"
+    },
+    {
+      "path": "tests/unit/course-artifact.cases.mjs",
+      "sha256": "25e1a2acd4d32c34654a04b9f9587127ce79d0c55e25efa1d4cdbafef923659b"
+    },
+    {
+      "path": "tests/unit/course-artifact.test.ts",
+      "sha256": "d16ff8c417a2a3c0baacec7892958d32b402cb2c8a4b49deb2be61c26dbecae5"
+    },
+    {
+      "path": "tests/unit/course-download.cases.mjs",
+      "sha256": "534fed998515d648aa9855f1cd3055358b43719af4ca645f69be41118a1b85f1"
+    },
+    {
+      "path": "tests/unit/course-download.test.ts",
+      "sha256": "4070a66d09973bdf6680e850d71b835cfe38b64ef6bf3daeb18385352b87d11c"
+    },
+    {
+      "path": "tests/unit/report-artifact.cases.mjs",
+      "sha256": "6eb748058a3e8ee7ee3f98404d9ab67350766b6d0fe7fe8f9fb090224688eb8a"
+    },
+    {
+      "path": "tests/unit/report-artifact.test.ts",
+      "sha256": "11c0d79503f23ccdad50e459456686ffc6f9a3b76c5ed411a3229157ece14db9"
+    },
+    {
+      "path": "tsconfig.json",
+      "sha256": "8224858bc6fb422f3fdfe3cf76e0cdf741bc156d56e2eb4d1fa5b1ad42d0ce9f"
+    },
+    {
+      "path": "vitest.config.ts",
+      "sha256": "8703ead0d2c6a613281f00f26aa48db91323fc15f678e97308c899b9f51bc9fa"
+    }
+  ],
+  "exclusions": [
+    "Dated delivery receipts are outside this preparation seal; no self hash."
+  ],
+  "limits": [
+    "Static preparation is not semantic typecheck, backend/domain execution, browser/file acceptance or hosted proof.",
+    "Direct callback/hook cases do not establish React lifecycle behavior.",
+    "No real generation/model call, database/provider/Auth/CI/configuration/dependency change or paid action.",
+    "Full application and portfolio goal remain incomplete."
+  ]
+}

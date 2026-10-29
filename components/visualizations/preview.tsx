@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { CoursePreview } from "@/components/visualizations/renderers/course-preview"
 import { ReportPreview } from "@/components/visualizations/renderers/report-preview"
 import { ReportDownload } from "@/components/visualizations/report-download"
+import { CourseDownload } from "@/components/visualizations/course-download"
 import { visualizationKindLabel } from "@/components/visualizations/options"
 import type { GeneratedDraft } from "@/lib/client/guest-draft"
 
@@ -101,6 +102,7 @@ export function VisualizationPreview({
         ) : null}
 
         {draft.document.kind === "report" ? <ReportDownload document={draft.document} /> : null}
+        {draft.document.kind === "course" ? <CourseDownload document={draft.document} /> : null}
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto">

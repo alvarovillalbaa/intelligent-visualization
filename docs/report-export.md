@@ -51,8 +51,9 @@ clamping. This is a rendering bound, separate from the editor's 256-row limit,
 based on the [CSS Grid specification's guidance for large grids](https://www.w3.org/TR/css-grid-2/#limit-large-grids).
 The download client validates its cloned layout
 before requesting compilation. The Report renderer version is
-`visualization-report-html-v2`; Course and Slides retain their existing renderer
-version and output contracts.
+`visualization-report-html-v2`. Slides retain their existing renderer version
+and output contract; [Course HTML export](course-export.md) now uses the separate
+`visualization-course-html-v2` renderer to preserve its authored learner content.
 
 Preview-mode HTML has no analytics beacon or persistent course-progress code.
 It does not load external JavaScript. Attached images still use labelled

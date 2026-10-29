@@ -471,10 +471,25 @@ export function registerReportArtifactChecks(test) {
   });
 
   for (const kind of ['course', 'slides']) for (const preview of [false, true]) {
-    test(`existing ${kind} preview=${preview} HTML and manifest exactly match immutable baseline fingerprints`, async () => {
+    const name = kind === 'course'
+      ? `Course preview=${preview} explicitly advances to v2 while retaining immutable v1 fingerprints`
+      : `existing ${kind} preview=${preview} HTML and manifest exactly match immutable baseline fingerprints`;
+    test(name, async () => {
       const fingerprints = await reportArtifactLegacyFingerprints(), key = `${kind}:${preview}`;
       assert.ok(LEGACY_FINGERPRINTS[key], 'Baseline fingerprints must be recorded before running this check.');
-      assert.deepEqual(fingerprints[key], LEGACY_FINGERPRINTS[key]);
+      if (kind === 'slides') {
+        assert.deepEqual(fingerprints[key], LEGACY_FINGERPRINTS[key]);
+      } else {
+        const document = fixedIDs(createStarterCourseDocument(), kind);
+        const result = await compile(document, { visualizationId: `authored-${kind}`, preview });
+        assert.equal(result.manifest.rendererVersion, 'visualization-course-html-v2');
+        assert.equal(result.manifest.documentHash, contentHash(document));
+        assert.equal(result.manifest.artifactHash, contentHash(result.html));
+        assert.deepEqual(fingerprints[key], { html: sha256(result.html), manifest: sha256(JSON.stringify(result.manifest)) });
+        assert.notEqual(fingerprints[key].html, LEGACY_FINGERPRINTS[key].html);
+        assert.notEqual(fingerprints[key].manifest, LEGACY_FINGERPRINTS[key].manifest);
+        for (const text of [document.course.mission, ...document.course.learningObjectives]) assert.ok(result.html.includes(text), text);
+      }
     });
   }
 }

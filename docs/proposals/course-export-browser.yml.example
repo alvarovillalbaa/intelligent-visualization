@@ -1,0 +1,184 @@
+# INACTIVE. Separate approval is required before copying this file to
+# .github/workflows/course-export-browser.yml and dispatching once on main.
+# Activation/removal commits use [skip actions]; remove the active workflow even
+# after failure. This read-only runner cannot remove repository workflows itself.
+name: Temporary Course export checks
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  course-export:
+    if: github.repository == 'alvarovillalbaa/intelligent-visualization' && github.event.repository.private == false && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CI: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+      DO_NOT_TRACK: "1"
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3100
+      PERSISTENCE_PROVIDER: local
+      STORAGE_PROVIDER: auto
+      AUTH_PROVIDER: portable
+      REALTIME_PROVIDER: auto
+      AI_ENABLED: "false"
+      EVE_ENABLED: "false"
+      WORKFLOWS_ENABLED: "false"
+      QUEUES_ENABLED: "false"
+      SANDBOX_QA_ENABLED: "false"
+      DATABASE_URL: ""
+      CONVEX_URL: ""
+      NEXT_PUBLIC_CONVEX_URL: ""
+      CONVEX_DEPLOYMENT: ""
+      CONVEX_DEPLOY_KEY: ""
+      CONVEX_SERVER_TOKEN: ""
+      CONVEX_ADMIN_KEY: ""
+      SUPABASE_URL: ""
+      NEXT_PUBLIC_SUPABASE_URL: ""
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ""
+      SUPABASE_SERVICE_ROLE_KEY: ""
+      CLOUDFLARE_DATA_API_URL: ""
+      CLOUDFLARE_DATA_API_SECRET: ""
+      CLOUDFLARE_ACCOUNT_ID: ""
+      CLOUDFLARE_API_TOKEN: ""
+      CLOUDFLARE_D1_DATABASE_ID: ""
+      CLOUDFLARE_R2_BUCKET: ""
+      CLOUDFLARE_R2_ACCESS_KEY_ID: ""
+      CLOUDFLARE_R2_SECRET_ACCESS_KEY: ""
+      BLOB_READ_WRITE_TOKEN: ""
+      AI_GATEWAY_API_KEY: ""
+      VERCEL_OIDC_TOKEN: ""
+      VERCEL: ""
+      OPENAI_API_KEY: ""
+      ANTHROPIC_API_KEY: ""
+      GOOGLE_GENERATIVE_AI_API_KEY: ""
+      FIRECRAWL_API_KEY: ""
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24.21.0
+          package-manager-cache: false
+      - name: Record source and the approved 106 unit plus four browser selection
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          if (process.version !== 'v24.21.0' || pkg.dependencies.next !== '16.1.6') throw new Error('Re-review changed runtime versions.');
+          if (pkg.dependencies['@playwright/test'] || pkg.devDependencies['@playwright/test']) throw new Error('The browser tool must remain runner-only.');
+          const spec = fs.readFileSync('docs/proposals/course-export-browser.test.ts.example', 'utf8');
+          if ((spec.match(/^test\(/gm) || []).length !== 2) throw new Error('Expected two scenarios expanded over two projects.');
+          NODE
+          git rev-parse HEAD
+          sha256sum package.json package-lock.json app/api/visualizations/artifact/route.ts components/visualizations/preview.tsx components/visualizations/course-download.tsx lib/client/course-download.ts lib/client/course-authoring.ts lib/artifacts/compiler.ts lib/artifacts/course.ts lib/artifacts/report-grid.ts lib/artifacts/report-chart.ts packages/domain/schemas.ts tests/unit/course-artifact* tests/unit/course-download* tests/unit/report-artifact* docs/proposals/course-export-browser*
+      - name: Allocate isolated owned runner paths
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs'), path = require('node:path');
+          if (!process.env.RUNNER_TEMP || !process.env.GITHUB_ENV || !/^\d+$/.test(process.env.GITHUB_RUN_ID || '') || !/^\d+$/.test(process.env.GITHUB_RUN_ATTEMPT || '')) throw new Error('Missing runner identity.');
+          const root = path.join(path.resolve(process.env.RUNNER_TEMP), 'iv-course-export-' + process.env.GITHUB_RUN_ID + '-' + process.env.GITHUB_RUN_ATTEMPT);
+          fs.mkdirSync(root, { recursive: false, mode: 0o700 });
+          fs.appendFileSync(process.env.GITHUB_ENV, [
+            'IV_COURSE_RUN_ROOT=' + root,
+            'IV_COURSE_TOOL_PREFIX=' + path.join(root, 'tools'),
+            'PLAYWRIGHT_BROWSERS_PATH=' + path.join(root, 'browsers'),
+            'IV_COURSE_OUTPUT=' + path.join(root, 'output'),
+            'IV_COURSE_DOWNLOADS=' + path.join(root, 'downloads'),
+            'IV_COURSE_BROWSER_RESULTS=' + path.join(root, 'browser-results.json'),
+            'npm_config_cache=' + path.join(root, 'npm-cache'),
+            'NODE_PATH=' + path.join(root, 'tools', 'node_modules'),
+          ].join('\n') + '\n');
+          NODE
+      - name: Install locked app dependencies and runner-only browser tooling
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm install --prefix "$IV_COURSE_TOOL_PREFIX" --no-save --package-lock=false --ignore-scripts --no-audit --no-fund @playwright/test@1.58.2
+          node <<'NODE'
+          const fs = require('node:fs'), path = require('node:path');
+          const pkg = JSON.parse(fs.readFileSync(path.join(process.env.IV_COURSE_TOOL_PREFIX, 'node_modules/@playwright/test/package.json'), 'utf8'));
+          if (pkg.version !== '1.58.2') throw new Error('Unexpected browser tool version.');
+          console.log('Runner-only @playwright/test ' + pkg.version);
+          NODE
+          git diff --exit-code -- package.json package-lock.json
+          node "$IV_COURSE_TOOL_PREFIX/node_modules/@playwright/test/cli.js" install --with-deps chromium
+      - name: Run exactly 42 Course cases and 64 existing artifact regressions
+        id: units
+        run: |
+          set -o pipefail
+          set +e
+          node node_modules/vitest/vitest.mjs run tests/unit/course-artifact.test.ts tests/unit/course-download.test.ts tests/unit/report-artifact.test.ts --reporter=tap --reporter=json --outputFile.json="$IV_COURSE_RUN_ROOT/unit-results.json" 2>&1 | tee "$IV_COURSE_RUN_ROOT/unit.tap"
+          outcome=${PIPESTATUS[0]}
+          set -e
+          node <<'NODE'
+          const fs = require('node:fs'), path = require('node:path');
+          const report = JSON.parse(fs.readFileSync(path.join(process.env.IV_COURSE_RUN_ROOT, 'unit-results.json'), 'utf8'));
+          const expected = new Map([['course-artifact.test.ts',20],['course-download.test.ts',22],['report-artifact.test.ts',64]]);
+          const suites = report.testResults || [], cases = suites.flatMap(suite => suite.assertionResults || []);
+          console.log(JSON.stringify({ kind:'course-export-unit-outcomes', total:report.numTotalTests, passed:report.numPassedTests, failed:report.numFailedTests, pending:report.numPendingTests, todo:report.numTodoTests, cases:cases.map(item => ({name:item.fullName,status:item.status})) }, null, 2));
+          if (suites.length !== 3 || suites.some(suite => (suite.assertionResults || []).length !== expected.get(path.basename(suite.name)))) throw new Error('Unexpected unit suite selection/count.');
+          if (report.success !== true || report.numTotalTests !== 106 || report.numPassedTests !== 106 || report.numFailedTests !== 0 || report.numPendingTests !== 0 || report.numTodoTests !== 0 || cases.length !== 106 || new Set(cases.map(item => item.fullName)).size !== 106 || cases.some(item => item.status !== 'passed')) throw new Error('Not all 106 approved unit checks passed.');
+          NODE
+          exit "$outcome"
+      - name: Materialize only the approved browser examples
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          if (!process.env.GITHUB_ENV) throw new Error('Missing runner environment file.');
+          const copies = [
+            ['docs/proposals/course-export-browser.test.ts.example','tests/tmp/course-export.spec.ts','IV_COURSE_SPEC_COPIED'],
+            ['docs/proposals/course-export-browser.config.ts.example','tests/tmp/course-export.config.ts','IV_COURSE_CONFIG_COPIED'],
+          ];
+          if (copies.some(([, target]) => fs.existsSync(target))) throw new Error('Refusing existing test files.');
+          fs.mkdirSync('tests/tmp', { recursive: true });
+          for (const [source, target, flag] of copies) {
+            fs.copyFileSync(source, target, fs.constants.COPYFILE_EXCL);
+            fs.appendFileSync(process.env.GITHUB_ENV, flag + '=true\n');
+          }
+          NODE
+      - name: Run exactly four native Course export browser checks
+        id: browser
+        run: node "$IV_COURSE_TOOL_PREFIX/node_modules/@playwright/test/cli.js" test --config tests/tmp/course-export.config.ts
+      - name: Record structured outcomes before owned cleanup
+        if: always()
+        env:
+          IV_COURSE_UNIT_OUTCOME: ${{ steps.units.outcome }}
+          IV_COURSE_BROWSER_OUTCOME: ${{ steps.browser.outcome }}
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs'), path = require('node:path');
+          const root = process.env.IV_COURSE_RUN_ROOT;
+          if (!root) { console.log('No runner task root allocated; checks did not reach preparation.'); process.exit(0); }
+          for (const file of ['unit-results.json','browser-results.json']) {
+            const source = path.join(root, file);
+            if (!fs.existsSync(source)) {
+              console.log(file + ': not produced');
+              if ((file === 'unit-results.json' ? process.env.IV_COURSE_UNIT_OUTCOME : process.env.IV_COURSE_BROWSER_OUTCOME) === 'success') throw new Error('Successful command omitted its required report.');
+              continue;
+            }
+            if (fs.statSync(source).size > 2 * 1024 * 1024) throw new Error('Outcome report too large.');
+            const report = JSON.parse(fs.readFileSync(source, 'utf8'));
+            if (file === 'unit-results.json') {
+              console.log(JSON.stringify({kind:'unit-summary',total:report.numTotalTests,passed:report.numPassedTests,failed:report.numFailedTests,pending:report.numPendingTests,todo:report.numTodoTests}));
+              continue;
+            }
+            const cases = [];
+            const visit = suites => { for (const suite of suites || []) { for (const spec of suite.specs || []) for (const item of spec.tests || []) cases.push({title:spec.title,project:item.projectName,expectedStatus:item.expectedStatus,status:item.status,results:(item.results || []).map(result => ({status:result.status,retry:result.retry}))}); visit(suite.suites); } };
+            visit(report.suites); console.log(JSON.stringify({kind:'course-export-browser-outcomes',stats:report.stats,cases}, null, 2));
+            if (cases.length !== 4 || new Set(cases.map(item => item.project + ':' + item.title)).size !== 4 || cases.some(item => item.expectedStatus !== 'passed' || item.status !== 'expected' || item.results.length !== 1 || item.results[0].status !== 'passed' || item.results[0].retry !== 0) || (report.errors || []).length) throw new Error('Not all four approved browser checks passed exactly once.');
+          }
+          NODE
+      - name: Remove owned files and tooling even after failure
+        if: always()
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs'), path = require('node:path');
+          for (const [file, flag] of [['tests/tmp/course-export.spec.ts','IV_COURSE_SPEC_COPIED'],['tests/tmp/course-export.config.ts','IV_COURSE_CONFIG_COPIED']]) if (process.env[flag] === 'true') fs.rmSync(file, { force: true });
+          const root = process.env.IV_COURSE_RUN_ROOT;
+          if (root) {
+            const expected = path.join(path.resolve(process.env.RUNNER_TEMP || ''), 'iv-course-export-' + process.env.GITHUB_RUN_ID + '-' + process.env.GITHUB_RUN_ATTEMPT);
+            if (root !== expected || path.dirname(root) !== path.resolve(process.env.RUNNER_TEMP || '') || !/^iv-course-export-\d+-\d+$/.test(path.basename(root))) throw new Error('Refusing unowned cleanup path.');
+            fs.rmSync(root, { recursive: true, force: true });
+          }
+          NODE

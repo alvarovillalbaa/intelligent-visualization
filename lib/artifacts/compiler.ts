@@ -1,12 +1,12 @@
 import { contentHash } from "@/packages/domain/serialization"
 import type {
-  CourseBlock,
   ReportBlock,
   VisualizationDocument,
 } from "@/packages/domain/entities"
 import { migrateVisualizationDocument } from "@/packages/domain/migrations"
 import { REPORT_ARTIFACT_CSS, reportArtifactLayout, reportArtifactPlacement } from "./report-grid"
 import { REPORT_CHART_CSS, renderReportChart } from "./report-chart"
+import { COURSE_ARTIFACT_CSS, courseRuntimeScript, renderCourse } from "./course"
 
 export interface ArtifactCompileOptions {
   visualizationId: string
@@ -45,6 +45,7 @@ export interface CompiledArtifact {
 
 const RENDERER_VERSION = "visualization-html-v1"
 const REPORT_RENDERER_VERSION = "visualization-report-html-v2"
+const COURSE_RENDERER_VERSION = "visualization-course-html-v2"
 
 function escapeHtml(value: string) {
   return value
@@ -65,46 +66,6 @@ function safeUrl(value: string) {
   } catch {
     return "#"
   }
-}
-
-function renderCourseBlock(block: CourseBlock) {
-  switch (block.kind) {
-    case "heading":
-      return `<h3 id="${escapeHtml(block.id)}">${escapeHtml(block.text)}</h3>`
-    case "prose":
-      return `<p>${escapeHtml(block.text)}</p>`
-    case "callout":
-      return `<aside class="callout" id="${escapeHtml(block.id)}"><strong>${escapeHtml(block.title)}</strong><p>${escapeHtml(block.body)}</p></aside>`
-    case "multiple-choice-check":
-      return `<fieldset class="quiz" id="${escapeHtml(block.id)}" data-answer="${block.answerIndex}"><legend>${escapeHtml(block.prompt)}</legend>${block.options
-        .map((option, index) => `<label><input type="radio" name="${escapeHtml(block.id)}" value="${index}" /> <span>${escapeHtml(option)}</span></label>`)
-        .join("")}<p class="feedback" hidden>${escapeHtml(block.explanation)}</p></fieldset>`
-    case "free-recall-check":
-      return `<section class="recall" id="${escapeHtml(block.id)}"><p>${escapeHtml(block.prompt)}</p><textarea aria-label="${escapeHtml(block.prompt)}"></textarea><p>${escapeHtml(block.guidance)}</p></section>`
-    case "summary":
-      return `<ul class="summary" id="${escapeHtml(block.id)}">${block.items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
-    default:
-      return ""
-  }
-}
-
-function renderCourse(document: Extract<VisualizationDocument, { kind: "course" }>) {
-  const toc = document.course.modules
-    .map((module) => `<li><a href="#${escapeHtml(module.id)}">${escapeHtml(module.title)}</a></li>`)
-    .join("")
-  const modules = document.course.modules
-    .map(
-      (module) => `<section class="module" id="${escapeHtml(module.id)}"><h2>${escapeHtml(module.title)}</h2><p>${escapeHtml(module.objective)}</p>${module.lessons
-        .map(
-          (lesson) => `<article class="lesson" id="${escapeHtml(lesson.id)}"><h3>${escapeHtml(lesson.title)}</h3><p>${escapeHtml(lesson.explanation)}</p>${lesson.blocks
-            .map(renderCourseBlock)
-            .join("")}<div class="practice">${lesson.practice.map(renderCourseBlock).join("")}</div><p class="lesson-summary">${escapeHtml(lesson.summary)}</p><button class="complete-lesson" type="button" data-lesson-id="${escapeHtml(lesson.id)}">Mark complete</button></article>`,
-        )
-        .join("")}</section>`,
-    )
-    .join("")
-
-  return `<nav class="toc" aria-label="Course modules"><ol>${toc}</ol></nav><main class="course">${modules}</main>`
 }
 
 function renderSlideBlock(block: Extract<VisualizationDocument, { kind: "slides" }>["slides"]["items"][number]["blocks"][number]) {
@@ -215,11 +176,13 @@ function shell(document: VisualizationDocument, body: string, options: ArtifactC
     ? `<a class="floating-cta" href="${escapeHtml(safeUrl(document.engagement.cta.href))}" rel="noopener noreferrer">${escapeHtml(document.engagement.cta.label)}</a>`
     : ""
 
-  // CSS escaping keeps author-supplied Report theme values inside the style
+  // CSS escaping keeps author-supplied Report/Course theme values inside the style
   // element; HTML entities would change CSS tokens without closing this boundary.
-  const css = document.kind === "report" ? (baseCss(document) + REPORT_ARTIFACT_CSS + REPORT_CHART_CSS).replace(/</g, "\\3c ") : baseCss(document)
-  const subtitle = document.kind === "report" && document.subtitle ? `<p class="artifact-subtitle">${escapeHtml(document.subtitle)}</p>` : ""
-  const runtime = document.kind === "report" && options.preview === true ? "" : runtimeScript(options.preview === true)
+  const css = document.kind === "report" ? (baseCss(document) + REPORT_ARTIFACT_CSS + REPORT_CHART_CSS).replace(/</g, "\\3c ")
+    : document.kind === "course" ? (baseCss(document) + COURSE_ARTIFACT_CSS).replace(/</g, "\\3c ") : baseCss(document)
+  const subtitle = (document.kind === "report" || document.kind === "course") && document.subtitle ? `<p class="artifact-subtitle">${escapeHtml(document.subtitle)}</p>` : ""
+  const runtime = document.kind === "course" ? courseRuntimeScript(options.preview === true)
+    : document.kind === "report" && options.preview === true ? "" : runtimeScript(options.preview === true)
   return `<!doctype html><html lang="${escapeHtml(document.locale)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(document.seo.title)}</title><meta name="description" content="${escapeHtml(document.seo.description)}"><style>${css}</style></head><body data-kind="${document.kind}" data-public-id="${escapeHtml(options.visualizationId)}"><header class="artifact-header"><p>${escapeHtml(document.brand.companyName)}</p><h1>${escapeHtml(document.title)}</h1>${subtitle}<p>${escapeHtml(document.summary)}</p></header>${body}${cta}${runtime}</body></html>`
 }
 
@@ -250,7 +213,7 @@ export async function compileVisualizationArtifact(
     documentHash,
     artifactHash,
     createdAt: options.createdAt ?? new Date().toISOString(),
-    rendererVersion: document.kind === "report" ? REPORT_RENDERER_VERSION : RENDERER_VERSION,
+    rendererVersion: document.kind === "report" ? REPORT_RENDERER_VERSION : document.kind === "course" ? COURSE_RENDERER_VERSION : RENDERER_VERSION,
     sourceHashes: document.sourceManifest.map((source) => source.contentHash),
     assetReferences: document.assetIds,
     runtimeFeatures: document.kind === "report"

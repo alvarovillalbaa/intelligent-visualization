@@ -14,6 +14,10 @@ Current behavior:
 - Report renderer `visualization-report-html-v2` applies responsive grid layouts,
   exposes focusable scroll regions, expands print flow and preserves chart data
   tables. See [Report HTML export](report-export.md) for supported marks and limits.
+- Course renderer `visualization-course-html-v2` preserves learner preparation,
+  lesson objectives/dependencies/feedback/citations, glossary and references.
+  Downloaded preview-mode copies use in-memory checks/progress without analytics
+  or storage. See [Course HTML export](course-export.md).
 
 Remaining work:
 

@@ -24,6 +24,7 @@ Implemented in the current migration slice:
 - [Course authoring](docs/course-authoring.md) for generated browser drafts, with typed content/practice fields, isolated preview and guarded Apply.
 - [Report authoring](docs/report-authoring.md) for responsive browser-draft layouts, typed blocks, locks and local undo/redo.
 - [Report HTML export](docs/report-export.md) for a standalone copy of a committed Report draft.
+- [Course HTML export](docs/course-export.md) preserves the committed learner content in a standalone Course copy.
 
 Still in progress:
 
