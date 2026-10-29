@@ -23,6 +23,7 @@ Implemented in the current migration slice:
 - First Vitest suites for domain, artifact, storage, and local provider behavior.
 - [Course authoring](docs/course-authoring.md) for generated browser drafts, with typed content/practice fields, isolated preview and guarded Apply.
 - [Report authoring](docs/report-authoring.md) for responsive browser-draft layouts, typed blocks, locks and local undo/redo.
+- [Report CSV import](docs/report-csv-import.md) reviews local text cells before adding a table and an original-data fingerprint to the draft.
 - [Report HTML export](docs/report-export.md) for a standalone copy of a committed Report draft.
 - [Course HTML export](docs/course-export.md) preserves the committed learner content in a standalone Course copy.
 

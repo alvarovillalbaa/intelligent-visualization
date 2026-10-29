@@ -25,7 +25,10 @@ fifteen existing block kinds, including nested tab sections, chart series and
 typed values, table rows/columns, citations and illustrative-value flags. Chart
 column renaming is explicit so temporarily incomplete names do not discard
 values. Attached-image fields refer to existing asset IDs; uploading and image
-delivery remain separate work. Data-source snapshot records are read-only.
+delivery remain separate work. Existing data-source snapshot records are read-only.
+[CSV import](report-csv-import.md) adds a reviewed table and a source fingerprint
+record together, with one Undo step. Preparing a file does not add it; choose
+**Add table and source snapshot**, then **Apply changes** to commit the Report.
 
 Generated Reports currently have empty layouts. Opening the editor supplies
 missing placements below valid supplied entries; malformed supplied placements
@@ -40,7 +43,9 @@ The document's block order remains its reading order at every breakpoint.
 Apply checks batch, result, editor and original-draft ownership, then replaces
 only the selected Report in the latest batch. Captured inputs, sibling formats,
 original provider/model/time, theme, brand, source manifest, asset IDs and data
-snapshots survive. Stale artifact HTML is removed. These guards do not implement
+snapshots survive in their original order. Apply rejects rewriting, removing or
+reordering an existing snapshot; valid new fingerprint records are appended.
+Stale artifact HTML is removed. These guards do not implement
 hosted saving or publication.
 
 Guest edits use the existing four-hour browser retention when storage is
@@ -75,7 +80,10 @@ before the block-count cap. These are client limits, not provider/schema changes
 ## Remaining work
 
 [Report HTML export](report-export.md) now carries these layouts into a
-standalone copy of the committed draft. Hosted Report saving/publication, data
-import, immutable snapshot creation and browser/download/print acceptance remain
-separate work. Existing snapshot records are preserved rather than created or
-rewritten by the editor or export. See [Report rendering](report-rendering.md).
+standalone copy of the committed draft, including imported CSV tables. CSV
+import retains source metadata and a hash of the original parsed cells; it does
+not archive the original file or a separate immutable copy of those cells.
+Hosted Report saving/publication, durable source archiving, other import formats
+and browser/download/print acceptance remain separate work. Existing snapshot
+records remain unchanged by the editor or export. See
+[Report rendering](report-rendering.md).

@@ -1,0 +1,2481 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-30",
+  "project": "Intelligent Visualization",
+  "status": "authored-and-unrun",
+  "baseCommit": "c6a4e6fe707fce6d4e6ff3ad904ba6d02ba6aeb8",
+  "scope": {
+    "newCsvCases": 41,
+    "authoringRegressions": 44,
+    "editorRegressions": 19,
+    "artifactRegressions": 64,
+    "unitCases": 168,
+    "browserScenarios": 4,
+    "browserRuns": 8,
+    "total": 176,
+    "testsExecuted": 0,
+    "ciActivated": false
+  },
+  "staticChecks": {
+    "typescript": "5.9.3",
+    "syntaxFiles": 10,
+    "localImports": 26,
+    "typecheck": false,
+    "workflowYaml": true,
+    "workflowShellBlocks": 8,
+    "workflowNodeBlocks": 4,
+    "gitDiffCheck": true,
+    "productImports": 0
+  },
+  "storagePreflight": {
+    "freeGiB": 27.9,
+    "requiredGiB": 34,
+    "reserveGiB": 30,
+    "estimatedNeedGiB": 4,
+    "exitCode": 2,
+    "localInstallBuildServerOrBrowser": false
+  },
+  "csv_case_names": [
+    "UTF-8 review retains authored accents, emoji and literal table values",
+    "one leading UTF-8 BOM is omitted from headings but counted in file bytes",
+    "quoted commas, escaped quotes and embedded CRLF remain literal cell contents",
+    "spaces, empty trailing cells and a final record delimiter are preserved without an extra row",
+    "spreadsheet formulas, leading zeroes and HTML-like text remain inert strings",
+    "blank and duplicate literal headings are allowed without renaming them",
+    "no-header mode generates positional headings and retains the first record as data",
+    "empty and BOM-only files reject while nonempty blank headings remain literal",
+    "header-only files support zero rows and additional blank records remain actual data",
+    "source labels and header mode require explicit bounded values",
+    "ragged short and long records are rejected without modifying the supplied bytes",
+    "unterminated quoted fields are rejected rather than silently repaired",
+    "quotes inside unquoted fields and text after closing quotes are rejected",
+    "invalid UTF-8 sequences fail decoding instead of introducing replacement characters",
+    "decoded NUL characters are rejected in headings and quoted or unquoted data",
+    "the raw CSV byte cap accepts exactly 2 MiB and rejects one additional byte",
+    "32 literal columns are accepted and a 33rd column is rejected",
+    "header mode accepts 256 data rows plus headings and rejects row 257",
+    "no-header mode counts every record toward the 256-row cap",
+    "the content hash matches independent SHA-256 of canonical parsed columns and rows",
+    "equivalent CSV quoting, BOM and line endings share a parsed-data hash independent of labels",
+    "changing a literal heading, cell or header interpretation changes the fingerprint",
+    "missing or failing SHA-256 support rejects review creation without an unhashed fallback",
+    "prepared reviews, column arrays, row arrays and cells are deeply immutable",
+    "forged, spread, reconstructed and proxied reviews are rejected before reading their fields",
+    "mutating original bytes and options while hashing cannot change the prepared review",
+    "import appends one literal table and one qualified snapshot without changing original content",
+    "an imported table receives a full-width nonoverlapping placement at all three breakpoints",
+    "preparing missing generated layouts before import positions every old and new block",
+    "layout exhaustion rejects the whole import without an orphan table or snapshot",
+    "the full Report JSON cap rejects a valid raw-size CSV atomically",
+    "one history commit undoes and redoes the imported table, snapshot and all layouts together",
+    "Apply appends the imported snapshot while preserving immutable fields and draft metadata",
+    "Apply rejects deleting, reordering or rewriting any existing ordered snapshot prefix",
+    "Apply rejects invalid new snapshot fingerprints and blank qualifications without mutation",
+    "table-cell edits preserve the previously committed import fingerprint and snapshot qualification",
+    "stale Report Apply rejects the imported candidate and preserves the newer Report",
+    "Report Apply preserves a sibling completed after the editor captured its expected draft",
+    "successive CSV imports preserve the exact committed snapshot prefix in order",
+    "guest storage round-trips imported literals, snapshots, siblings and four-hour retention",
+    "guest quota failure retains prior bytes and the new imported in-memory Report and siblings"
+  ],
+  "authoring_case_names": [
+    "valid report validation clones without trimming or changing source/snapshot qualifications",
+    "all fifteen typed block factories can be added without changing their siblings",
+    "image insertion requires an existing attached asset instead of inventing one",
+    "preparing real-generation empty layouts fills every breakpoint deterministically",
+    "preparing partial layouts preserves supplied entries and places only missing entries below",
+    "preparing a complete report leaves all geometry intact",
+    "both validation and preparation reject supplied fractional coordinate",
+    "both validation and preparation reject supplied negative coordinate",
+    "both validation and preparation reject supplied zero width",
+    "both validation and preparation reject supplied out-of-grid width",
+    "both validation and preparation reject supplied row overflow",
+    "both validation and preparation reject supplied overlap",
+    "both validation and preparation reject supplied unknown block",
+    "both validation and preparation reject supplied duplicate block layout",
+    "both validation and preparation reject supplied minimum violation",
+    "both validation and preparation reject supplied maximum violation",
+    "layout changes affect only the selected breakpoint and preserve source constraints",
+    "invalid drop is atomic and does not move or resize any existing block",
+    "lock blocks position/size edits until explicit unlock and is breakpoint-specific",
+    "removal requires every breakpoint unlocked and keeps at least one block",
+    "duplicate recursively renews block/tab/chart IDs while retaining evidence values and independent data",
+    "report content validation rejects duplicate global IDs",
+    "report content validation rejects duplicate chart/block ID",
+    "report content validation rejects duplicate series keys",
+    "report content validation rejects nonnumeric chart values",
+    "report content validation rejects missing series cell",
+    "report content validation rejects missing category key",
+    "report content validation rejects negative snapshot count",
+    "report content validation rejects unsupported extra field",
+    "report content validation rejects blank title",
+    "numeric chart nulls and empty datasets remain valid without invented data",
+    "table rows retain exact column count and enforce bounded column/data size",
+    "report CTA validation accepts HTTP(S) and rejects executable/protocol-ambiguous links",
+    "bounded JSON rejects cycles, sparse arrays, accessors, hidden values and nonfinite numbers before schema parsing",
+    "report byte and nesting limits fail before unbounded parsing or cloning",
+    "block/row limits refuse oversized reports or insertions without changing the current draft",
+    "nested tab depth is bounded while four levels of authored tabs remain valid",
+    "applying edits preserves latest siblings, input, save state, provenance and immutable source snapshots",
+    "applying supports generated reports with original empty layouts and retains their snapshot records",
+    "applying removes absent optional subtitle without leaving undefined JSON",
+    "stale draft application preserves the newer draft and leaves authored fields available",
+    "apply refuses duplicate result identities, wrong formats, incomplete and missing drafts",
+    "guest report edits round-trip through existing store and retain all format siblings and four-hour retention",
+    "guest quota failure keeps exact prior storage bytes and the applied in-memory report/siblings"
+  ],
+  "editor_case_names": [
+    "Report editor SSR labels fields and snapshots, escapes text and keeps source unchanged",
+    "all fifteen typed blocks expose their actual editing fields without raw JSON",
+    "pristine Cancel never applies and isolated field changes preserve caller input",
+    "dirty close blocks dismissal and keeps fields until explicit discard",
+    "Apply validates actual edited draft and retains it when the parent rejects",
+    "blank typed title blocks Apply without resetting its field",
+    "position typing is staged atomically through intermediate collisions and one Undo",
+    "invalid staged position survives errors, blocks switching, and can be corrected for Preview",
+    "pending position fields are dirty and Undo discards only that staged input first",
+    "Apply validates pending position before calling parent and retains invalid text",
+    "history caps at twenty, clears redo after a new edit, and distinguishes NaN from null",
+    "chart key rename retains exact numbers and null after blank/colliding proposals",
+    "numeric chart field keeps fractional typing and blank invalid text while updating its draft value",
+    "later parent document cannot replace isolated edits and malformed initial layout stays unchanged",
+    "pointer move stays transient and only the owning release commits one snapped change",
+    "pointer cancel/lost capture and changed canvas width never commit",
+    "pointer resize snaps within bounds and rejects an obsolete document owner",
+    "an abandoned render cannot replace the committed pointer gesture owner",
+    "committed context changes clear the ghost and capture without reviving the old gesture"
+  ],
+  "artifact_case_names": [
+    "standalone Report compilation is deterministic with hashes covering exact authored document and output",
+    "compilation preserves frozen layout, snapshot, source and evidence values without annotation",
+    "Report HTML contains its standalone container and complete grid rather than a runtime dependency",
+    "standalone sm placement uses its own numeric CSS starts and spans",
+    "standalone md placement uses its own numeric CSS starts and spans",
+    "standalone lg placement uses its own numeric CSS starts and spans",
+    "container breakpoints, columns, row heights and gaps match Report authoring geometry",
+    "source DOM reading order survives a different visual order at every breakpoint",
+    "every grid region is named and keyboard-focusable while overflowing content remains scrollable",
+    "print CSS expands Report cells into source flow without fixed-size clipping",
+    "export keeps document metadata, Report context and edited link/image text visible",
+    "the visible source appendix preserves supplied source/dataset records and a zero row count without internal IDs",
+    "source appendix labels, provenance and supplied hashes remain escaped text",
+    "empty source and snapshot collections omit the appendix instead of inventing citations",
+    "Report narrative paragraph breaks survive escaped standalone text",
+    "hostile IDs and text stay escaped attributes/text and never become CSS selectors",
+    "Report theme text cannot terminate the standalone style element",
+    "empty generated layouts falls back to complete readable source flow with one structured warning",
+    "a sparse breakpoint falls back to complete readable source flow with one structured warning",
+    "duplicate placement identities falls back to complete readable source flow with one structured warning",
+    "unknown placement identities falls back to complete readable source flow with one structured warning",
+    "duplicate document block IDs falls back to complete readable source flow with one structured warning",
+    "fractional geometry falls back to complete readable source flow with one structured warning",
+    "negative geometry falls back to complete readable source flow with one structured warning",
+    "zero dimensions falls back to complete readable source flow with one structured warning",
+    "column overflow falls back to complete readable source flow with one structured warning",
+    "overlap falls back to complete readable source flow with one structured warning",
+    "minimum constraints falls back to complete readable source flow with one structured warning",
+    "maximum constraints falls back to complete readable source flow with one structured warning",
+    "valid standalone layouts beyond the editor row ceiling retain their authored geometry",
+    "standalone grid line representability is explicit at logical row 9998",
+    "standalone grid line representability is explicit at logical row 9999",
+    "standalone grid line representability is explicit at logical row 9007199254740989",
+    "line chart preserves both supplied series, signed/zero/null values and accessible table data",
+    "bar chart preserves both supplied series, signed/zero/null values and accessible table data",
+    "area chart preserves both supplied series, signed/zero/null values and accessible table data",
+    "composed chart preserves both supplied series, signed/zero/null values and accessible table data",
+    "bar SVG keeps negative bars below zero and positive bars above it, with zero height for zero",
+    "line plotted coordinates preserve signed magnitude ratios and connect the actual observations",
+    "line SVG segments stop at nulls and isolated non-null observations remain plotted",
+    "area plotted coordinates preserve signed magnitude ratios and connect the actual observations",
+    "area SVG segments stop at nulls and isolated non-null observations remain plotted",
+    "composed SVG renders real bar and line geometry rather than relabelling one chart kind",
+    "pie renders separate series facets with faithful positive slices and no fabricated zero/null slice",
+    "pie negative observations are visibly unavailable while the complete data table and notes remain",
+    "pie zero-total observations never manufacture a circular graph",
+    "donut renders separate series facets with faithful positive slices and no fabricated zero/null slice",
+    "donut negative observations are visibly unavailable while the complete data table and notes remain",
+    "donut zero-total observations never manufacture a circular graph",
+    "nonnumeric data is preserved in the table and never coerced into plotted numbers",
+    "numeric-looking string data is preserved in the table and never coerced into plotted numbers",
+    "missing series cell data is preserved in the table and never coerced into plotted numbers",
+    "empty chart data keeps title, source, provenance and illustrative qualification with no SVG",
+    "chart labels, extra data columns, source and SVG colors are escaped without dropping their table evidence",
+    "zero-only Cartesian values remain honest zero-height bars rather than decorative positive values",
+    "finite extreme Cartesian magnitudes stay finite in geometry and retain exact table values",
+    "duplicate series keys produces an explicit unavailable chart without inventing or losing table values",
+    "blank series keys produces an explicit unavailable chart without inventing or losing table values",
+    "preview/download artifacts contain no analytics or persistent-progress code",
+    "existing published runtime selection remains explicit rather than changing export metadata silently",
+    "Course preview=false explicitly advances to v2 while retaining immutable v1 fingerprints",
+    "Course preview=true explicitly advances to v2 while retaining immutable v1 fingerprints",
+    "existing slides preview=false HTML and manifest exactly match immutable baseline fingerprints",
+    "existing slides preview=true HTML and manifest exactly match immutable baseline fingerprints"
+  ],
+  "browser_case_names": [
+    "literal CSV review requires explicit Add and Apply, preserves snapshots and reaches only a stubbed HTML boundary",
+    "CSV errors, canceled reads, replacement and header changes cannot add stale cells or autosave",
+    "CSV table and snapshot undo and redo together while committed source prefixes survive later discarded imports",
+    "guest reload and quota failure retain committed bytes while CSV Apply preserves a later Course sibling"
+  ],
+  "browser_profiles": [
+    "desktop",
+    "mobile"
+  ],
+  "source_files": [
+    {
+      "path": ".claude/skills/agentic-development",
+      "mode": "120000",
+      "bytes": 40,
+      "sha256": "2f860d96dd5d212d5d2888ef4ffed0c3323cde7d02798db56ad065248548ccf6"
+    },
+    {
+      "path": ".claude/skills/code-documentation",
+      "mode": "120000",
+      "bytes": 39,
+      "sha256": "a6868873c86f345ba79abdaf215de4cd1f06c457f2d689f10ceffb670e6963f5"
+    },
+    {
+      "path": ".claude/skills/continuous-learning",
+      "mode": "120000",
+      "bytes": 40,
+      "sha256": "f5bd6e91d9894ec0cfbf4e9cbaa72bbf6a1fa5ed8d12a45032fae1e0e0ed57e0"
+    },
+    {
+      "path": ".claude/skills/quality-assurance",
+      "mode": "120000",
+      "bytes": 38,
+      "sha256": "d2919a61f3d70d94869ea2317a35874ec2b89e4dfed746db6361ca683d7889a2"
+    },
+    {
+      "path": ".cursor/settings.json",
+      "mode": "100644",
+      "bytes": 111,
+      "sha256": "390cec50b2cd2b96a99e70d01d0015231a359e3d33e415a15ba6d705573172be"
+    },
+    {
+      "path": ".env.example",
+      "mode": "100644",
+      "bytes": 1449,
+      "sha256": "480ddc834230b2748fa9ed6747fd068c179de92d30d1e6bfdb420823eaed72b1"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "mode": "100644",
+      "bytes": 766,
+      "sha256": "02cf694be09a858017d77e64c95bb60e981ad29e4fed9f574fab62a43af58741"
+    },
+    {
+      "path": ".gitignore",
+      "mode": "100644",
+      "bytes": 524,
+      "sha256": "63d8c09df7fdce1786530e00b98f45b2fb459aa80c46316bd9ba6a0d5b2b8983"
+    },
+    {
+      "path": "AGENTS.md",
+      "mode": "100644",
+      "bytes": 467,
+      "sha256": "f24f819794f755a5d3f28b9763338d77cf99c1a849fd7c231bbe2091ecc75497"
+    },
+    {
+      "path": "CODE_OF_CONDUCT.md",
+      "mode": "100644",
+      "bytes": 153,
+      "sha256": "84ebefa9dbbbe8658b73a3de33d4ac8063e430b89c98814952f5018cc1f04cbb"
+    },
+    {
+      "path": "CONTRIBUTING.md",
+      "mode": "100644",
+      "bytes": 345,
+      "sha256": "60a9a2626d6ee4780f5fc496e1cb53382a6412ee430386b3b1c38bbf916c8c5b"
+    },
+    {
+      "path": "Dockerfile",
+      "mode": "100644",
+      "bytes": 458,
+      "sha256": "1277e2e45335924bd1b5f76e5aa3aaff257009d24aefacd65731d4aba5c93e2a"
+    },
+    {
+      "path": "LICENSE",
+      "mode": "100644",
+      "bytes": 1056,
+      "sha256": "1126322e2cc8d165adc4c792eeb195717de2bcc7b39be1ce77959d78e87ef685"
+    },
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "bytes": 4301,
+      "sha256": "ae7619e089b2def2dbcb69f5e9b83d0a0b496142d6849dd558938ec79ac90c97"
+    },
+    {
+      "path": "SECURITY.md",
+      "mode": "100644",
+      "bytes": 448,
+      "sha256": "e94ba8d37c7399c814229ba4be94ffb7b95622b09b8dd885b0a1224f5cd5bc2f"
+    },
+    {
+      "path": "app/actions/auth.ts",
+      "mode": "100644",
+      "bytes": 2673,
+      "sha256": "91ab227434b45655d9ac341ba64b65484b8b6feffde9faf2c18eb762a9359b89"
+    },
+    {
+      "path": "app/actions/decks.ts",
+      "mode": "100644",
+      "bytes": 9397,
+      "sha256": "e70362adda545187bc5e24ac5431aab1b94854fa486b8f33f06a39e41169a3f8"
+    },
+    {
+      "path": "app/api/brand/extract/route.ts",
+      "mode": "100644",
+      "bytes": 2071,
+      "sha256": "52c39a4d8d5d95e08f03fbbd67e59622a8d9fb0946c3dab55fed55b492d145e8"
+    },
+    {
+      "path": "app/api/events/route.ts",
+      "mode": "100644",
+      "bytes": 941,
+      "sha256": "e9a337c139bfb56ab714844b8dba09fb50abeb802257a6296073cb24e3526ff5"
+    },
+    {
+      "path": "app/api/file-context/route.ts",
+      "mode": "100644",
+      "bytes": 970,
+      "sha256": "bd0920d783dde06e3a16e7e092bb34d3bbe563291441d0fb7ac0152fb5cfe4a3"
+    },
+    {
+      "path": "app/api/generate/route.ts",
+      "mode": "100644",
+      "bytes": 3578,
+      "sha256": "0d0716efc749bebb5d1f6efc3a3a847425e8b64848a3952f42a642d7ead9622f"
+    },
+    {
+      "path": "app/api/leads/route.ts",
+      "mode": "100644",
+      "bytes": 919,
+      "sha256": "26c26a3fd64e480a312ad5325dac7bf30f810ed1e81a4331c150f938597ed7f6"
+    },
+    {
+      "path": "app/api/system/capabilities/route.ts",
+      "mode": "100644",
+      "bytes": 1280,
+      "sha256": "81d0a7805c1b93acf5b292b2319f08678d7f6d6d7b1980307d1a70d089a2dc04"
+    },
+    {
+      "path": "app/api/uploads/route.ts",
+      "mode": "100644",
+      "bytes": 1342,
+      "sha256": "e60457fe6f8c59f23378142d869ebcc59480ded26532700dddb2fabbcb170919"
+    },
+    {
+      "path": "app/api/visualizations/artifact/route.ts",
+      "mode": "100644",
+      "bytes": 1853,
+      "sha256": "2bfdf76cf77e7ef5088fc02b08416d7e6b324a32f98a95a254ea77e3c5ffa0fc"
+    },
+    {
+      "path": "app/api/visualizations/generate/route.ts",
+      "mode": "100644",
+      "bytes": 2251,
+      "sha256": "2d51dda1dd8f2c1a00f01fd089d093d000de1ec7228214d5f5f48f259c1fe336"
+    },
+    {
+      "path": "app/app/layout.tsx",
+      "mode": "100644",
+      "bytes": 481,
+      "sha256": "40b667a072497157da0563c0bc2ad90a8855d9806dc787514df0d85acdadcfaa"
+    },
+    {
+      "path": "app/app/page.tsx",
+      "mode": "100644",
+      "bytes": 252,
+      "sha256": "49a11a52280275084c0475b83acb2485040f54388d6d841bf4cdc49664971540"
+    },
+    {
+      "path": "app/app/workspaces/[workspaceSlug]/decks/[deckId]/page.tsx",
+      "mode": "100644",
+      "bytes": 2114,
+      "sha256": "c1fd2af8c9eb7f17501d40ac8f89a7007c335d3211e5ef010789ec3132e1b600"
+    },
+    {
+      "path": "app/app/workspaces/[workspaceSlug]/page.tsx",
+      "mode": "100644",
+      "bytes": 7503,
+      "sha256": "06093fe3eb1093ebd2376dc069dcfbd814e95632b0f407d4f4829744cf29312f"
+    },
+    {
+      "path": "app/auth/page.tsx",
+      "mode": "100644",
+      "bytes": 988,
+      "sha256": "915f818a9935ae33bef464de1b0c5cd263b6769a6263a865c7317f2d81f83b19"
+    },
+    {
+      "path": "app/d/[teamSlug]/[deckSlug]/opengraph-image.tsx",
+      "mode": "100644",
+      "bytes": 2034,
+      "sha256": "10c9c0fc15eb40515ed77f678caed93737acc1673b23935104d7cabd33b4470b"
+    },
+    {
+      "path": "app/d/[teamSlug]/[deckSlug]/page.tsx",
+      "mode": "100644",
+      "bytes": 1554,
+      "sha256": "58c8260041505d091a1afbbc19ff9adab1dbb61afcc11300b5b41c7ba6dc8853"
+    },
+    {
+      "path": "app/embed/[publicId]/page.tsx",
+      "mode": "100644",
+      "bytes": 1005,
+      "sha256": "3c03feefc1cc946dc9a901c2759db287b6bbe4fa883df7fba2b4b5802f93c61d"
+    },
+    {
+      "path": "app/favicon.ico",
+      "mode": "100644",
+      "bytes": 25931,
+      "sha256": "2b8ad2d33455a8f736fc3a8ebf8f0bdea8848ad4c0db48a2833bd0f9cd775932"
+    },
+    {
+      "path": "app/files/[...segments]/route.ts",
+      "mode": "100644",
+      "bytes": 1390,
+      "sha256": "200d347fb6402f48913b41bc995654e291949b4f98ba843991ade480f6039d12"
+    },
+    {
+      "path": "app/globals.css",
+      "mode": "100644",
+      "bytes": 4659,
+      "sha256": "e3e8dd6e5c07ae53d76635bb7673b274135f25a40b2762c82a963dd3d4a9d89e"
+    },
+    {
+      "path": "app/join/[token]/page.tsx",
+      "mode": "100644",
+      "bytes": 2259,
+      "sha256": "2c0ee820d6e35946bec7195543ed1c4956d2619745b5458116c11e58f71a4ed7"
+    },
+    {
+      "path": "app/layout.tsx",
+      "mode": "100644",
+      "bytes": 788,
+      "sha256": "17e90cb31a71f53a1b7f392d09bf11d1d02f6057a7911fa383a15207cef42dbc"
+    },
+    {
+      "path": "app/page.tsx",
+      "mode": "100644",
+      "bytes": 1038,
+      "sha256": "6f396c0042b0d39304f66b139368fda820a45db7b38267b6f35dbe40013ede9a"
+    },
+    {
+      "path": "app/published/[publicId]/[versionId]/route.ts",
+      "mode": "100644",
+      "bytes": 1526,
+      "sha256": "528db31976677258e8f2bfb965d7bab339e8fbec0185f7280de22111abba1959"
+    },
+    {
+      "path": "app/review/[token]/page.tsx",
+      "mode": "100644",
+      "bytes": 21712,
+      "sha256": "95dace21f80b52ec6216e5125eb70a1edb53446c23e6e1086f99771290015162"
+    },
+    {
+      "path": "components.json",
+      "mode": "100644",
+      "bytes": 514,
+      "sha256": "4975cda4a6a97b6455ecc44ba6048258003c30ee9b756870da70bc66ce3e2b54"
+    },
+    {
+      "path": "components/ai-elements/agent.tsx",
+      "mode": "100644",
+      "bytes": 3967,
+      "sha256": "1179836f47bf1715c9db6bdee09db2f97140fc6d280048bb34b431f2fe112ff8"
+    },
+    {
+      "path": "components/ai-elements/artifact.tsx",
+      "mode": "100644",
+      "bytes": 3355,
+      "sha256": "9d11387be9513a9da103f8764e0f069ac43dc620bfab561a31c5283a387eff91"
+    },
+    {
+      "path": "components/ai-elements/attachments.tsx",
+      "mode": "100644",
+      "bytes": 11376,
+      "sha256": "a2e45299381ed2166d3bba02c1c17637b1dd62a7ca23914b74fb79e7acc191bd"
+    },
+    {
+      "path": "components/ai-elements/audio-player.tsx",
+      "mode": "100644",
+      "bytes": 5966,
+      "sha256": "6a230aebd1b381832e1b4415aadb3a24250787f6efabbcf52cfb0e83096e1b37"
+    },
+    {
+      "path": "components/ai-elements/canvas.tsx",
+      "mode": "100644",
+      "bytes": 618,
+      "sha256": "36b86064881d8192c59a26d9d8c4079be6799a01d959b99694fd2cd195ac047a"
+    },
+    {
+      "path": "components/ai-elements/chain-of-thought.tsx",
+      "mode": "100644",
+      "bytes": 6226,
+      "sha256": "ce41c2728f5593a234dd82b9de9d972c70eac37712284aa41b2078d99ac2f61c"
+    },
+    {
+      "path": "components/ai-elements/checkpoint.tsx",
+      "mode": "100644",
+      "bytes": 1587,
+      "sha256": "00670af54916c560af43d1605d78144dd94ae8e677a396d5fa4e906e52b7f788"
+    },
+    {
+      "path": "components/ai-elements/code-block.tsx",
+      "mode": "100644",
+      "bytes": 13812,
+      "sha256": "cfb15afda7f97c3e66bcf76c547a13850856ce6fbc528806ea557c6f158460c4"
+    },
+    {
+      "path": "components/ai-elements/commit.tsx",
+      "mode": "100644",
+      "bytes": 9667,
+      "sha256": "f36d5e5db96419ad11d76d5a9e068caff709f535543fc8b8ab7e66387b4b0e7b"
+    },
+    {
+      "path": "components/ai-elements/confirmation.tsx",
+      "mode": "100644",
+      "bytes": 3795,
+      "sha256": "05344faf9ce4e5e21b1454efe2a80a56f143b3ce06a7f3552c3c6d3c46159226"
+    },
+    {
+      "path": "components/ai-elements/connection.tsx",
+      "mode": "100644",
+      "bytes": 570,
+      "sha256": "3da80a551da8a7eb4949a0b64b5329af463037dc15e6945e60ae66dcd903e71f"
+    },
+    {
+      "path": "components/ai-elements/context.tsx",
+      "mode": "100644",
+      "bytes": 9882,
+      "sha256": "0e52ed87af45be45250404f9640e434dfc96c70acc0cae6e659f32a18eab31b3"
+    },
+    {
+      "path": "components/ai-elements/controls.tsx",
+      "mode": "100644",
+      "bytes": 574,
+      "sha256": "fa52bfc3943ee92c70adac659860bcc702659838aa2f9e6c035bd752808114a6"
+    },
+    {
+      "path": "components/ai-elements/conversation.tsx",
+      "mode": "100644",
+      "bytes": 4378,
+      "sha256": "a8b5bcc9536536992caaa2cb6aa0bea909f4d359dc1e6276bba8131a7775a4b9"
+    },
+    {
+      "path": "components/ai-elements/edge.tsx",
+      "mode": "100644",
+      "bytes": 3224,
+      "sha256": "c477992b1ad2582a61840ea33518384a74ed1a80f59321ae1f365eaf56b87053"
+    },
+    {
+      "path": "components/ai-elements/environment-variables.tsx",
+      "mode": "100644",
+      "bytes": 7923,
+      "sha256": "5470c00b8a8f621a5a79960c89cdac839c177337f2fa3baa59aeb408e1ce8dd3"
+    },
+    {
+      "path": "components/ai-elements/file-tree.tsx",
+      "mode": "100644",
+      "bytes": 7570,
+      "sha256": "85dbb5d1825c233fcd2baa57b398389cf23f5f9eabe87f3fb048887f8f7afdc3"
+    },
+    {
+      "path": "components/ai-elements/image.tsx",
+      "mode": "100644",
+      "bytes": 494,
+      "sha256": "1ee8f7a9d60a9596bc545236a8a21ea0a1d198ad71196757584abd78a96db3d9"
+    },
+    {
+      "path": "components/ai-elements/inline-citation.tsx",
+      "mode": "100644",
+      "bytes": 6654,
+      "sha256": "5b286ea9dcd1e5dd8316a13db119cddbfe83be5c3db0c9799105f41ac8dd0bb1"
+    },
+    {
+      "path": "components/ai-elements/jsx-preview.tsx",
+      "mode": "100644",
+      "bytes": 5960,
+      "sha256": "1f967f521742000c864f2363d971911f1e95bacdfb02a508d6f1c72c29d67b36"
+    },
+    {
+      "path": "components/ai-elements/message.tsx",
+      "mode": "100644",
+      "bytes": 8488,
+      "sha256": "f31fb186b3ea0b1462a756b416930fcff6da7ea680ffadbf26e7fa463b57ee38"
+    },
+    {
+      "path": "components/ai-elements/mic-selector.tsx",
+      "mode": "100644",
+      "bytes": 9262,
+      "sha256": "18c2c5770bae21a9bf3b576ff4e756122807b7f38a183baa3ae1648bf9e5ca3d"
+    },
+    {
+      "path": "components/ai-elements/model-selector.tsx",
+      "mode": "100644",
+      "bytes": 5051,
+      "sha256": "f566c70639df7f39244f5c03c40e52f4eaf286be4ce3aae01b098c17c60bcb8a"
+    },
+    {
+      "path": "components/ai-elements/node.tsx",
+      "mode": "100644",
+      "bytes": 1977,
+      "sha256": "b7f2ae31342654538316cc81481e82f615381141cf2903e081e9550547428649"
+    },
+    {
+      "path": "components/ai-elements/open-in-chat.tsx",
+      "mode": "100644",
+      "bytes": 16000,
+      "sha256": "00f9feaee9ae37892e3af31b4039806c02eb7f5bc3dcc20ec3837ab26d67ef94"
+    },
+    {
+      "path": "components/ai-elements/package-info.tsx",
+      "mode": "100644",
+      "bytes": 5879,
+      "sha256": "3b854a9fa73c0fe1d503f90486407d56b2c4d078a8634254603be575ae5f88e0"
+    },
+    {
+      "path": "components/ai-elements/panel.tsx",
+      "mode": "100644",
+      "bytes": 402,
+      "sha256": "927b204d5c94f9a8d7bceb08559e7b323d63252eb9488f54d4b3dedb72636d3d"
+    },
+    {
+      "path": "components/ai-elements/persona.tsx",
+      "mode": "100644",
+      "bytes": 7247,
+      "sha256": "6fc8c68da1a4a7243c18d0e139362a659138e650be312646faf51dc5357ea6dd"
+    },
+    {
+      "path": "components/ai-elements/plan.tsx",
+      "mode": "100644",
+      "bytes": 3352,
+      "sha256": "96622100a50983d9cdd6242f909792a1e346669502ba28cf8e4e41f2ebd88f07"
+    },
+    {
+      "path": "components/ai-elements/prompt-input.tsx",
+      "mode": "100644",
+      "bytes": 35850,
+      "sha256": "8b3125d790351402fefcfde6fdee2d1180922f04913dce58439dfad99bbd1420"
+    },
+    {
+      "path": "components/ai-elements/queue.tsx",
+      "mode": "100644",
+      "bytes": 6203,
+      "sha256": "c62c37de517a45d749f4c47cb451e3dcdfbebea6351914090258e06c5470d513"
+    },
+    {
+      "path": "components/ai-elements/reasoning.tsx",
+      "mode": "100644",
+      "bytes": 6285,
+      "sha256": "1898c846f2a45d88bd695c88c1a62a5ebb9d3c20ebac62f71f2c7145ea1842eb"
+    },
+    {
+      "path": "components/ai-elements/sandbox.tsx",
+      "mode": "100644",
+      "bytes": 3405,
+      "sha256": "d8c8f5206e7798eced4906b1d5f13b35371adcb34f4bf0fcb4ada5e71d00b69b"
+    },
+    {
+      "path": "components/ai-elements/schema-display.tsx",
+      "mode": "100644",
+      "bytes": 12822,
+      "sha256": "b7048c828e766d3ff187db341d018134c13461c59769201f4f2cfbfa209656ef"
+    },
+    {
+      "path": "components/ai-elements/shimmer.tsx",
+      "mode": "100644",
+      "bytes": 2122,
+      "sha256": "81fecd434211b4851f829d4c18c87d60b52df6c50b8d1ba01ed7ed3b23c11b4a"
+    },
+    {
+      "path": "components/ai-elements/snippet.tsx",
+      "mode": "100644",
+      "bytes": 3126,
+      "sha256": "c64d2a23df54dddbdc8b310e69ead4c93eef8bff70df2a82e5c0e4d9b8e22958"
+    },
+    {
+      "path": "components/ai-elements/sources.tsx",
+      "mode": "100644",
+      "bytes": 1859,
+      "sha256": "0abef96a563ee361ee5f366fc6f95c83957ae0ac13d4c9776d69eb04e98e18b6"
+    },
+    {
+      "path": "components/ai-elements/speech-input.tsx",
+      "mode": "100644",
+      "bytes": 9616,
+      "sha256": "70900f4825c9296d980e67db7518a40b6ac3e1fe7ca9bdcf9be6bb9f99360811"
+    },
+    {
+      "path": "components/ai-elements/stack-trace.tsx",
+      "mode": "100644",
+      "bytes": 13980,
+      "sha256": "2bc61c1b635902a68f4ca6931fee4c67ddbeb03d7bfd0fad9a52835d53de8c6c"
+    },
+    {
+      "path": "components/ai-elements/suggestion.tsx",
+      "mode": "100644",
+      "bytes": 1343,
+      "sha256": "82dc2eed5723c8092a1b66d640f89adedf4dda6b5690230d0ba45fa218dbf07b"
+    },
+    {
+      "path": "components/ai-elements/task.tsx",
+      "mode": "100644",
+      "bytes": 2338,
+      "sha256": "ea27bc0017f6643bc3d2da3910d16870ece24ea6de674411f0e80a842b248338"
+    },
+    {
+      "path": "components/ai-elements/terminal.tsx",
+      "mode": "100644",
+      "bytes": 6324,
+      "sha256": "779fdafa102f9d0cf81f0b79222c3ae91c116019dcd9f722733ddb925ca9e020"
+    },
+    {
+      "path": "components/ai-elements/test-results.tsx",
+      "mode": "100644",
+      "bytes": 11437,
+      "sha256": "99efcc485b664efda0f6b5ca083ad4635125dcf98cc0c4350b5fba661b63ab83"
+    },
+    {
+      "path": "components/ai-elements/tool.tsx",
+      "mode": "100644",
+      "bytes": 5035,
+      "sha256": "f17864fd11a0e5301a8454100d125d5a136c27ce91d477205d0fee5a53dba2c4"
+    },
+    {
+      "path": "components/ai-elements/toolbar.tsx",
+      "mode": "100644",
+      "bytes": 443,
+      "sha256": "ac9da3e8fc26768c5a597c71a0086b3612641c37aa47ae46432ef0f38ea90626"
+    },
+    {
+      "path": "components/ai-elements/transcription.tsx",
+      "mode": "100644",
+      "bytes": 3285,
+      "sha256": "1dc752dfffe895deb545fd278253e9609fac853991e75d2094b76fd735ca2a5d"
+    },
+    {
+      "path": "components/ai-elements/voice-selector.tsx",
+      "mode": "100644",
+      "bytes": 11096,
+      "sha256": "e490d1bb8f5e263082e1da13b5afc191779b7710b6d7f3c42c4fdebe2ed67dcc"
+    },
+    {
+      "path": "components/ai-elements/web-preview.tsx",
+      "mode": "100644",
+      "bytes": 6951,
+      "sha256": "6d82f1d10ae57c03f56b10678baafff62d2f513b52640cdc893fde3090abb025"
+    },
+    {
+      "path": "components/site-header.tsx",
+      "mode": "100644",
+      "bytes": 1247,
+      "sha256": "f06e5c7fac24071254bf96b17fe6f2bf0ab494c69bf415b698a23fb9f271dada"
+    },
+    {
+      "path": "components/slides/accept-invite-form.tsx",
+      "mode": "100644",
+      "bytes": 2276,
+      "sha256": "0f0fa589adf717770273474170b55342622b8bce8ef5187699a94409d0336d1a"
+    },
+    {
+      "path": "components/slides/auth-forms.tsx",
+      "mode": "100644",
+      "bytes": 4825,
+      "sha256": "17466ddcc8824a53612ed1b3c3f6ef26914288d51ba5a1c315482f5b8c881efd"
+    },
+    {
+      "path": "components/slides/deck-editor-client.tsx",
+      "mode": "100644",
+      "bytes": 38237,
+      "sha256": "9819bf8b1b46fb0fbc4fffb8ae4994e19dfb07fb4bfc33d94e5bb898e9e06644"
+    },
+    {
+      "path": "components/slides/deck-player.tsx",
+      "mode": "100644",
+      "bytes": 18487,
+      "sha256": "e9e83339fae0c673eaf2fddbba302c3d6cede13428dc8cb9ef6f306783ba3f6c"
+    },
+    {
+      "path": "components/slides/published-deck-frame.tsx",
+      "mode": "100644",
+      "bytes": 368,
+      "sha256": "38c0ba8ffe8ce06b4cba3ab8f20a1f26cd97e909b761813404e40ca7a306e717"
+    },
+    {
+      "path": "components/slides/review-comment-form.tsx",
+      "mode": "100644",
+      "bytes": 2715,
+      "sha256": "19a59f97bb69850c83b21ead9bb570a28969d85c8dfb9c4d4af2796f930771f3"
+    },
+    {
+      "path": "components/slides/team-invite-form.tsx",
+      "mode": "100644",
+      "bytes": 1945,
+      "sha256": "582dcec63a2990412d3966614bd5fec1f1af46ee9fa795f633b0288751b9c2b9"
+    },
+    {
+      "path": "components/ui/accordion.tsx",
+      "mode": "100644",
+      "bytes": 2582,
+      "sha256": "5ab74d5d983121cfbf9fcd38b5ec8feef3d07e65e301a78e75c017d11c35c057"
+    },
+    {
+      "path": "components/ui/alert-dialog.tsx",
+      "mode": "100644",
+      "bytes": 5188,
+      "sha256": "897472b184bc4685dcae0444609e79367d8c7d13aaa8890d0e7d8925367dd4cb"
+    },
+    {
+      "path": "components/ui/alert.tsx",
+      "mode": "100644",
+      "bytes": 2050,
+      "sha256": "26142e6f255d291475046412fd47b6054294f244f531636e40e57d5fdd3bbbf3"
+    },
+    {
+      "path": "components/ui/aspect-ratio.tsx",
+      "mode": "100644",
+      "bytes": 403,
+      "sha256": "c6db82ab2401e402c7c6d178ff59eb570535c76db5953b3bb78be564c5b24669"
+    },
+    {
+      "path": "components/ui/avatar.tsx",
+      "mode": "100644",
+      "bytes": 3038,
+      "sha256": "357b2f9aac0192c071cb2ed65cb6e4c8ec01fa02fc15cf50d889b85731b75666"
+    },
+    {
+      "path": "components/ui/badge.tsx",
+      "mode": "100644",
+      "bytes": 1937,
+      "sha256": "a48ed1a110e2f3d438b070712c2eab1b2e89b3ce748904ce09736e7954c7d867"
+    },
+    {
+      "path": "components/ui/breadcrumb.tsx",
+      "mode": "100644",
+      "bytes": 2599,
+      "sha256": "42ba479095437a93592d351c1f1f3348155b6c91059ed18bf233e473ee56de1f"
+    },
+    {
+      "path": "components/ui/button-group.tsx",
+      "mode": "100644",
+      "bytes": 2484,
+      "sha256": "d22163764113c5c46557d2a52fb0e851ecf8ea8a8664334e8d6c4f4bf0ae85be"
+    },
+    {
+      "path": "components/ui/button.tsx",
+      "mode": "100644",
+      "bytes": 2734,
+      "sha256": "7f84510df75cef36eb2b0b1b477f27a2b2c800a38baf5466f61b51513a28b8f9"
+    },
+    {
+      "path": "components/ui/calendar.tsx",
+      "mode": "100644",
+      "bytes": 8230,
+      "sha256": "f605cb1213bdd0c2c6fd7687653a48b41de7b111b2f3ccc03643587f945c00d7"
+    },
+    {
+      "path": "components/ui/card.tsx",
+      "mode": "100644",
+      "bytes": 2518,
+      "sha256": "85e63a458ca04b446808126cf37350d224166a71abd2e60f48e0e2f02534ae5e"
+    },
+    {
+      "path": "components/ui/carousel.tsx",
+      "mode": "100644",
+      "bytes": 5625,
+      "sha256": "139dad00a475fba78155113fcf927a8102e11c6d3f3a97844d237a2bb0878c8e"
+    },
+    {
+      "path": "components/ui/chart.tsx",
+      "mode": "100644",
+      "bytes": 10016,
+      "sha256": "aa97e040894cc5b391ecb267990ff92b6428d7c3b93f7dc45302d294c581e659"
+    },
+    {
+      "path": "components/ui/checkbox.tsx",
+      "mode": "100644",
+      "bytes": 1365,
+      "sha256": "cd07c0d92249cadba54c9bc327e0420d4fa532eb26fe06ea27eb05d3eb18aa93"
+    },
+    {
+      "path": "components/ui/collapsible.tsx",
+      "mode": "100644",
+      "bytes": 658,
+      "sha256": "ead4349ff7b01d696ef89294a81d18ee1d3f732321398896462c834ab9b9e065"
+    },
+    {
+      "path": "components/ui/combobox.tsx",
+      "mode": "100644",
+      "bytes": 9040,
+      "sha256": "64490dde22b4a6cddeaa940a931a5afdaf7bb83955131a4ce767210aa8c86603"
+    },
+    {
+      "path": "components/ui/command.tsx",
+      "mode": "100644",
+      "bytes": 4924,
+      "sha256": "a2c16a0317b009111a8ceab96461d4b1cac08b5b886de2ad700bc8eefcc1cfd4"
+    },
+    {
+      "path": "components/ui/context-menu.tsx",
+      "mode": "100644",
+      "bytes": 8019,
+      "sha256": "e6ffd3e9352eb553eb6423e0102bfdc284cbac016b6ad33fd7b73b4124ecc095"
+    },
+    {
+      "path": "components/ui/dialog.tsx",
+      "mode": "100644",
+      "bytes": 3967,
+      "sha256": "94562a3b026a649fcd5050790d6fc5b21d96d80cf877a83b8c2106691ff4b2be"
+    },
+    {
+      "path": "components/ui/direction.tsx",
+      "mode": "100644",
+      "bytes": 103,
+      "sha256": "661ff5b9c0dc26edde1226bfedc0ab50976d84f8bae42ca83a38dc3b478fd4d4"
+    },
+    {
+      "path": "components/ui/drawer.tsx",
+      "mode": "100644",
+      "bytes": 4086,
+      "sha256": "07331e371b9491dfedbc7e76072fbcd110f6f3e5c5dc5735ad793c01b32da5c0"
+    },
+    {
+      "path": "components/ui/dropdown-menu.tsx",
+      "mode": "100644",
+      "bytes": 8748,
+      "sha256": "5884403025e3a008a75824e1d5071d0fe894eb79d9a995de64a17e41454884ed"
+    },
+    {
+      "path": "components/ui/empty.tsx",
+      "mode": "100644",
+      "bytes": 2360,
+      "sha256": "205b2b34fdcfb64aeb4d5eae346c0522e1dd8ec6fe86bcd942667dc406a0aed0"
+    },
+    {
+      "path": "components/ui/field.tsx",
+      "mode": "100644",
+      "bytes": 6024,
+      "sha256": "eb12e290ea55d0a03a9bf22cdb7d1a815fe19340cfefdfed74d7074251fc409c"
+    },
+    {
+      "path": "components/ui/hover-card.tsx",
+      "mode": "100644",
+      "bytes": 1854,
+      "sha256": "d3f0c670f8a47f41fa9d268d9ac679ab353eb7ca4e0c7dfba5db1c14f5a6803a"
+    },
+    {
+      "path": "components/ui/input-group.tsx",
+      "mode": "100644",
+      "bytes": 5160,
+      "sha256": "9601f455fba168716219b7ccaa94afcc04552eee5f12bd2f9c1e5d17d7159dcf"
+    },
+    {
+      "path": "components/ui/input-otp.tsx",
+      "mode": "100644",
+      "bytes": 2553,
+      "sha256": "42de90f7a7d921de005ba4cea94da2b19e2ab97d4593accdd2b3ec35ea6f4375"
+    },
+    {
+      "path": "components/ui/input.tsx",
+      "mode": "100644",
+      "bytes": 980,
+      "sha256": "d5bc1c0043548d4a1aa8cf6085f6abaeacf2e13832b50ac53b6a22465847f56f"
+    },
+    {
+      "path": "components/ui/item.tsx",
+      "mode": "100644",
+      "bytes": 4853,
+      "sha256": "3255608435d3ce429f40f442b33858ac9c9a9ef355e5828bb642718800d6a7cb"
+    },
+    {
+      "path": "components/ui/kbd.tsx",
+      "mode": "100644",
+      "bytes": 837,
+      "sha256": "1e477363fca474e23b9a1f0e5d2920cd7319e076eaa5156ba29ea4722b96bba5"
+    },
+    {
+      "path": "components/ui/label.tsx",
+      "mode": "100644",
+      "bytes": 518,
+      "sha256": "7f19b8476658d25ff197c84030e58cd7395059d876a54630e025951e474ebdae"
+    },
+    {
+      "path": "components/ui/menubar.tsx",
+      "mode": "100644",
+      "bytes": 8220,
+      "sha256": "f02df955316b7ec0513bc7ac8e6a5adfc72883f2f12d30b0eb4b56c9fb3fdafa"
+    },
+    {
+      "path": "components/ui/native-select.tsx",
+      "mode": "100644",
+      "bytes": 1884,
+      "sha256": "68f7d7d9e7eca0624508b072f219fa2c01551fdfa2207e6236f6d4b73fa30166"
+    },
+    {
+      "path": "components/ui/navigation-menu.tsx",
+      "mode": "100644",
+      "bytes": 7400,
+      "sha256": "2977a84a2d7be4eb7ae52f42b5807d89a828adcd2c31a458a26c70b757b080b1"
+    },
+    {
+      "path": "components/ui/pagination.tsx",
+      "mode": "100644",
+      "bytes": 2858,
+      "sha256": "a6f28004a41543137afb1b10eded2771b545d24d99581774f5a9454b5f223a26"
+    },
+    {
+      "path": "components/ui/popover.tsx",
+      "mode": "100644",
+      "bytes": 2579,
+      "sha256": "93e43e5b56a5fb402fa622677dd868bb5f5ac124cf540f4d571de0ade3a371e6"
+    },
+    {
+      "path": "components/ui/progress.tsx",
+      "mode": "100644",
+      "bytes": 1739,
+      "sha256": "e7c886e8843c09ad1281540c7af9c9c84ef84fc37e7ad6353f1ff4acef489394"
+    },
+    {
+      "path": "components/ui/radio-group.tsx",
+      "mode": "100644",
+      "bytes": 1653,
+      "sha256": "f8d30996bf429ef7f90aa42a8efdf47fee08c6b49e038944ab91331b16eea76a"
+    },
+    {
+      "path": "components/ui/resizable.tsx",
+      "mode": "100644",
+      "bytes": 1671,
+      "sha256": "379baf7a1de109a1ea14419c99b76fbec1cb4f10d6ee13605b0b2940d615afeb"
+    },
+    {
+      "path": "components/ui/scroll-area.tsx",
+      "mode": "100644",
+      "bytes": 1624,
+      "sha256": "42de3962daca60255bf1d3cd90bd3c038db73a3ed61ecaac6cffc6a153181e4a"
+    },
+    {
+      "path": "components/ui/select.tsx",
+      "mode": "100644",
+      "bytes": 6599,
+      "sha256": "e138d77e916890b31a56b52d513b4f17f52e65ca60a6d4aa1acb56c195f9c9c8"
+    },
+    {
+      "path": "components/ui/separator.tsx",
+      "mode": "100644",
+      "bytes": 545,
+      "sha256": "75085bd84ff6965e4a356c53a4689799cabf65caa93c0bba064d5a0c6fa78f13"
+    },
+    {
+      "path": "components/ui/sheet.tsx",
+      "mode": "100644",
+      "bytes": 4369,
+      "sha256": "82aa1d1a5f53180a5c993179ba188114b9b10722d42455aff4e41cdff884432b"
+    },
+    {
+      "path": "components/ui/sidebar.tsx",
+      "mode": "100644",
+      "bytes": 21732,
+      "sha256": "4cc6e3fb66d2187218a0df016088931de177533c0987730d5f0ddd172e8b9587"
+    },
+    {
+      "path": "components/ui/skeleton.tsx",
+      "mode": "100644",
+      "bytes": 275,
+      "sha256": "4a1e9bb4ba6eccd5da12f61f604bbddc06ced618a384b2212cb6b1834e170735"
+    },
+    {
+      "path": "components/ui/slider.tsx",
+      "mode": "100644",
+      "bytes": 1953,
+      "sha256": "47a246d8a9e8e9157770ef45aac3a28e22e08a6f8bd7c242e9610a34763c20b8"
+    },
+    {
+      "path": "components/ui/sonner.tsx",
+      "mode": "100644",
+      "bytes": 1226,
+      "sha256": "2dd975ad2170ba2570b00e58713dcbda90f26a7fffdaceb1ef7255f450c2d2a6"
+    },
+    {
+      "path": "components/ui/spinner.tsx",
+      "mode": "100644",
+      "bytes": 302,
+      "sha256": "1aa4cbc4272e833ecda915e3f59649ec5dfa8528d6c583a0a1b1e668496abacf"
+    },
+    {
+      "path": "components/ui/switch.tsx",
+      "mode": "100644",
+      "bytes": 1715,
+      "sha256": "2bfad5eab6f4b733ba262ce6c42070b23d72e66af8a985af1594cc14b80314f2"
+    },
+    {
+      "path": "components/ui/table.tsx",
+      "mode": "100644",
+      "bytes": 2372,
+      "sha256": "50d6afbb270f71972cc384b9146a2a9e9938f1a3648b831052ea56674af3ad66"
+    },
+    {
+      "path": "components/ui/tabs.tsx",
+      "mode": "100644",
+      "bytes": 3408,
+      "sha256": "6344f9a8e3bedbd66da19cb52087cd18fc5345f78b10be71215cc7f861e1005d"
+    },
+    {
+      "path": "components/ui/textarea.tsx",
+      "mode": "100644",
+      "bytes": 793,
+      "sha256": "18e665f6f1a2d6a97c4447c0f83272c640bf20feef9a04c081908b5a816c757f"
+    },
+    {
+      "path": "components/ui/toggle-group.tsx",
+      "mode": "100644",
+      "bytes": 3105,
+      "sha256": "831d861f2e01c63963f254d299050200e49d0db0404f3ba3d2fdd3f3dc67501b"
+    },
+    {
+      "path": "components/ui/toggle.tsx",
+      "mode": "100644",
+      "bytes": 1477,
+      "sha256": "ddbbe360210add79e0ac6f558fe0ac63594b8b35bdefb0c920a56fedc7658be3"
+    },
+    {
+      "path": "components/ui/tooltip.tsx",
+      "mode": "100644",
+      "bytes": 3013,
+      "sha256": "4657ecabe348b37fc8724a06a8e2419ff6891e78af7b5e1aa2c3b0578d301fc7"
+    },
+    {
+      "path": "components/visualizations/composer.tsx",
+      "mode": "100644",
+      "bytes": 41034,
+      "sha256": "0966c0a03735b10bd9b165367d291a779696a64a2f1dfdfe6e5f8ae85cb64fd6"
+    },
+    {
+      "path": "components/visualizations/course-download.tsx",
+      "mode": "100644",
+      "bytes": 5844,
+      "sha256": "6d95d1032c40fca7dd3239d171a6cdcb1b717e7bba4d372e8779cb9d554ed0ea"
+    },
+    {
+      "path": "components/visualizations/course-editor.tsx",
+      "mode": "100644",
+      "bytes": 10388,
+      "sha256": "8c1869bb71966597643c03623115731ea3ea9f3d66470976be2cc51a83a5323a"
+    },
+    {
+      "path": "components/visualizations/course-editor/block-editor.tsx",
+      "mode": "100644",
+      "bytes": 6695,
+      "sha256": "b21f783fbb7d382cc8b058e9fc92aff95159c1a602f399d2922b01d3fd868a6d"
+    },
+    {
+      "path": "components/visualizations/course-editor/collections-editor.tsx",
+      "mode": "100644",
+      "bytes": 4156,
+      "sha256": "12ef145a3b39968cb2d1ea0aad61bf4203070d4d30ad002dfbd26b191085e973"
+    },
+    {
+      "path": "components/visualizations/course-editor/document-fields.tsx",
+      "mode": "100644",
+      "bytes": 3340,
+      "sha256": "c2bdab3abb35a59e2864b7ef13a83a31fc89db98f5ff749f85b7a83c61bfe8ad"
+    },
+    {
+      "path": "components/visualizations/course-editor/editor-helpers.ts",
+      "mode": "100644",
+      "bytes": 992,
+      "sha256": "99645b259dbf1d71f0374ce9f4a5f9ef04a6bb5f64bf7881c5e0dd6787af03cd"
+    },
+    {
+      "path": "components/visualizations/course-editor/fields.tsx",
+      "mode": "100644",
+      "bytes": 5404,
+      "sha256": "ae9bf883d46cbc6d2539861fd04854c95f814b3e3e7cd20315bf43a7a745d449"
+    },
+    {
+      "path": "components/visualizations/course-editor/lesson-editor.tsx",
+      "mode": "100644",
+      "bytes": 5389,
+      "sha256": "ae2f734baad9fd9c68a2e09ae80b63315fe47c7e495064f4c6ffca3749bd37c7"
+    },
+    {
+      "path": "components/visualizations/course-editor/module-editor.tsx",
+      "mode": "100644",
+      "bytes": 2564,
+      "sha256": "f44c97e7d392e77a56cb481cdb33013f5846aeceeafaba3f8ee3a2b450ea144b"
+    },
+    {
+      "path": "components/visualizations/generation-results.tsx",
+      "mode": "100644",
+      "bytes": 6597,
+      "sha256": "e4f842ef92a2f822ed520ff4928bf27e9bb1f916b48bd90d15438a8c95c93d5f"
+    },
+    {
+      "path": "components/visualizations/options.ts",
+      "mode": "100644",
+      "bytes": 918,
+      "sha256": "0200e6ea72f06828f53ac785b39afae88cc927b2297b35daeb8de63cdb8f8632"
+    },
+    {
+      "path": "components/visualizations/preview.tsx",
+      "mode": "100644",
+      "bytes": 5865,
+      "sha256": "64cb382303cdd2e75a4d8e13920c3745ff06762200e184f61ba9b753754d39d6"
+    },
+    {
+      "path": "components/visualizations/renderers/course-preview.tsx",
+      "mode": "100644",
+      "bytes": 10834,
+      "sha256": "7f6c3f5b0f375586743d43e6924edf362b1fa896030989e6933220e488822378"
+    },
+    {
+      "path": "components/visualizations/renderers/report-preview.tsx",
+      "mode": "100644",
+      "bytes": 21918,
+      "sha256": "e5154ed4834429b0e68a84ac0f1b57304e8baf4ec62591d4b87c1fa2977588aa"
+    },
+    {
+      "path": "components/visualizations/report-download.tsx",
+      "mode": "100644",
+      "bytes": 4374,
+      "sha256": "4faa751e55baa0fc3cde1022689decec55b6548e83c64c15149eb4e3a0837749"
+    },
+    {
+      "path": "components/visualizations/report-editor.tsx",
+      "mode": "100644",
+      "bytes": 21363,
+      "sha256": "9d7dbb009b00edf5a690dae23a3d63b18f758acb9b9c038ef37b2032a051b997"
+    },
+    {
+      "path": "components/visualizations/report-editor/block-fields.tsx",
+      "mode": "100644",
+      "bytes": 10333,
+      "sha256": "46bf43d4ce0ae53411558711d7687753da8687cd48fc6fcf64f642c101458b8a"
+    },
+    {
+      "path": "components/visualizations/report-editor/csv-import.tsx",
+      "mode": "100644",
+      "bytes": 9172,
+      "sha256": "4a13de5477ea915b12e655c220643b9b1f5da32d943eae74bfaed27c09b7065b"
+    },
+    {
+      "path": "components/visualizations/report-editor/data-fields.tsx",
+      "mode": "100644",
+      "bytes": 10442,
+      "sha256": "dc6fdbe44db7d9caeb60628e044524aa52f3b87d8f6a1b0639e88bde506f8e28"
+    },
+    {
+      "path": "components/visualizations/report-editor/fields.tsx",
+      "mode": "100644",
+      "bytes": 1135,
+      "sha256": "8c92557f88bd2d1bc7d7aedc5cb9ae3af7d51e16b7fccfe0c8f3bc015f1b2db7"
+    },
+    {
+      "path": "components/visualizations/report-editor/grid-canvas.tsx",
+      "mode": "100644",
+      "bytes": 9076,
+      "sha256": "197f623adca962c08b5b1f47e05cabc5c69d926d6c173e5819aa3220950ac91c"
+    },
+    {
+      "path": "components/visualizations/report-editor/history.ts",
+      "mode": "100644",
+      "bytes": 2023,
+      "sha256": "86c04a245dd3c67c70c547cb013129c5c179271e43d79c4a7ced54b9bc0d2af5"
+    },
+    {
+      "path": "components/visualizations/style-panel.tsx",
+      "mode": "100644",
+      "bytes": 3273,
+      "sha256": "2e58d84ac5b7b93975dab180bdff38608da25c518031e0bd53533fb8f020da7e"
+    },
+    {
+      "path": "convex/README.md",
+      "mode": "100644",
+      "bytes": 2536,
+      "sha256": "9dd90e16e8e4a3ae0d1e9270a7090309d02481e2993996ceb216d6cff820e559"
+    },
+    {
+      "path": "convex/_generated/api.d.ts",
+      "mode": "100644",
+      "bytes": 860,
+      "sha256": "d988ae1a40b1db1416ade763f91497c47eff02775c2cdc9add3db73a7b05487f"
+    },
+    {
+      "path": "convex/_generated/api.js",
+      "mode": "100644",
+      "bytes": 480,
+      "sha256": "f513058549831e85376f8d19cafaf2a4a770b6eb1b859fb371141f2c9dec0d70"
+    },
+    {
+      "path": "convex/_generated/dataModel.d.ts",
+      "mode": "100644",
+      "bytes": 1653,
+      "sha256": "0ffcf4dcc0735f6895844032f64bc2ca7b0099160566fb8bffd68fd89f003329"
+    },
+    {
+      "path": "convex/_generated/server.d.ts",
+      "mode": "100644",
+      "bytes": 5600,
+      "sha256": "b0c8d708aaa165b10633bb6181dea1af4b9976a71ad001d75f42785ddfbca458"
+    },
+    {
+      "path": "convex/_generated/server.js",
+      "mode": "100644",
+      "bytes": 3696,
+      "sha256": "aea87b3ee367e0e870f3da81ffce8babd8ea1aea695a1e38689841aebc09a1e8"
+    },
+    {
+      "path": "convex/app.ts",
+      "mode": "100644",
+      "bytes": 15056,
+      "sha256": "3743f58860fcb708d145d1f3125407163555436c6a37da43306e1e047cb33fc8"
+    },
+    {
+      "path": "convex/auth.ts",
+      "mode": "100644",
+      "bytes": 5875,
+      "sha256": "f6c2c45d71b099cc742937e6343e903c37636dbee4229d018a390449d848d98a"
+    },
+    {
+      "path": "convex/schema.ts",
+      "mode": "100644",
+      "bytes": 2611,
+      "sha256": "3af423cc18053758bbb42dc867ff1023091b2431ec03aac1daf4456872fbac74"
+    },
+    {
+      "path": "convex/tsconfig.json",
+      "mode": "100644",
+      "bytes": 760,
+      "sha256": "c03a297a5e103f330ca7c7abf2a453c8d87a8b32853ab2fe983b3fc6c5482d0f"
+    },
+    {
+      "path": "docker-compose.yml",
+      "mode": "100644",
+      "bytes": 97,
+      "sha256": "5b8fdc0b3006baedbb2e7c382f721fa91218d214bf3dc4f23d6a94c6555c7d84"
+    },
+    {
+      "path": "docs/ai-generation.md",
+      "mode": "100644",
+      "bytes": 3529,
+      "sha256": "c9877b030fd53cead6814a626d388ab9ed95923ef688a312a590e0605d363f1b"
+    },
+    {
+      "path": "docs/architecture.md",
+      "mode": "100644",
+      "bytes": 1873,
+      "sha256": "94f2dccd83544374e817495dac7d127073f5ee8cc24891d0ade729d61d04fa31"
+    },
+    {
+      "path": "docs/artifact-runtime.md",
+      "mode": "100644",
+      "bytes": 1259,
+      "sha256": "628ddca26edd9eec0d2712b1e510dc82e28dbd35c0468ce2621cc48ce0b05a22"
+    },
+    {
+      "path": "docs/cloudflare-d1.md",
+      "mode": "100644",
+      "bytes": 398,
+      "sha256": "9daf75fd4a11854c7b1652c53bd469c40596c51920a14b7ef2fcc8287270b00b"
+    },
+    {
+      "path": "docs/convex-self-hosting.md",
+      "mode": "100644",
+      "bytes": 504,
+      "sha256": "4d7e426daa4c703334be5149add56d85b13fd114cbf7a967568e465e5e57e32c"
+    },
+    {
+      "path": "docs/convex.md",
+      "mode": "100644",
+      "bytes": 550,
+      "sha256": "2b9ef137ba821aed789ca527c86aac9967d697f5937a23d1487a28d1637f1406"
+    },
+    {
+      "path": "docs/course-authoring.md",
+      "mode": "100644",
+      "bytes": 3718,
+      "sha256": "d2f722cf154e5c652bc3d20278a3242175f154875ea7360ce887c88ae4f85878"
+    },
+    {
+      "path": "docs/course-export.md",
+      "mode": "100644",
+      "bytes": 4271,
+      "sha256": "369611ac2bd65dcc0e612b2a9c7a37486622f29593fb2ae7c1b7df698579aaf3"
+    },
+    {
+      "path": "docs/eve-agent.md",
+      "mode": "100644",
+      "bytes": 225,
+      "sha256": "3ed0f3f24acd45d662a9070a8c1f3c38258a1eaddf27062e16b562b83f4fb5a2"
+    },
+    {
+      "path": "docs/implementation-plan.md",
+      "mode": "100644",
+      "bytes": 2109,
+      "sha256": "bc6faa771fb94d4b056aca37a722217dcec4eb963da7ec7bcbc1f06446699047"
+    },
+    {
+      "path": "docs/limitations.md",
+      "mode": "100644",
+      "bytes": 931,
+      "sha256": "a4854614fe7477952be2424cde6e01b0883a0abdda42a4cb343dcfa25560007d"
+    },
+    {
+      "path": "docs/local-development.md",
+      "mode": "100644",
+      "bytes": 579,
+      "sha256": "8c1185d5dede59eab82a0091c1858e44959117adf2d1ff91b47b9ad989d3e56b"
+    },
+    {
+      "path": "docs/proposals/ai-generation-checks.md",
+      "mode": "100644",
+      "bytes": 3343,
+      "sha256": "ca49ffbcda6bf349d4924fdae2ba2f93ef871cfc973d93e8ba873bcad3955963"
+    },
+    {
+      "path": "docs/proposals/ai-generation.test.ts.example",
+      "mode": "100644",
+      "bytes": 12488,
+      "sha256": "8ebeb8cf8d61937808d0e654eb65c189c6f5461c873a09c579471bbe52af657e"
+    },
+    {
+      "path": "docs/proposals/all-formats-persistence.md",
+      "mode": "100644",
+      "bytes": 7952,
+      "sha256": "9c98c0326b7e7c5523a26ece91a3b0fd49286673f7f5526c18e13b8fbad3ccb2"
+    },
+    {
+      "path": "docs/proposals/batch-browser.spec.ts.example",
+      "mode": "100644",
+      "bytes": 26981,
+      "sha256": "be7abbc0f5277d4cb50c655ef7caf84d033494df67ba4af0081766a41c9cf4b4"
+    },
+    {
+      "path": "docs/proposals/batch-checks.md",
+      "mode": "100644",
+      "bytes": 11028,
+      "sha256": "5a52fe504497db8374b4d08fe2981166bdb9b7460d4a88ebe2328a8ba98e1430"
+    },
+    {
+      "path": "docs/proposals/batch-ci.yml.example",
+      "mode": "100644",
+      "bytes": 10921,
+      "sha256": "e8e03eef5cb751b62b5e014ef1e6ac54ab9a216dc3ac1280ec37ccade0fda44f"
+    },
+    {
+      "path": "docs/proposals/course-editor-browser.config.ts.example",
+      "mode": "100644",
+      "bytes": 1190,
+      "sha256": "29cb988ba0f9ddd931f37d4f9469d105a1d7920563b5858635e043c8605adc41"
+    },
+    {
+      "path": "docs/proposals/course-editor-browser.md",
+      "mode": "100644",
+      "bytes": 6631,
+      "sha256": "d49985e88270800f4dce7dc9ced968fe1636f2b8216c8ed5efc102db4a527d28"
+    },
+    {
+      "path": "docs/proposals/course-editor-browser.test.ts.example",
+      "mode": "100644",
+      "bytes": 16284,
+      "sha256": "ea7a2b8e9283a583da07ddd15b36809578204421674462d7cc7e94cd07d4d107"
+    },
+    {
+      "path": "docs/proposals/course-editor-browser.yml.example",
+      "mode": "100644",
+      "bytes": 7055,
+      "sha256": "16d19c55b399119462c387b3f9b2d2b94e542f47685e3b399123cc2a9137285b"
+    },
+    {
+      "path": "docs/proposals/course-export-browser.config.ts.example",
+      "mode": "100644",
+      "bytes": 1295,
+      "sha256": "274fab9608522a8cd54dc7b51d272eec07ff5357df7ba9a322aaa53961fa850d"
+    },
+    {
+      "path": "docs/proposals/course-export-browser.md",
+      "mode": "100644",
+      "bytes": 6585,
+      "sha256": "e6a9614fd740b72cc1f7f9b54469f9c92b69e17f42f9ca89c746afe8222a9922"
+    },
+    {
+      "path": "docs/proposals/course-export-browser.test.ts.example",
+      "mode": "100644",
+      "bytes": 20970,
+      "sha256": "26bd4dc2d13d64426dfa29b7c52d1aad3b12ba77e5a96f129bd1d523c1d0287a"
+    },
+    {
+      "path": "docs/proposals/course-export-browser.yml.example",
+      "mode": "100644",
+      "bytes": 12031,
+      "sha256": "b4ea43704bc3ef415083a8602c02bdb5e0d37e2e5e6e8854b5d1d01cc72d6d3d"
+    },
+    {
+      "path": "docs/proposals/report-csv-import-browser.config.ts.example",
+      "mode": "100644",
+      "bytes": 1299,
+      "sha256": "0748aac9ca43d6d822eb76ff0c921e90e33c271f3ed0f497807f0f7a77536b03"
+    },
+    {
+      "path": "docs/proposals/report-csv-import-browser.test.ts.example",
+      "mode": "100644",
+      "bytes": 22624,
+      "sha256": "00f87f418079c9db9696bbff1462dff15edb250313c5dee41916320654aa5ea3"
+    },
+    {
+      "path": "docs/proposals/report-csv-import-browser.yml.example",
+      "mode": "100644",
+      "bytes": 14310,
+      "sha256": "ad034ca55acb1912cf3aa2c1fa0c4ff6a5e153d455b48d79a73950fa18ba5456"
+    },
+    {
+      "path": "docs/proposals/report-csv-import-checks.md",
+      "mode": "100644",
+      "bytes": 6011,
+      "sha256": "ec7ba8bfac1e63b91505094965662687b1f9e3b8eb89adcb73fe0010f9dbb267"
+    },
+    {
+      "path": "docs/proposals/report-editor-browser.config.ts.example",
+      "mode": "100644",
+      "bytes": 1191,
+      "sha256": "11f009e4a53e02ea4360dc086ee25b928371ba213efc3a1fc9ef315c1640e8ce"
+    },
+    {
+      "path": "docs/proposals/report-editor-browser.md",
+      "mode": "100644",
+      "bytes": 6988,
+      "sha256": "f2ebfeaea88af4a381e98636fb3a13bec30df0bfc40902834ae2be351c142bb3"
+    },
+    {
+      "path": "docs/proposals/report-editor-browser.test.ts.example",
+      "mode": "100644",
+      "bytes": 21587,
+      "sha256": "8e4487335fd00e96ed1618c1d94dba3905b1cad71be7524321bb7e67994cc1ec"
+    },
+    {
+      "path": "docs/proposals/report-editor-browser.yml.example",
+      "mode": "100644",
+      "bytes": 7076,
+      "sha256": "227a7e271f176a4042aa70b0b0e52bc70b9b13ef7a3b2fb3ea0557f3ed6d7732"
+    },
+    {
+      "path": "docs/proposals/report-export-browser.config.ts.example",
+      "mode": "100644",
+      "bytes": 1215,
+      "sha256": "18175de70132b4ddcdd82a1169db1cbd691c217cf37764f7d2166569257e7ef9"
+    },
+    {
+      "path": "docs/proposals/report-export-browser.md",
+      "mode": "100644",
+      "bytes": 6693,
+      "sha256": "85016d9e7bf7389f62e0acdabea0c87d0b7d8fbd3fb757a3e44a264b6c256c17"
+    },
+    {
+      "path": "docs/proposals/report-export-browser.test.ts.example",
+      "mode": "100644",
+      "bytes": 18780,
+      "sha256": "c12115b555cf9950c447bb57940692695de4df0ea0c5db318d0749a4ed9bb7b6"
+    },
+    {
+      "path": "docs/proposals/report-export-browser.yml.example",
+      "mode": "100644",
+      "bytes": 7126,
+      "sha256": "44b7ec3099e20a6b5542b078300e677d9abbaf89ce18ee74a0fa698022b8f30c"
+    },
+    {
+      "path": "docs/proposals/source-inputs-browser.spec.ts.example",
+      "mode": "100644",
+      "bytes": 11987,
+      "sha256": "ca0bd230b762c2334849a916d7b6c4b1ad595c59165239c780ee237b80409a0a"
+    },
+    {
+      "path": "docs/proposals/source-inputs-checks.md",
+      "mode": "100644",
+      "bytes": 8174,
+      "sha256": "97f4bdbe26a4592a9737f2208be81d19c2c1503214dc45fe3c273436cf09524a"
+    },
+    {
+      "path": "docs/proposals/source-inputs-ci.yml.example",
+      "mode": "100644",
+      "bytes": 8143,
+      "sha256": "7f7cfe43ea564fa12b9bba27efafb7285bde258f461edf5f6b1b6b6bc3bd9083"
+    },
+    {
+      "path": "docs/provider-architecture.md",
+      "mode": "100644",
+      "bytes": 995,
+      "sha256": "80a3cbe5ed1302b2af74a1e987974651f80f3324fc5274dfbc1c10f1c5856a0d"
+    },
+    {
+      "path": "docs/provider-contract.md",
+      "mode": "100644",
+      "bytes": 575,
+      "sha256": "7656334278a47ae5b792026b2bcfdcae7a2e29ac3bd0dd675a7cd3ae35cd35af"
+    },
+    {
+      "path": "docs/provider-migration.md",
+      "mode": "100644",
+      "bytes": 474,
+      "sha256": "4fa7272dcbebb86c86a4b23161f804eeb2d1b8bee812151b9cdf57b09fafec17"
+    },
+    {
+      "path": "docs/reference-sources.md",
+      "mode": "100644",
+      "bytes": 4471,
+      "sha256": "3f65d5823e0b1a4e9dedb67dea2fd219ce89770a5ac20ff309b563eec5cc6c6b"
+    },
+    {
+      "path": "docs/report-authoring.md",
+      "mode": "100644",
+      "bytes": 5125,
+      "sha256": "bc5bd531bab2f56c03547ccbc1fc1d8c59c301a21e522759a1b3091e01f84008"
+    },
+    {
+      "path": "docs/report-csv-import.md",
+      "mode": "100644",
+      "bytes": 4607,
+      "sha256": "6adb7b756a9275fbd1b7bcecc300117b7eb165aa188fa9b9682a78b4d04b8722"
+    },
+    {
+      "path": "docs/report-export.md",
+      "mode": "100644",
+      "bytes": 4603,
+      "sha256": "2bac06af2d65cf6b3feb039baf421ba4721ddc28ab4f52fcaf62eb7de9946467"
+    },
+    {
+      "path": "docs/report-rendering.md",
+      "mode": "100644",
+      "bytes": 2907,
+      "sha256": "9da537da35c6dce062bb8a1000549b60926f63eb2281dc81ee8b21efb4387c29"
+    },
+    {
+      "path": "docs/security.md",
+      "mode": "100644",
+      "bytes": 512,
+      "sha256": "de7118275c3d16746e5a1724cf2836264b374c45cce6dce4de6264bb2285991b"
+    },
+    {
+      "path": "docs/slides-compatibility.md",
+      "mode": "100644",
+      "bytes": 531,
+      "sha256": "d3b4dfe5c07486b9688058df14d578622a8669c7c9ef504c5d77bee06e30be3d"
+    },
+    {
+      "path": "docs/source-intake.md",
+      "mode": "100644",
+      "bytes": 2554,
+      "sha256": "f351a7f3ac8101df556842a125ac24eb3b3921cd071e1d016a4316dd72bde0eb"
+    },
+    {
+      "path": "docs/storage.md",
+      "mode": "100644",
+      "bytes": 401,
+      "sha256": "ac89f6558c38345d394caf7f2168785cfe54b22620d980f94ce3e2e1cfe37134"
+    },
+    {
+      "path": "docs/supabase.md",
+      "mode": "100644",
+      "bytes": 402,
+      "sha256": "1c55682c523e668bad5bb140eedb5693f033610744a2b29c30d66444ff946809"
+    },
+    {
+      "path": "docs/testing.md",
+      "mode": "100644",
+      "bytes": 554,
+      "sha256": "c8fac26c2345cc5d36b18b17323ae8613055ccfc9ffdc4f26dfa4d2453f4d73a"
+    },
+    {
+      "path": "docs/vercel-deployment.md",
+      "mode": "100644",
+      "bytes": 358,
+      "sha256": "f9f84546df93e37a5a793316ad7b46d41089e2410e06dd4ef96be043c3827042"
+    },
+    {
+      "path": "docs/visualization-schema.md",
+      "mode": "100644",
+      "bytes": 462,
+      "sha256": "aba46dfd916561219097c229dbc08f74752c9a654582ea3437941cf6452cc168"
+    },
+    {
+      "path": "docs/workflows.md",
+      "mode": "100644",
+      "bytes": 297,
+      "sha256": "e02c62332a3403ccbe84f3618c43b2f28a7ce6b791faae25069ee6ca4adc52b4"
+    },
+    {
+      "path": "eslint.config.mjs",
+      "mode": "100644",
+      "bytes": 526,
+      "sha256": "8b96e4f4e0b1138cc9ba1254b2f966456e75f42911d43326add014590f50b2b4"
+    },
+    {
+      "path": "hooks/use-mobile.ts",
+      "mode": "100644",
+      "bytes": 565,
+      "sha256": "ad0936f84f1df79d3697bfbff9c18f8ad58431c1cbaf2359c6a853b0fcc9f28b"
+    },
+    {
+      "path": "lib/access-tokens.ts",
+      "mode": "100644",
+      "bytes": 1967,
+      "sha256": "2b225d875fcc64b29fa87e10c1c139d8965d1113ce0cc0b1ba109fc0b7e4dc84"
+    },
+    {
+      "path": "lib/ai/generate-deck.ts",
+      "mode": "100644",
+      "bytes": 11124,
+      "sha256": "f93be7b0dbcb35ca78870513a3e80e4a2dd16571e7551002f2b4a14c19b2c799"
+    },
+    {
+      "path": "lib/ai/generate-visualization.ts",
+      "mode": "100644",
+      "bytes": 4941,
+      "sha256": "56f2ba320a052c3d5f8199e53ec545e5186047f312c6e9511834ce0690d589fc"
+    },
+    {
+      "path": "lib/ai/generation-errors.ts",
+      "mode": "100644",
+      "bytes": 599,
+      "sha256": "e5ce3ec55d6199bff916d142d286aea8a13f03858d4918253b1d80b75baa4287"
+    },
+    {
+      "path": "lib/ai/provider-registry.ts",
+      "mode": "100644",
+      "bytes": 2929,
+      "sha256": "1974ddebb4f164a67edb456c9111547ab4f3774f2c11a2d657279e87e44b1c57"
+    },
+    {
+      "path": "lib/ai/schema.ts",
+      "mode": "100644",
+      "bytes": 8908,
+      "sha256": "17869a56ac5cf12f4eaf82cc993bed423b7d4e8bb72fac4bd114b8ad066a06dc"
+    },
+    {
+      "path": "lib/ai/source-context.ts",
+      "mode": "100644",
+      "bytes": 1496,
+      "sha256": "52bf6fe49259808da93d7b0174ef4c49b14d25186caa77475edce1f4766c33b4"
+    },
+    {
+      "path": "lib/artifacts/compiler.ts",
+      "mode": "100644",
+      "bytes": 16310,
+      "sha256": "9f84cf1b53d89601d40d927ca7f72fa1f6af6108238fd82c3cb19c2aec3d3980"
+    },
+    {
+      "path": "lib/artifacts/course.ts",
+      "mode": "100644",
+      "bytes": 12119,
+      "sha256": "b09010390e90cea146c94387513ae991d54d614dff1f5de248bcfa37d8d13330"
+    },
+    {
+      "path": "lib/artifacts/report-chart.ts",
+      "mode": "100644",
+      "bytes": 13323,
+      "sha256": "7324f2778aa3f2a43d5d6ae7aa58eeccff7b220bc92c9acbc7ba43ae8ab453f6"
+    },
+    {
+      "path": "lib/artifacts/report-grid.ts",
+      "mode": "100644",
+      "bytes": 6354,
+      "sha256": "a51c2ab7965c415c7aea13eb68226c6380dfe705db602cfa32919a50700b3524"
+    },
+    {
+      "path": "lib/auth.ts",
+      "mode": "100644",
+      "bytes": 905,
+      "sha256": "adc21a4e8ca96896e37cd22ac2a72e12d572bcea2ee13c7e30f1853b3262be6b"
+    },
+    {
+      "path": "lib/brand-kit.ts",
+      "mode": "100644",
+      "bytes": 10501,
+      "sha256": "3153034a3172fc04ebaf0df524df59c44dbf1178fad8c4181fc32f881f2b15df"
+    },
+    {
+      "path": "lib/client/composer-source-input.ts",
+      "mode": "100644",
+      "bytes": 1107,
+      "sha256": "fe99a0edd9081ac3ddc3cd54081c505d3b96ee952cb23ec0c162ff3d3fecb51e"
+    },
+    {
+      "path": "lib/client/course-authoring.ts",
+      "mode": "100644",
+      "bytes": 13844,
+      "sha256": "3e0e0156c7638dd200d81ed04428b570f4d5f8bc0c60ab01341aa31a6aca1eaa"
+    },
+    {
+      "path": "lib/client/course-download.ts",
+      "mode": "100644",
+      "bytes": 5251,
+      "sha256": "b4e830620491ce51b98e3d2f35a7f79dba70dcd5d7b79f1ca06aaadde0ff26d1"
+    },
+    {
+      "path": "lib/client/generation-batch.ts",
+      "mode": "100644",
+      "bytes": 6774,
+      "sha256": "d1d3fe505eaae95677ce0da0146587aef70a8228bab870dec5a81298ba402cc4"
+    },
+    {
+      "path": "lib/client/guest-draft.ts",
+      "mode": "100644",
+      "bytes": 7135,
+      "sha256": "28c22fa25aee6427a27ca6139dabd56867eccfc4f657d3f595161cc0504a6ef9"
+    },
+    {
+      "path": "lib/client/import-files.ts",
+      "mode": "100644",
+      "bytes": 2232,
+      "sha256": "5b33bafafad2616ac717db40b41695172bf3c6d5b23b224a420f17edef5b5da7"
+    },
+    {
+      "path": "lib/client/report-authoring.ts",
+      "mode": "100644",
+      "bytes": 21511,
+      "sha256": "0a21d653618ded698d25b5ac5b7bccced9945825714a704e6c882dc367e74bc4"
+    },
+    {
+      "path": "lib/client/report-chart-model.ts",
+      "mode": "100644",
+      "bytes": 2390,
+      "sha256": "712aa0decf9d705ce9caa9c77cd4ab6400d085efaad6401dee4c8021175eda78"
+    },
+    {
+      "path": "lib/client/report-chart-projection.ts",
+      "mode": "100644",
+      "bytes": 4399,
+      "sha256": "aba96c088a1d130e40de0cbbc29486063125dad305ee007dde7556f18f1453d4"
+    },
+    {
+      "path": "lib/client/report-csv.ts",
+      "mode": "100644",
+      "bytes": 6494,
+      "sha256": "934c14863c029c706f90e1deda978f18046e6b903fc867c7e76d48c60101d569"
+    },
+    {
+      "path": "lib/client/report-download.ts",
+      "mode": "100644",
+      "bytes": 3575,
+      "sha256": "8b9d40af251465fe6110066094cf0b88651be8c16907e98f7e3b5c3289059d71"
+    },
+    {
+      "path": "lib/client/report-grid.ts",
+      "mode": "100644",
+      "bytes": 276,
+      "sha256": "fdd002d3455b50463687dea717b1e72288f4245c2d15798169e5bf40f4f472e3"
+    },
+    {
+      "path": "lib/deck-assets.ts",
+      "mode": "100644",
+      "bytes": 1756,
+      "sha256": "680fde4b289c69b7db0c0e92e4dfc281fbb1bbfa7077c0d94204b14c923d89c9"
+    },
+    {
+      "path": "lib/deck-runtime.ts",
+      "mode": "100644",
+      "bytes": 24481,
+      "sha256": "06f5a5c1b89243e4ec8a6ff25f91774564bccbbb3dea478a07b388bc8686c18e"
+    },
+    {
+      "path": "lib/demo-store.ts",
+      "mode": "100644",
+      "bytes": 25925,
+      "sha256": "01ec7d5ddbe4e98cc327a6a482764b00aa75e75c78fa11bdea0da9d3db0ed575"
+    },
+    {
+      "path": "lib/detect-urls.ts",
+      "mode": "100644",
+      "bytes": 1392,
+      "sha256": "d91d7ccf9010813a5f407554d1305cf5dce16103d1f6eef0255da42328ac7cf1"
+    },
+    {
+      "path": "lib/env.ts",
+      "mode": "100644",
+      "bytes": 1263,
+      "sha256": "5246dacf7d526634937699866f60349a01a8ea6ce06b913a0c91fe30ba4b190e"
+    },
+    {
+      "path": "lib/experiments.ts",
+      "mode": "100644",
+      "bytes": 1087,
+      "sha256": "46a7ca9d5a37edb52fc3cbd86c1dd0c1df0a059b64ca7b1c3c4aff40be8a924b"
+    },
+    {
+      "path": "lib/file-context.ts",
+      "mode": "100644",
+      "bytes": 7367,
+      "sha256": "3d5c068e3244c975d8feda89dc42c6c0cf60d92289bd1828528e11d115750c93"
+    },
+    {
+      "path": "lib/persistence/factory.ts",
+      "mode": "100644",
+      "bytes": 1086,
+      "sha256": "15bd371e6ea353eeee964dca7372e8db353713867b2d9b9d3cc7a3d58f81ed44"
+    },
+    {
+      "path": "lib/repository.ts",
+      "mode": "100644",
+      "bytes": 26546,
+      "sha256": "8c206a4b3acf76577c1f0dff7a899f4318117d28296d395a8d579e6c01321a74"
+    },
+    {
+      "path": "lib/seed.ts",
+      "mode": "100644",
+      "bytes": 12331,
+      "sha256": "1abf34da14546f31142720502660db8ef4448c421c445b776a48f1d78a6e42de"
+    },
+    {
+      "path": "lib/server-auth.ts",
+      "mode": "100644",
+      "bytes": 2482,
+      "sha256": "234224562ef3bffdaa8ba0ca9152240038f412737506b8345c2adc6a628334f9"
+    },
+    {
+      "path": "lib/storage.ts",
+      "mode": "100644",
+      "bytes": 3414,
+      "sha256": "09f75ff7590c61e43ded719e269b4574059731ca2a2b34a87e06d46c1415c92f"
+    },
+    {
+      "path": "lib/storage/factory.ts",
+      "mode": "100644",
+      "bytes": 1119,
+      "sha256": "20833cf0347e6dc2b52f6f05d4aa3b03b28179ac7b9ad46ce825115772755561"
+    },
+    {
+      "path": "lib/types.ts",
+      "mode": "100644",
+      "bytes": 7766,
+      "sha256": "b284b9ea982ba9e82b7d7815b8bfdedff3b5bf36531e964f52880abeab75b258"
+    },
+    {
+      "path": "lib/utils.ts",
+      "mode": "100644",
+      "bytes": 899,
+      "sha256": "e55bb4a79de98626f195e2e081d6532893d84ba3a82cc2406691b98a7c777eff"
+    },
+    {
+      "path": "lib/visualization-drafts.ts",
+      "mode": "100644",
+      "bytes": 11153,
+      "sha256": "6de1a0270238ae0e9585a2e6935096c07dcc88c04a9615082ba27bc337688bee"
+    },
+    {
+      "path": "next.config.ts",
+      "mode": "100644",
+      "bytes": 126,
+      "sha256": "cf6ec480ebb03a2ccfd2efa3e07bcf2acbb35a4a90dc047c42be7609cebf7d90"
+    },
+    {
+      "path": "package-lock.json",
+      "mode": "100644",
+      "bytes": 637827,
+      "sha256": "73d0d633911baf6313e344f7be032967c23c0902d21f7e7de8359ccc185c217a"
+    },
+    {
+      "path": "package.json",
+      "mode": "100644",
+      "bytes": 3590,
+      "sha256": "8f903168a869c949ad27fba2eadf0fa20d6e081fba96d1bfd9e1afcd3030fbaf"
+    },
+    {
+      "path": "packages/backend-contracts/provider.ts",
+      "mode": "100644",
+      "bytes": 12168,
+      "sha256": "66619e97fd5a68bf00c20108f05b3d6d0e5df6a42b72d574f7c283dffae4e43c"
+    },
+    {
+      "path": "packages/domain/entities.ts",
+      "mode": "100644",
+      "bytes": 8486,
+      "sha256": "3497d892a647865b4a837c7073e2f31a53974c82d4d5671d568332fa9927656a"
+    },
+    {
+      "path": "packages/domain/fixtures.ts",
+      "mode": "100644",
+      "bytes": 7598,
+      "sha256": "7a4061dee526746e8243253e060cfc76abcf8e0b0387057e94cc49703acf9b12"
+    },
+    {
+      "path": "packages/domain/ids.ts",
+      "mode": "100644",
+      "bytes": 357,
+      "sha256": "21398813bb52c1b338affd89e383b09debd518a927e65366b3577c07e76806a4"
+    },
+    {
+      "path": "packages/domain/migrations.ts",
+      "mode": "100644",
+      "bytes": 2307,
+      "sha256": "ca73f1e7c0f411ca50b9f25c90d5778abccd7d2081f5bc2b0e4b0e68c9291336"
+    },
+    {
+      "path": "packages/domain/schemas.ts",
+      "mode": "100644",
+      "bytes": 10515,
+      "sha256": "63244c33ff0bc7702e51073ae19b0cae177ff46b17892332253e956bf62c3a82"
+    },
+    {
+      "path": "packages/domain/serialization.ts",
+      "mode": "100644",
+      "bytes": 719,
+      "sha256": "2b4b41d1d5c2585192747435f6a353517407491ceaec546275ce5ca765c439e1"
+    },
+    {
+      "path": "packages/provider-cloudflare/README.md",
+      "mode": "100644",
+      "bytes": 217,
+      "sha256": "9883b3bd703a87060479e85b21c4c507a79089b574c0bce8f3221212b82e633c"
+    },
+    {
+      "path": "packages/provider-cloudflare/index.ts",
+      "mode": "100644",
+      "bytes": 217,
+      "sha256": "30a6b82055b9d4a5c6d70ff6bc319065e00326d95a70e526217e660e06cdbe07"
+    },
+    {
+      "path": "packages/provider-convex/README.md",
+      "mode": "100644",
+      "bytes": 303,
+      "sha256": "776bec47d4f5ad162d141c24a619e7a2c759662320688a38c3745082936b1ad9"
+    },
+    {
+      "path": "packages/provider-convex/index.ts",
+      "mode": "100644",
+      "bytes": 201,
+      "sha256": "78800031c16b7726f62276ea9aa31aef5decf1411cac6bf810006910fd973071"
+    },
+    {
+      "path": "packages/provider-local/adapter.ts",
+      "mode": "100644",
+      "bytes": 40123,
+      "sha256": "c91f778cc41aec2deffcd58364ba08e8ba71114eb3ee5bc727321bc27375f70c"
+    },
+    {
+      "path": "packages/provider-local/schema.ts",
+      "mode": "100644",
+      "bytes": 7906,
+      "sha256": "010341c443984c8629101fe995f5d28e7b895ce447077d4aa8406238cf6c9b16"
+    },
+    {
+      "path": "packages/provider-supabase/README.md",
+      "mode": "100644",
+      "bytes": 269,
+      "sha256": "dc49ef7139591d9ad55fcdbae6393b6eb8964290ae09c95d7c0d87c7a45690ad"
+    },
+    {
+      "path": "packages/provider-supabase/index.ts",
+      "mode": "100644",
+      "bytes": 199,
+      "sha256": "4d688c3a0f53df54034b0bacdeed6b3b3702fed78956bd21142d531ed99d2cd6"
+    },
+    {
+      "path": "packages/storage/local.ts",
+      "mode": "100644",
+      "bytes": 3046,
+      "sha256": "4fb3f4c9e54ef3db0b50b38268d43fccf101fd868ba66c9f4ddd4243adf15ad6"
+    },
+    {
+      "path": "packages/storage/provider.ts",
+      "mode": "100644",
+      "bytes": 1387,
+      "sha256": "02c434caaa1cbe5016abfde2ca14337370cb65369f7fd5cdeb66616948f5fb2b"
+    },
+    {
+      "path": "postcss.config.mjs",
+      "mode": "100644",
+      "bytes": 94,
+      "sha256": "dfac7ac2d86d326a0e5adb024e7943c181393ed17a5fcb8f0315b24c7da6ddde"
+    },
+    {
+      "path": "public/file.svg",
+      "mode": "100644",
+      "bytes": 391,
+      "sha256": "2b67812c325c199a02536cdbeea0c593a72f707d323b72ee3e08dbab06753bd4"
+    },
+    {
+      "path": "public/globe.svg",
+      "mode": "100644",
+      "bytes": 1035,
+      "sha256": "b614b9bf183925957661ac851498fe1d8029fd43a62fbfed86f9e2624a57e7cf"
+    },
+    {
+      "path": "public/next.svg",
+      "mode": "100644",
+      "bytes": 1375,
+      "sha256": "55995dfad6ecb4945a1e856ddca03c5e16aa5bf13fd21b4df6a74ae79357bcfc"
+    },
+    {
+      "path": "public/vercel.svg",
+      "mode": "100644",
+      "bytes": 128,
+      "sha256": "f081337b2fee635b455b63275406a3e7f39d6a014e25ad90dab5a67e62a12ac4"
+    },
+    {
+      "path": "public/window.svg",
+      "mode": "100644",
+      "bytes": 385,
+      "sha256": "644768c4aaeb4767bce293344eeb0c125fb804a94d801440424072202d85e3a1"
+    },
+    {
+      "path": "scripts/convex-migrate.ts",
+      "mode": "100644",
+      "bytes": 123,
+      "sha256": "f9b6ed92650580fcc6b4f55f08e6d430e4fe5e412c3e4de0bc7e298e63e171bb"
+    },
+    {
+      "path": "scripts/data-compare.ts",
+      "mode": "100644",
+      "bytes": 618,
+      "sha256": "98d930af858ed9c9d4193aa1196ce16197a732f841addb57f40e8f7ce8db5d7d"
+    },
+    {
+      "path": "scripts/data-cutover-check.ts",
+      "mode": "100644",
+      "bytes": 478,
+      "sha256": "0dc4e1c1f5fe44b9f6709274b8e92dca031f3257274c9f6cf196455726b28f32"
+    },
+    {
+      "path": "scripts/data-export.ts",
+      "mode": "100644",
+      "bytes": 2689,
+      "sha256": "cbc2d0028e89a34e496878062603ce63b13d3c580bbb3e4341306102bd6402ac"
+    },
+    {
+      "path": "scripts/data-import.ts",
+      "mode": "100644",
+      "bytes": 4381,
+      "sha256": "931d4fcda0b735423ddb10b31ffaa858cba30aa15540b6631125abf28c7e418c"
+    },
+    {
+      "path": "scripts/data-verify.ts",
+      "mode": "100644",
+      "bytes": 1290,
+      "sha256": "086836f5190eddfa76ac70b958db0de30c8e9cf513c1aa4d349e830b5d3a2eca"
+    },
+    {
+      "path": "scripts/doctor.ts",
+      "mode": "100644",
+      "bytes": 868,
+      "sha256": "ac0e5dc7aedf13ca971808a17ac02dfcbc7c26d720c58633032a4cd0d6f6836b"
+    },
+    {
+      "path": "scripts/reset-local.ts",
+      "mode": "100644",
+      "bytes": 742,
+      "sha256": "8b8ce76f4765e51497a92edc93c5e93b5f2b92305414e5c52871df0fa42e65a2"
+    },
+    {
+      "path": "scripts/setup-local.ts",
+      "mode": "100644",
+      "bytes": 4281,
+      "sha256": "2d59798cee0325beb90e0f3cb2f8d370c15f3ec161e7b20d8746464ec00c5a11"
+    },
+    {
+      "path": "skills-lock.json",
+      "mode": "100644",
+      "bytes": 842,
+      "sha256": "48679d1150ba7a6b59f5754eec2932a772af20af6700aefae0ec1bf759f85bed"
+    },
+    {
+      "path": "tests/helpers/locked-zod-cache.cjs",
+      "mode": "100644",
+      "bytes": 3954,
+      "sha256": "4ba4bccfd1536cbe89eefc6f26ad61db578ee64d3ed7812a420111f8932b96ea"
+    },
+    {
+      "path": "tests/providers/local-provider.test.ts",
+      "mode": "100644",
+      "bytes": 6672,
+      "sha256": "612fbbe7ee724246f5073ff33f5a7f56f876750689971230e85bceb61b73168d"
+    },
+    {
+      "path": "tests/unit/artifact.test.ts",
+      "mode": "100644",
+      "bytes": 1345,
+      "sha256": "11fb9168b4bcc7fc37d9fb20f4ab4b31382fa4cba811c5f78e0bdbbacc25d3fa"
+    },
+    {
+      "path": "tests/unit/brand-kit.test.ts",
+      "mode": "100644",
+      "bytes": 3326,
+      "sha256": "062e997d524cc08b436fd8d13c06ab43ea728f9c8b6b593b5f997858c1fbe401"
+    },
+    {
+      "path": "tests/unit/composer-extraction.cases.mjs",
+      "mode": "100644",
+      "bytes": 17396,
+      "sha256": "c6f01fd7d59f45b5fce860764a30e7e05a36e2347bf2508e45874b1ad3056b5f"
+    },
+    {
+      "path": "tests/unit/composer-extraction.test.ts",
+      "mode": "100644",
+      "bytes": 153,
+      "sha256": "a7dcb10856668effd46fc8d9312b209523e8b5f0126db5f1b0bc7e39ae0188bd"
+    },
+    {
+      "path": "tests/unit/composer-inputs.test.ts",
+      "mode": "100644",
+      "bytes": 1388,
+      "sha256": "f46aaa44ee9d36625237caeb4aa93c292d35bc9daa2080fb8caabd04e4674e23"
+    },
+    {
+      "path": "tests/unit/course-artifact.cases.mjs",
+      "mode": "100644",
+      "bytes": 22600,
+      "sha256": "25e1a2acd4d32c34654a04b9f9587127ce79d0c55e25efa1d4cdbafef923659b"
+    },
+    {
+      "path": "tests/unit/course-artifact.test.ts",
+      "mode": "100644",
+      "bytes": 141,
+      "sha256": "d16ff8c417a2a3c0baacec7892958d32b402cb2c8a4b49deb2be61c26dbecae5"
+    },
+    {
+      "path": "tests/unit/course-authoring.cases.mjs",
+      "mode": "100644",
+      "bytes": 25834,
+      "sha256": "851a47753eaff476231f24292935661ea5525a38f5ab9774899e067f92768df3"
+    },
+    {
+      "path": "tests/unit/course-authoring.test.ts",
+      "mode": "100644",
+      "bytes": 141,
+      "sha256": "c45cb59c737c4d3919c2707a890783ae8357baffa9918c5102bf3aa6eafccaa9"
+    },
+    {
+      "path": "tests/unit/course-download.cases.mjs",
+      "mode": "100644",
+      "bytes": 27174,
+      "sha256": "534fed998515d648aa9855f1cd3055358b43719af4ca645f69be41118a1b85f1"
+    },
+    {
+      "path": "tests/unit/course-download.test.ts",
+      "mode": "100644",
+      "bytes": 141,
+      "sha256": "4070a66d09973bdf6680e850d71b835cfe38b64ef6bf3daeb18385352b87d11c"
+    },
+    {
+      "path": "tests/unit/course-editor.cases.mjs",
+      "mode": "100644",
+      "bytes": 17908,
+      "sha256": "4fa1bb928bb24810431a4c030804e965a8b0dd7e040228ee3b0a360b604f1238"
+    },
+    {
+      "path": "tests/unit/course-editor.test.ts",
+      "mode": "100644",
+      "bytes": 132,
+      "sha256": "9780904d1eefcfefe9bb54142f1ca345293c418a698b2d266d90232b665fe326"
+    },
+    {
+      "path": "tests/unit/course-preview.cases.mjs",
+      "mode": "100644",
+      "bytes": 7334,
+      "sha256": "431292d4744c02e5c187752c4f52c06f3da3ef60cdb038060ad496aabc91937d"
+    },
+    {
+      "path": "tests/unit/course-preview.test.ts",
+      "mode": "100644",
+      "bytes": 135,
+      "sha256": "10ed75deff07f6620c90ca6eac83a559d5dc6b72071f23606e4eeede24e3db55"
+    },
+    {
+      "path": "tests/unit/domain.test.ts",
+      "mode": "100644",
+      "bytes": 2700,
+      "sha256": "50865cce429b92c50c9e1cb87f00532fb96ddb75cd4179c1a248e9bacbf2a682"
+    },
+    {
+      "path": "tests/unit/generation-batch.test.ts",
+      "mode": "100644",
+      "bytes": 16660,
+      "sha256": "d9da390c96d49c820b0a662eae66ebc4b9bf528b08c253acfe4d27e767141733"
+    },
+    {
+      "path": "tests/unit/report-artifact.cases.mjs",
+      "mode": "100644",
+      "bytes": 37878,
+      "sha256": "6eb748058a3e8ee7ee3f98404d9ab67350766b6d0fe7fe8f9fb090224688eb8a"
+    },
+    {
+      "path": "tests/unit/report-artifact.test.ts",
+      "mode": "100644",
+      "bytes": 141,
+      "sha256": "11c0d79503f23ccdad50e459456686ffc6f9a3b76c5ed411a3229157ece14db9"
+    },
+    {
+      "path": "tests/unit/report-authoring.cases.mjs",
+      "mode": "100644",
+      "bytes": 23962,
+      "sha256": "ec6f9ba9834690ef294eb98a41835df86b5dffa0875dc04ae7c5df62ea3fdce9"
+    },
+    {
+      "path": "tests/unit/report-authoring.test.ts",
+      "mode": "100644",
+      "bytes": 141,
+      "sha256": "9330023cd246ad3fdc6e7f3cdec4c33f22379164183834abcc44d4740b5f1d18"
+    },
+    {
+      "path": "tests/unit/report-chart-preview.cases.mjs",
+      "mode": "100644",
+      "bytes": 19739,
+      "sha256": "b7b33285d28f070133320c5e964b914a742cdbd06d2483cf3b8cd5227200fda7"
+    },
+    {
+      "path": "tests/unit/report-chart-preview.test.ts",
+      "mode": "100644",
+      "bytes": 154,
+      "sha256": "be3b64cf8de80052ca54ba09d66f6f7f7a0d0f0a3edc129c55073a0071cfdd6a"
+    },
+    {
+      "path": "tests/unit/report-chart-projection.cases.mjs",
+      "mode": "100644",
+      "bytes": 13952,
+      "sha256": "b493fe7edd0916fb82079eb51e6cfeed3131ef5f0ae22a77bc28fc4bbef677be"
+    },
+    {
+      "path": "tests/unit/report-chart-projection.test.ts",
+      "mode": "100644",
+      "bytes": 163,
+      "sha256": "c4c5e7971d5e80dcc15f279f76757030f8ccd9746920f21240b5027a9d3e7314"
+    },
+    {
+      "path": "tests/unit/report-composer.cases.mjs",
+      "mode": "100644",
+      "bytes": 9201,
+      "sha256": "d78864339b94948b6f89c356fb84c057f273fea5a343508a2d7406e889ab3128"
+    },
+    {
+      "path": "tests/unit/report-composer.test.ts",
+      "mode": "100644",
+      "bytes": 141,
+      "sha256": "17a70760e5b609870d1b8f0b8c7bdd1b9d88347cce119316dbfdb634812ac182"
+    },
+    {
+      "path": "tests/unit/report-csv-import.cases.mjs",
+      "mode": "100644",
+      "bytes": 27381,
+      "sha256": "f49b4bfd911322bfbd00d4c0b0a50eab68fbd887479387aa46605bb98171675b"
+    },
+    {
+      "path": "tests/unit/report-csv-import.test.ts",
+      "mode": "100644",
+      "bytes": 141,
+      "sha256": "410be5fcafb0a6594488e710016bee6eb1866a1e130d3f47d8a9c91221e2c321"
+    },
+    {
+      "path": "tests/unit/report-download.cases.mjs",
+      "mode": "100644",
+      "bytes": 19811,
+      "sha256": "575ad542205fcb33211cdf2250b1368d408aae1307f6c03d2bec057e7335840d"
+    },
+    {
+      "path": "tests/unit/report-download.test.ts",
+      "mode": "100644",
+      "bytes": 141,
+      "sha256": "a683a7ff8358d93801d370802be0912163454d49f6b8bfb71f47ee52785ff876"
+    },
+    {
+      "path": "tests/unit/report-editor.cases.mjs",
+      "mode": "100644",
+      "bytes": 25709,
+      "sha256": "d99173dee93be5452aec58b77725f9384549a5d27c9b7107c5abb1003fec0cb4"
+    },
+    {
+      "path": "tests/unit/report-editor.test.ts",
+      "mode": "100644",
+      "bytes": 131,
+      "sha256": "9e1d0b9cfdb59294189dc0c13dce37126d2691f8cf915928ba270595ba194f74"
+    },
+    {
+      "path": "tests/unit/report-preview.cases.mjs",
+      "mode": "100644",
+      "bytes": 14894,
+      "sha256": "98ad028cef8b001d5722f32aa7effbe427eaf1e6121ad9e1c738aa2bb8c8e067"
+    },
+    {
+      "path": "tests/unit/report-preview.test.ts",
+      "mode": "100644",
+      "bytes": 135,
+      "sha256": "e80fd6658cf9a590e922cb004734db8750fe431a2ac20094ebd84fdd8c0670a9"
+    },
+    {
+      "path": "tests/unit/source-inputs.test.ts",
+      "mode": "100644",
+      "bytes": 9666,
+      "sha256": "3cc2822fee57bec87ade9e2dd32bb0f963bb131f255d090c90bd6d84d347a9fe"
+    },
+    {
+      "path": "tests/unit/storage.test.ts",
+      "mode": "100644",
+      "bytes": 1205,
+      "sha256": "a97e919df1b1864d03b83a932ef8565aba34bcc27dbc9af632ab6ffaed44390d"
+    },
+    {
+      "path": "tests/unit/visualization-gen.test.ts",
+      "mode": "100644",
+      "bytes": 5657,
+      "sha256": "8ba51a6c453b10de0e38202cd9f2c6b1c47052402ab2df330d42dbf284f15a54"
+    },
+    {
+      "path": "tsconfig.json",
+      "mode": "100644",
+      "bytes": 709,
+      "sha256": "8224858bc6fb422f3fdfe3cf76e0cdf741bc156d56e2eb4d1fa5b1ad42d0ce9f"
+    },
+    {
+      "path": "vitest.config.ts",
+      "mode": "100644",
+      "bytes": 343,
+      "sha256": "8703ead0d2c6a613281f00f26aa48db91323fc15f678e97308c899b9f51bc9fa"
+    },
+    {
+      "path": "workers/persistence/migrations/0001_initial.sql",
+      "mode": "100644",
+      "bytes": 330,
+      "sha256": "ae148c0b44bc52dff6600b0d83b7393572b851333d7eb5583d615f93d835aea1"
+    },
+    {
+      "path": "workers/persistence/package.json",
+      "mode": "100644",
+      "bytes": 514,
+      "sha256": "626d7b0ee6d8c05e686089a7cefbaa4cca890ae90409a3b5efe0a5b192477246"
+    },
+    {
+      "path": "workers/persistence/src/index.ts",
+      "mode": "100644",
+      "bytes": 759,
+      "sha256": "72478b1b6e6af900744c97b1329ef7100c8e63f08a7f1d9822737d5e3e195a94"
+    },
+    {
+      "path": "workers/persistence/tsconfig.json",
+      "mode": "100644",
+      "bytes": 180,
+      "sha256": "65e8eaa3f09492c9542338e06027b6e56c19661a3c89501e9122b7c5ca614736"
+    },
+    {
+      "path": "workers/persistence/wrangler.jsonc",
+      "mode": "100644",
+      "bytes": 328,
+      "sha256": "a20f64d85d67bc3f14a6995d0914ce17fee59a4e9232a23979c33b92e1b7502c"
+    }
+  ],
+  "excluded_prefixes": [
+    "docs/results/",
+    ".agents/"
+  ],
+  "protected_baseline": {
+    "baselineLeafCount": 429,
+    "unchangedLeaves": 422,
+    "changedPaths": [
+      "README.md",
+      "components/visualizations/report-editor.tsx",
+      "docs/report-authoring.md",
+      "docs/report-export.md",
+      "lib/client/report-authoring.ts",
+      "tests/unit/report-authoring.cases.mjs",
+      "tests/unit/report-editor.cases.mjs"
+    ]
+  }
+}

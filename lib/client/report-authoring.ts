@@ -3,6 +3,7 @@ import type { GeneratedDraft } from "@/lib/client/guest-draft"
 import type { ReportBlock, ReportLayoutItem, ReportVisualizationDocument } from "@/packages/domain/entities"
 import { reportDocumentSchema } from "@/packages/domain/schemas"
 import { REPORT_GRID_COLUMNS, type ReportBreakpoint } from "@/lib/client/report-grid"
+import { requirePreparedReportCsvImport, type ReportCsvImportReview } from "@/lib/client/report-csv"
 
 export { REPORT_GRID_COLUMNS, REPORT_GRID_ROW_HEIGHT, REPORT_GRID_GAP, type ReportBreakpoint } from "@/lib/client/report-grid"
 export const REPORT_AUTHORING_LIMITS = {
@@ -237,6 +238,28 @@ export function addReportBlock(value: ReportVisualizationDocument, kind: ReportB
   return validateReportEdit(document)
 }
 
+export function appendImportedReportTable(value: ReportVisualizationDocument, review: ReportCsvImportReview): {
+  document: ReportVisualizationDocument; blockId: string
+} {
+  const source = requirePreparedReportCsvImport(review), document = validateReportEdit(value)
+  const blockId = crypto.randomUUID(), snapshotId = crypto.randomUUID()
+  const headerNote = source.firstRowIsHeader ? "The first CSV record supplies the headings."
+    : "Positional headings were generated; every CSV record is a data row."
+  document.report.dataSources.push({
+    id: snapshotId, label: source.label, contentHash: source.contentHash, rowCount: source.rowCount,
+    provenance: `User-supplied CSV import. ${headerNote} SHA-256 fingerprints the parsed columns and rows, not the original file bytes. Source accuracy has not been independently verified.`,
+  })
+  document.report.blocks.push({
+    id: blockId, kind: "data-table", title: source.label,
+    columns: [...source.columns], rows: source.rows.map((row) => [...row]),
+    provenance: `Initially imported from source snapshot ${snapshotId} (${source.label}); parsed-table SHA-256 ${source.contentHash}. Table cells can be edited; the immutable snapshot describes the original import.`,
+  })
+  for (const breakpoint of Object.keys(REPORT_GRID_COLUMNS) as ReportBreakpoint[]) {
+    appendPlacement(document.report.layouts[breakpoint], breakpoint, blockId)
+  }
+  return { document: validateReportEdit(document), blockId }
+}
+
 export function duplicateReportBlock(value: ReportVisualizationDocument, blockId: string): ReportVisualizationDocument {
   const document = validateReportEdit(value), original = document.report.blocks.find((block) => block.id === blockId)
   if (!original) invalid("The report block is no longer available.")
@@ -291,8 +314,18 @@ export function applyReportDraftEdit(batch: GenerationBatch, resultId: string, e
   if (candidate.subtitle === undefined) delete document.subtitle
   else document.subtitle = candidate.subtitle
   document.summary = candidate.summary; document.audience = candidate.audience; document.goal = candidate.goal; document.seo = candidate.seo
-  const dataSources = document.report.dataSources
-  document.report = { ...candidate.report, dataSources }
+  const originalSources = document.report.dataSources, editedSources = candidate.report.dataSources
+  if (editedSources.length < originalSources.length
+    || originalSources.some((source, index) => reportJson(source) !== reportJson(editedSources[index]))) {
+    invalid("Existing source snapshots cannot be rewritten, reordered or removed. Reopen the report before applying these changes.")
+  }
+  const appendedSources = editedSources.slice(originalSources.length)
+  for (const source of appendedSources) {
+    nonblank(source.label, "Data snapshot label")
+    nonblank(source.provenance, "Data snapshot provenance")
+    if (!/^[a-f0-9]{64}$/.test(source.contentHash)) invalid("New source snapshots need a valid SHA-256 parsed-data fingerprint.")
+  }
+  document.report = { ...candidate.report, dataSources: [...originalSources, ...appendedSources] }
   const nextDraft = structuredClone(current.draft)
   nextDraft.document = validateReportEdit(document)
   delete nextDraft.artifactHtml

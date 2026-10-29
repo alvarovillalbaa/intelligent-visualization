@@ -1,14 +1,16 @@
 "use client"
 
-import { useEffect, useRef, useState, type FormEvent } from "react"
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
-  addReportBlock, changeReportLayout, duplicateReportBlock, prepareReportEdit, removeReportBlock, validateReportEdit,
+  addReportBlock, appendImportedReportTable, changeReportLayout, duplicateReportBlock, prepareReportEdit, removeReportBlock, validateReportEdit,
   REPORT_GRID_COLUMNS, type ReportBreakpoint,
 } from "@/lib/client/report-authoring"
 import type { ReportLayoutItem, ReportVisualizationDocument } from "@/packages/domain/entities"
+import type { ReportCsvImportReview } from "@/lib/client/report-csv"
 import { AddBlockControl, BlockFields, REPORT_BLOCK_OPTIONS } from "./report-editor/block-fields"
+import { ReportCsvImport } from "./report-editor/csv-import"
 import { CheckField, EditorSection, NumericField, TextField } from "./report-editor/fields"
 import { GridCanvas } from "./report-editor/grid-canvas"
 import { commitReportHistory, createReportHistory, redoReportHistory, reportDraftsEqual, undoReportHistory, type ReportHistory } from "./report-editor/history"
@@ -30,6 +32,12 @@ export function ReportEditor({ document: initialDocument, onApply, onCancel, per
   })
   const [history, setHistory] = useState(() => createReportHistory(initial.document))
   const historyRef = useRef(history)
+  const [importPending, setImportPending] = useState(false)
+  const importPendingRef = useRef(false)
+  const updateImportPending = useCallback((pending: boolean) => {
+    importPendingRef.current = pending
+    setImportPending(pending)
+  }, [])
   const [positionFields, setPositionFields] = useState<PositionFields | null>(null)
   const positionRef = useRef<PositionFields | null>(null)
   const [baseline] = useState(() => structuredClone(initial.document))
@@ -45,7 +53,7 @@ export function ReportEditor({ document: initialDocument, onApply, onCancel, per
   const lastFocus = useRef<HTMLElement | null>(null)
   const applying = useRef(false)
   const draft = history.present
-  const dirty = !reportDraftsEqual(draft, baseline) || positionFields !== null
+  const dirty = !reportDraftsEqual(draft, baseline) || positionFields !== null || importPending
   const selected = draft.report.blocks.find((block) => block.id === selectedId) ?? draft.report.blocks[0]
   const layout = draft.report.layouts[breakpoint].find((item) => item.blockId === selected?.id)
   const lockedAnywhere = selected ? Object.values(draft.report.layouts).some((items) => items.some((item) => item.blockId === selected.id && item.locked)) : false
@@ -70,6 +78,18 @@ export function ReportEditor({ document: initialDocument, onApply, onCancel, per
 
   function update(change: (document: ReportVisualizationDocument) => void) {
     perform((current) => { const next = structuredClone(current); change(next); return next })
+  }
+
+  function addCsvTable(review: ReportCsvImportReview): string | null {
+    if (positionRef.current) return "Apply or discard the position fields before adding a CSV table."
+    try {
+      const next = appendImportedReportTable(historyRef.current.present, review)
+      replace(commitReportHistory(historyRef.current, next.document))
+      setSelectedId(next.blockId)
+      return null
+    } catch (cause) {
+      return cause instanceof Error ? cause.message : "The table could not be added. Your CSV review is still here."
+    }
   }
 
   function updateLayout(patch: Partial<Pick<ReportLayoutItem, "x" | "y" | "w" | "h" | "locked">>) {
@@ -117,7 +137,7 @@ export function ReportEditor({ document: initialDocument, onApply, onCancel, per
   }
 
   function requestClose() {
-    if (!dirty) { onCancel(); return }
+    if (!dirty && !importPendingRef.current) { onCancel(); return }
     lastFocus.current = globalThis.document.activeElement instanceof HTMLElement ? globalThis.document.activeElement : null
     setCloseRequested(true)
   }
@@ -128,6 +148,7 @@ export function ReportEditor({ document: initialDocument, onApply, onCancel, per
   }
 
   function showPreview() {
+    if (importPendingRef.current) { showError("Add the CSV table or cancel its import before previewing the report."); return }
     if (!applyPositionFields()) return
     try { setPreview(validateReportEdit(historyRef.current.present)); setView("preview"); setError(null); setCloseRequested(false) }
     catch (cause) { showError(cause instanceof Error ? cause.message : "Check the report fields before previewing.") }
@@ -136,6 +157,7 @@ export function ReportEditor({ document: initialDocument, onApply, onCancel, per
   function apply(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (applying.current) return
+    if (importPendingRef.current) { showError("Add the CSV table or cancel its import before applying report changes."); return }
     if (!applyPositionFields()) return
     applying.current = true
     setCloseRequested(false)
@@ -146,7 +168,7 @@ export function ReportEditor({ document: initialDocument, onApply, onCancel, per
     finally { applying.current = false }
   }
 
-  return <Dialog open onOpenChange={(open, details) => { if (!open) { if (dirty) details.cancel(); requestClose() } }}>
+  return <Dialog open onOpenChange={(open, details) => { if (!open) { if (dirty || importPendingRef.current) details.cancel(); requestClose() } }}>
     <DialogContent showCloseButton={false} className="flex h-[92dvh] max-h-[960px] w-[96vw] max-w-7xl flex-col gap-0 overflow-hidden rounded-2xl p-0 sm:max-w-7xl">
       <form ref={formRef} noValidate onSubmit={apply} className="flex min-h-0 flex-1 flex-col" onKeyDown={(event) => {
         const tag = (event.target as HTMLElement).tagName
@@ -226,7 +248,9 @@ export function ReportEditor({ document: initialDocument, onApply, onCancel, per
             {selected ? <EditorSection title={`Block content · ${REPORT_BLOCK_OPTIONS.find((entry) => entry.value === selected.kind)?.label ?? selected.kind}`}>
               <BlockFields key={selected.id} block={selected} assetIds={draft.assetIds} onChange={(value) => update((next) => { next.report.blocks = next.report.blocks.map((block) => block.id === selected.id ? value : block) })} />
             </EditorSection> : null}
-            <EditorSection title="Source snapshots" description="These supplied records remain unchanged when applying edits. Data import and new immutable snapshots are separate features.">
+            <ReportCsvImport onAdd={addCsvTable} onPendingChange={updateImportPending}
+              disabledReason={positionFields !== null ? "Apply or discard the position fields before adding a CSV table." : undefined} />
+            <EditorSection title="Source snapshots" description="Existing snapshots retain their original source records. CSV imports add a snapshot of the original parsed cells; editing the table keeps that snapshot unchanged.">
               {draft.report.dataSources.length ? draft.report.dataSources.map((source) => <dl key={source.id} className="grid min-w-0 gap-1 rounded-xl border border-border p-3 text-xs">
                 <dt className="font-semibold">{source.label}</dt><dd className="break-all">Hash: {source.contentHash}</dd>
                 {source.rowCount !== undefined ? <dd>Rows: {source.rowCount}</dd> : null}<dd className="break-words leading-5">{source.provenance}</dd>

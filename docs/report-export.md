@@ -63,8 +63,10 @@ CSS without permitting text to close its style element.
 ## Limits of this slice
 
 An HTML file is not a hosted public Report. Workspace saving, publication,
-provider acceptance and data import/new immutable snapshots keep their existing
-gates. The local authoring bounds also apply to downloads. Browser download,
+provider acceptance and durable original-source archiving keep their existing
+gates. [CSV import](report-csv-import.md) now adds a reviewed table and source
+fingerprint to the editor draft; the original file is not archived. The local
+authoring bounds also apply to downloads. Browser download,
 file opening, pointer/focus behavior, chart appearance and print acceptance
 remain unverified until separately approved checks run. The inactive
 [four-check export proposal](proposals/report-export-browser.md) covers native

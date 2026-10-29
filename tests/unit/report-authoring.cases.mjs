@@ -250,7 +250,9 @@ export function registerReportAuthoringChecks(test) {
     edited.title = 'Edited report'; edited.subtitle = 'Edited subtitle'; edited.summary = 'Edited summary'; edited.audience = 'Edited audience'; edited.goal = 'Edited goal'; edited.seo = { title: 'Edited SEO', description: 'Edited SEO description' };
     edited.report.decisionQuestion = 'Edited decision'; edited.report.executiveSummary = 'Edited conclusion'; edited.report.blocks[1].text = 'Edited narrative';
     edited.theme.accent = '#000000'; edited.sourceManifest = []; edited.assetIds = []; edited.visualDirection.layout = 'Rejected layout metadata';
-    edited.report.dataSources[0].contentHash = 'attempted snapshot replacement';
+    const replacement = clone(edited);
+    replacement.report.dataSources[0].contentHash = 'attempted snapshot replacement';
+    assert.throws(() => apply(freeze(value), freeze(replacement), freeze(expected)), /source snapshots cannot be rewritten/);
     const next = apply(freeze(value), freeze(edited), freeze(expected)), result = target(next).draft;
     assert.equal(next.input, value.input); assert.equal(next.results[0], value.results[0]); assert.equal(next.results[1], value.results[1]);
     assert.equal(target(next).saveStatus, 'saved'); assert.equal(target(next).savedDeckId, 'saved-report');

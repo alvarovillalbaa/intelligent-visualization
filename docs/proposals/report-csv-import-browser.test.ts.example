@@ -1,0 +1,305 @@
+// INACTIVE: separate browser/temporary-CI approval required. Future approved
+// runner copies this to tests/tmp/report-csv-import.spec.ts and uses desktop +
+// mobile Chromium projects: four scenarios, eight executions. No real API runs.
+import { createHash } from "node:crypto"
+import { expect, test, type BrowserContext, type Locator, type Page } from "@playwright/test"
+
+import type { GeneratedDraft, StoredGuestDraft } from "../../lib/client/guest-draft"
+import type { ReportVisualizationDocument } from "../../packages/domain/entities"
+import { createStarterCourseDocument, createStarterReportDocument } from "../../packages/domain/fixtures"
+
+const ORIGIN = "http://127.0.0.1:3100", KEY = "iv:guest-draft:v2"
+const SOURCE = "Authored CSV browser source. No real document, account or model request."
+const TITLE = "Authored CSV Report"
+const COLUMNS = ["Label", "Notes", "Code"]
+const ROWS = [["  Café, patio  ", "He said \"yes\"\r\nthen left", "0012"], ["=1+1", "<b>literal</b>", "@named"]]
+const CSV = 'Label,Notes,Code\r\n"  Café, patio  ","He said ""yes""\r\nthen left",0012\r\n=1+1,<b>literal</b>,@named\r\n'
+const HASH = createHash("sha256").update(JSON.stringify({ columns: COLUMNS, rows: ROWS }), "utf8").digest("hex")
+type Harness = {
+  unexpected: string[]; pageErrors: string[]; generation: string[]; artifacts: ReportVisualizationDocument[];
+  failCourseOnce: boolean; courseCalls: number; releaseCourse?: () => void; courseGate?: Promise<void>; allowArtifact: boolean;
+}
+const harnesses = new WeakMap<BrowserContext, Harness>()
+
+function fixtures(): Record<"course" | "report", GeneratedDraft> {
+  const course = createStarterCourseDocument(); course.title = "Authored latest Course sibling"
+  const report = createStarterReportDocument(); report.title = TITLE
+  report.sourceManifest = [{ id: "authored-source", label: "Authored original source", kind: "paste", contentHash: "original-source-hash", provenance: "Disposable authored source" }]
+  report.report.dataSources = [
+    { id: "original-a", label: "Original A", contentHash: "original-hash-a", rowCount: 2, provenance: "Preserve original qualification A." },
+    { id: "original-b", label: "Original B", contentHash: "original-hash-b", rowCount: 0, provenance: "Preserve original qualification B." },
+  ]
+  const metadata = { provider: "authored-browser-mock", modelName: "csv-fixture", generatedAt: Date.now(), artifactHtml: null }
+  return { course: { ...metadata, kind: "course", document: course }, report: { ...metadata, kind: "report", document: report } }
+}
+
+test.use({ storageState: { cookies: [], origins: [] }, serviceWorkers: "block" })
+test.beforeEach(async ({ context, page, baseURL }) => {
+  expect(baseURL).toBe(ORIGIN); expect(await context.cookies()).toEqual([])
+  const authored = fixtures()
+  const state: Harness = { unexpected: [], pageErrors: [], generation: [], artifacts: [], failCourseOnce: false, courseCalls: 0, allowArtifact: false }
+  harnesses.set(context, state)
+  page.on("pageerror", (error) => state.pageErrors.push(error.message))
+  await context.route("**/*", async (route) => {
+    const request = route.request(), url = new URL(request.url())
+    if (url.origin !== ORIGIN) {
+      state.unexpected.push(`${request.method()} ${url.origin}${url.pathname}`); await route.abort("blockedbyclient"); return
+    }
+    if (request.method() === "POST" && url.pathname === "/api/visualizations/generate") {
+      const body = request.postDataJSON() as { kind?: string; generationInput?: { rawText?: string } }
+      if ((body.kind !== "course" && body.kind !== "report") || body.generationInput?.rawText !== SOURCE) {
+        state.unexpected.push("Unexpected generation payload"); await route.abort("blockedbyclient"); return
+      }
+      state.generation.push(body.kind)
+      if (body.kind === "course") {
+        state.courseCalls++
+        if (state.failCourseOnce && state.courseCalls === 1) {
+          await route.fulfill({ status: 503, json: { error: "Authored Course failure; retry is disposable." } }); return
+        }
+        if (state.failCourseOnce && state.courseGate) await state.courseGate
+      }
+      await route.fulfill({ status: 200, json: structuredClone(authored[body.kind]) }); return
+    }
+    if (request.method() === "POST" && url.pathname === "/api/visualizations/artifact" && state.allowArtifact) {
+      const body = request.postDataJSON() as { document?: ReportVisualizationDocument }
+      if (!body.document || body.document.kind !== "report") {
+        state.unexpected.push("Unexpected artifact payload"); await route.abort("blockedbyclient"); return
+      }
+      state.artifacts.push(body.document)
+      // UI/serialization boundary only: the real artifact route/compiler is not invoked.
+      await route.fulfill({ status: 200, json: { artifactHtml: "<!doctype html><html><head><title>Authored stub</title></head><body>Authored download boundary.</body></html>" } }); return
+    }
+    if (!["GET", "HEAD", "OPTIONS"].includes(request.method()) || !(url.pathname === "/" || url.pathname.startsWith("/_next/") || url.pathname === "/favicon.ico")) {
+      state.unexpected.push(`${request.method()} ${url.pathname}`); await route.abort("blockedbyclient"); return
+    }
+    await route.continue()
+  })
+})
+test.afterEach(async ({ context }, testInfo) => {
+  const state = harnesses.get(context)
+  if (!state) return
+  state.releaseCourse?.()
+  await testInfo.attach("intercepted-requests", { body: Buffer.from(JSON.stringify({ unexpected: state.unexpected, generation: state.generation, artifactRequests: state.artifacts.length })), contentType: "application/json" })
+  expect(state.unexpected, "Every mutation must be a bounded authored response, never a real API request").toEqual([])
+  expect(state.generation).toEqual(state.failCourseOnce ? ["course", "report", "course"] : ["course", "report"])
+  expect(state.artifacts).toHaveLength(state.allowArtifact ? 1 : 0)
+  expect(state.pageErrors).toEqual([])
+})
+
+const editor = (page: Page) => page.getByRole("dialog", { name: "Edit report", exact: true })
+function section(page: Page, title: string) {
+  return editor(page).locator("section").filter({ has: page.getByRole("heading", { name: title, level: 3, exact: true }) })
+}
+const csvImport = (page: Page) => section(page, "Import table from CSV")
+const snapshots = (page: Page) => section(page, "Source snapshots")
+function card(page: Page, kind: "Course" | "Report") {
+  return page.getByRole("region", { name: "Generation results", exact: true }).getByRole("listitem")
+    .filter({ has: page.getByRole("heading", { name: kind, level: 3, exact: true }) })
+}
+async function stored(page: Page): Promise<StoredGuestDraft> { return page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), KEY) }
+function reportOf(value: StoredGuestDraft): ReportVisualizationDocument {
+  const document = value.batch?.results.find((result) => result.kind === "report")?.draft?.document
+  if (!document || document.kind !== "report") throw new Error("Missing authored Report")
+  return document
+}
+async function activate(control: Locator, mobile: boolean) { if (mobile) await control.tap(); else await control.click() }
+async function generate(page: Page, mobile: boolean, failedCourse = false) {
+  await page.goto("/")
+  await page.getByRole("textbox", { name: "Text or link", exact: true }).fill(SOURCE)
+  await activate(page.getByRole("button", { name: "Continue", exact: true }), mobile)
+  const formats = page.getByRole("group", { name: "Draft formats", exact: true })
+  for (const name of [/^Slides deck\b/, /^Course\b/, /^Report\b/]) await activate(formats.getByRole("button", { name }), mobile)
+  await activate(page.getByRole("button", { name: "Create drafts", exact: true }), mobile)
+  await expect(card(page, "Report")).toContainText("Report draft ready")
+  await expect(card(page, "Course")).toContainText(failedCourse ? "Generation failed" : "Course draft ready")
+}
+async function openEditor(page: Page, mobile: boolean) {
+  if (await page.locator('[aria-label="Report HTML download"]').count()) await activate(page.getByRole("button", { name: "Back", exact: true }), mobile)
+  await activate(card(page, "Report").getByRole("button", { name: "Edit Report", exact: true }), mobile)
+  await expect(editor(page)).toBeVisible()
+}
+async function file(page: Page, name: string, content: string | Buffer) {
+  await csvImport(page).getByLabel("CSV file", { exact: true }).setInputFiles({ name, mimeType: "text/csv", buffer: typeof content === "string" ? Buffer.from(content, "utf8") : content })
+}
+async function expectReview(page: Page, columns: string[], rows: string[][]) {
+  const region = csvImport(page).getByRole("region", { name: "CSV table review", exact: true })
+  await expect(region).toBeVisible()
+  const table = region.getByRole("table", { name: "CSV table preview", exact: true })
+  await expect(table.locator("thead th")).toHaveCount(columns.length)
+  expect(await table.locator("thead th").allTextContents()).toEqual(columns)
+  expect(await table.evaluate((element) => Array.from((element as HTMLTableElement).tBodies[0].rows, (row) => Array.from(row.cells, (cell) => cell.textContent)))).toEqual(rows)
+  await expect(csvImport(page).getByRole("button", { name: "Add table and source snapshot", exact: true })).toBeEnabled()
+}
+async function add(page: Page, mobile: boolean) {
+  await activate(csvImport(page).getByRole("button", { name: "Add table and source snapshot", exact: true }), mobile)
+  await expect(csvImport(page).getByRole("region", { name: "CSV table review", exact: true })).toHaveCount(0)
+}
+async function fit(page: Page) {
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
+  expect(await editor(page).evaluate((element) => {
+    const box = element.getBoundingClientRect()
+    return box.left >= -1 && box.right <= innerWidth + 1 && box.top >= -1 && box.bottom <= innerHeight + 1 && element.scrollWidth <= element.clientWidth + 1
+  })).toBe(true)
+  for (const control of [csvImport(page).getByLabel("CSV file", { exact: true }), csvImport(page).getByRole("button", { name: "Add table and source snapshot", exact: true })]) {
+    const box = await control.boundingBox(); expect(box).not.toBeNull(); expect(box!.height).toBeGreaterThanOrEqual(44)
+  }
+}
+async function delayFirstRead(page: Page, name: string) {
+  return page.evaluateHandle((name) => {
+    const descriptor = Object.getOwnPropertyDescriptor(FileReader.prototype, "readAsArrayBuffer")!
+    let used = false, deliver: (() => unknown) | null = null
+    Object.defineProperty(FileReader.prototype, "readAsArrayBuffer", { ...descriptor, value: function (this: FileReader, blob: Blob) {
+      if (!used && blob instanceof File && blob.name === name) {
+        used = true
+        const callback = this.onload, reader = this
+        // Real FileReader bytes/result; only delivery of one completed read is held.
+        this.onload = (event) => { deliver = () => callback?.call(reader, event) }
+      }
+      return descriptor.value.call(this, blob)
+    } })
+    return { ready: () => deliver !== null, release: async () => { const callback = deliver; deliver = null; await callback?.() }, restore: () => Object.defineProperty(FileReader.prototype, "readAsArrayBuffer", descriptor) }
+  }, name)
+}
+
+test("literal CSV review requires explicit Add and Apply, preserves snapshots and reaches only a stubbed HTML boundary", async ({ page }, testInfo) => {
+  const mobile = testInfo.project.name === "mobile", state = harnesses.get(page.context())!
+  await generate(page, mobile); const before = await stored(page), original = reportOf(before)
+  await openEditor(page, mobile); await file(page, "Literal.csv", CSV)
+  await expectReview(page, COLUMNS, ROWS); await expect(csvImport(page).getByText(HASH, { exact: true })).toBeVisible()
+  expect(reportOf(await stored(page))).toEqual(original); await fit(page)
+  await activate(editor(page).getByRole("button", { name: "Apply changes", exact: true }), mobile)
+  await expect(editor(page).getByRole("alert")).toContainText("Add the CSV table or cancel its import")
+  await expectReview(page, COLUMNS, ROWS)
+  await add(page, mobile)
+  await expect(editor(page).getByRole("textbox", { name: "Table row 1, Label", exact: true })).toHaveValue(ROWS[0][0])
+  await expect(snapshots(page).locator("dl")).toHaveCount(3)
+  expect(reportOf(await stored(page))).toEqual(original)
+  await activate(editor(page).getByRole("button", { name: "Apply changes", exact: true }), mobile)
+  await expect(editor(page)).toHaveCount(0)
+  await expect.poll(async () => reportOf(await stored(page)).report.blocks.length).toBe(original.report.blocks.length + 1)
+  const committed = reportOf(await stored(page)), block = committed.report.blocks.at(-1)
+  expect(block).toMatchObject({ kind: "data-table", title: "Literal.csv", columns: COLUMNS, rows: ROWS })
+  expect(committed.report.dataSources.slice(0, -1)).toEqual(original.report.dataSources)
+  expect(committed.report.dataSources.at(-1)).toMatchObject({ label: "Literal.csv", contentHash: HASH, rowCount: 2 })
+  expect(committed.sourceManifest).toEqual(original.sourceManifest)
+  state.allowArtifact = true
+  const download = page.locator('[aria-label="Report HTML download"]')
+  await activate(download.getByRole("button", { name: "Download Report HTML", exact: true }), mobile)
+  const save = download.getByRole("link", { name: "Save Report HTML", exact: true })
+  await expect(save).toHaveAttribute("href", /^blob:http:\/\/127\.0\.0\.1:3100\//)
+  await expect(save).toHaveAttribute("download", /^report-.+\.html$/)
+  expect(state.artifacts).toEqual([committed])
+  // No native save, filesystem write or real HTML compilation is claimed here.
+})
+
+test("CSV errors, canceled reads, replacement and header changes cannot add stale cells or autosave", async ({ page }, testInfo) => {
+  const mobile = testInfo.project.name === "mobile"
+  await generate(page, mobile); const original = reportOf(await stored(page)); await openEditor(page, mobile)
+  await file(page, "Malformed.csv", 'A,B\nx,"unfinished')
+  await expect(csvImport(page).getByRole("alert")).toContainText("unterminated")
+  await expect(csvImport(page).getByRole("alert")).toBeFocused()
+  await expect(csvImport(page).getByRole("button", { name: "Add table and source snapshot", exact: true })).toBeDisabled()
+  await activate(csvImport(page).getByRole("button", { name: "Cancel CSV import", exact: true }), mobile)
+  const delayed = await delayFirstRead(page, "Slow.csv")
+  try {
+    await file(page, "Slow.csv", "Old,Value\nStale,1")
+    await expect(csvImport(page).getByRole("status")).toHaveText("Reading CSV…")
+    await expect.poll(() => delayed.evaluate((held) => held.ready())).toBe(true)
+    const header = csvImport(page).getByRole("checkbox", { name: "First row contains column headings", exact: true })
+    await activate(csvImport(page).locator("label").filter({ has: header }), mobile)
+    await expect(header).not.toBeChecked()
+    await expectReview(page, ["Column 1", "Column 2"], [["Old", "Value"], ["Stale", "1"]])
+    await file(page, "Replacement.csv", "Fresh,2")
+    await expectReview(page, ["Column 1", "Column 2"], [["Fresh", "2"]])
+    await delayed.evaluate((held) => held.release())
+    await expectReview(page, ["Column 1", "Column 2"], [["Fresh", "2"]])
+    await activate(csvImport(page).getByRole("button", { name: "Cancel CSV import", exact: true }), mobile)
+    await expect(csvImport(page).getByRole("region", { name: "CSV table review", exact: true })).toHaveCount(0)
+    await file(page, "Replacement.csv", "Fresh,2") // Same-name chooser retry remains usable.
+    await expectReview(page, ["Column 1", "Column 2"], [["Fresh", "2"]])
+    await activate(csvImport(page).getByRole("button", { name: "Cancel CSV import", exact: true }), mobile)
+  } finally { await delayed.evaluate((held) => held.restore()); await delayed.dispose() }
+  const canceled = await delayFirstRead(page, "Canceled.csv")
+  try {
+    await file(page, "Canceled.csv", "Canceled\nLate result")
+    await expect.poll(() => canceled.evaluate((held) => held.ready())).toBe(true)
+    await activate(csvImport(page).getByRole("button", { name: "Cancel CSV import", exact: true }), mobile)
+    await canceled.evaluate((held) => held.release())
+    await expect(csvImport(page).getByRole("region", { name: "CSV table review", exact: true })).toHaveCount(0)
+    await expect(csvImport(page).getByRole("status")).toHaveCount(0)
+  } finally { await canceled.evaluate((held) => held.restore()); await canceled.dispose() }
+  await file(page, "Too-large.csv", Buffer.alloc(2 * 1024 * 1024 + 1, 120))
+  await expect(csvImport(page).getByRole("alert")).toContainText("at most 2 MiB")
+  await activate(csvImport(page).getByRole("button", { name: "Cancel CSV import", exact: true }), mobile)
+  await expect(snapshots(page).locator("dl")).toHaveCount(2); expect(reportOf(await stored(page))).toEqual(original)
+  await fit(page)
+})
+
+test("CSV table and snapshot undo and redo together while committed source prefixes survive later discarded imports", async ({ page }, testInfo) => {
+  const mobile = testInfo.project.name === "mobile"
+  await generate(page, mobile); const original = reportOf(await stored(page)); await openEditor(page, mobile)
+  await file(page, "History.csv", "Name,Value\nAlpha,12"); await expectReview(page, ["Name", "Value"], [["Alpha", "12"]]); await add(page, mobile)
+  await expect(snapshots(page).locator("dl")).toHaveCount(3)
+  await activate(editor(page).getByRole("button", { name: "Undo", exact: true }), mobile)
+  await expect(snapshots(page).locator("dl")).toHaveCount(2)
+  await expect(editor(page).getByRole("group", { name: "Choose a report block", exact: true }).getByRole("button")).toHaveCount(original.report.blocks.length)
+  await activate(editor(page).getByRole("button", { name: "Redo", exact: true }), mobile)
+  await expect(snapshots(page).locator("dl")).toHaveCount(3)
+  await expect(editor(page).getByRole("textbox", { name: "Table title", exact: true })).toHaveValue("History.csv")
+  await activate(editor(page).getByRole("button", { name: "Apply changes", exact: true }), mobile)
+  await expect(editor(page)).toHaveCount(0)
+  await expect.poll(async () => reportOf(await stored(page)).report.dataSources.length).toBe(3)
+  const committed = reportOf(await stored(page)); expect(committed.report.dataSources.slice(0, -1)).toEqual(original.report.dataSources)
+  await openEditor(page, mobile)
+  await file(page, "Discarded.csv", "Other\nLater"); await expectReview(page, ["Other"], [["Later"]]); await add(page, mobile)
+  await expect(snapshots(page).locator("dl")).toHaveCount(4)
+  await activate(editor(page).getByRole("button", { name: "Undo", exact: true }), mobile)
+  await expect(snapshots(page).locator("dl")).toHaveCount(3)
+  await activate(editor(page).getByRole("button", { name: "Redo", exact: true }), mobile)
+  await expect(snapshots(page).locator("dl")).toHaveCount(4)
+  expect(reportOf(await stored(page))).toEqual(committed)
+  await activate(editor(page).getByRole("button", { name: "Cancel", exact: true }), mobile)
+  await activate(editor(page).getByRole("button", { name: "Discard changes", exact: true }), mobile)
+  await expect(editor(page)).toHaveCount(0); expect(reportOf(await stored(page))).toEqual(committed)
+})
+
+test("guest reload and quota failure retain committed bytes while CSV Apply preserves a later Course sibling", async ({ page }, testInfo) => {
+  const mobile = testInfo.project.name === "mobile", state = harnesses.get(page.context())!
+  state.failCourseOnce = true; state.courseGate = new Promise<void>((resolve) => { state.releaseCourse = resolve })
+  await generate(page, mobile, true)
+  await activate(card(page, "Course").getByRole("button", { name: "Retry Course", exact: true }), mobile)
+  await expect(card(page, "Course")).toContainText("Generating")
+  await openEditor(page, mobile); await file(page, "Durable.csv", "A\nDurable"); await expectReview(page, ["A"], [["Durable"]]); await add(page, mobile)
+  state.releaseCourse!()
+  await expect.poll(async () => (await stored(page)).batch!.results.find((result) => result.kind === "course")?.status).toBe("completed")
+  const latestCourse = (await stored(page)).batch!.results.find((result) => result.kind === "course")
+  await activate(editor(page).getByRole("button", { name: "Apply changes", exact: true }), mobile)
+  await expect(editor(page)).toHaveCount(0)
+  await expect.poll(async () => reportOf(await stored(page)).report.dataSources.length).toBe(3)
+  const committed = await stored(page)
+  expect(committed.batch!.results.find((result) => result.kind === "course")).toEqual(latestCourse)
+  expect(reportOf(committed).report.dataSources).toHaveLength(3)
+  expect(committed.expiresAt - committed.savedAt).toBe(4 * 60 * 60 * 1000)
+  await page.reload(); await expect(card(page, "Report")).toContainText(TITLE)
+  expect(reportOf(await stored(page))).toEqual(reportOf(committed))
+  await openEditor(page, mobile); await file(page, "Quota.csv", "A\nIn-memory only"); await expectReview(page, ["A"], [["In-memory only"]]); await add(page, mobile)
+  const durableBefore = await page.evaluate((key) => localStorage.getItem(key), KEY)
+  const restore = await page.evaluateHandle((key) => {
+    const descriptor = Object.getOwnPropertyDescriptor(Storage.prototype, "setItem")!
+    Object.defineProperty(Storage.prototype, "setItem", { ...descriptor, value: function (this: Storage, name: string, value: string) {
+      if (this === localStorage && name === key) throw new DOMException("Authored CSV quota failure", "QuotaExceededError")
+      return descriptor.value.call(this, name, value)
+    } })
+    return () => Object.defineProperty(Storage.prototype, "setItem", descriptor)
+  }, KEY)
+  try {
+    await activate(editor(page).getByRole("button", { name: "Apply changes", exact: true }), mobile)
+    await expect(editor(page)).toHaveCount(0)
+    await expect(page.getByRole("cell", { name: "In-memory only", exact: true })).toBeVisible()
+    await expect(page.locator('[role="status"][aria-live="polite"]').filter({ hasText: "Browser storage is unavailable or full." })).toContainText("have not been saved for reload")
+    expect(await page.evaluate((key) => localStorage.getItem(key), KEY)).toBe(durableBefore)
+  } finally { await restore.evaluate((restoreStorage) => restoreStorage()); await restore.dispose() }
+  await page.reload(); await expect(card(page, "Report")).toContainText(TITLE)
+  expect(reportOf(await stored(page))).toEqual(reportOf(committed))
+  expect((await stored(page)).batch!.results.find((result) => result.kind === "course")).toEqual(latestCourse)
+})

@@ -28,6 +28,11 @@ const callbackReact = {
   ...React,
   useState(initial) { const [h, i] = cell(initial); return [h.cells[i], (next) => { h.cells[i] = typeof next === 'function' ? next(h.cells[i]) : next; }]; },
   useRef(initial) { const [h, i] = cell(() => ({ current: initial })); return h.cells[i]; },
+  useCallback(callback, deps) {
+    const [h, i] = cell(() => ({ callback, deps })), prior = h.cells[i];
+    if (!deps || !prior.deps || deps.length !== prior.deps.length || deps.some((value, index) => !Object.is(value, prior.deps[index]))) h.cells[i] = { callback, deps };
+    return h.cells[i].callback;
+  },
   useId() { const [h, i] = cell(() => `report-${harnessStack.at(-1).id}-${harnessStack.at(-1).cursor}`); return h.cells[i]; },
   useEffect() { cell(undefined); },
   useLayoutEffect(callback, deps) {
