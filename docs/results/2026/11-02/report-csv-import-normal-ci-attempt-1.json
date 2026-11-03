@@ -1,0 +1,289 @@
+{
+  "schemaVersion": 1,
+  "scope": "Existing normal automatic CI, observed separately from focused Report CSV176 acceptance",
+  "result": "failed-lint",
+  "checkedCommit": "f460b04db4f5ee4c194eb3c62017b7adff3652b8",
+  "productSourceBase": "e6f1e48d1b888b02bc4c18c6559f8f6527860947",
+  "workflow": {
+    "path": ".github/workflows/ci.yml",
+    "sha256": "02cf694be09a858017d77e64c95bb60e981ad29e4fed9f574fab62a43af58741",
+    "modified": false,
+    "suppressed": false
+  },
+  "run": {
+    "id": 41416992030,
+    "attempt": 1,
+    "url": "https://github.com/alvarovillalbaa/intelligent-visualization/actions/runs/41416992030",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "failure",
+    "startedAt": "2026-11-02T08:58:49Z",
+    "completedAt": "2026-11-02T09:00:23Z"
+  },
+  "job": {
+    "id": 125183172709,
+    "name": "local-quality",
+    "status": "completed",
+    "conclusion": "failure",
+    "startedAt": "2026-11-02T08:59:00Z",
+    "completedAt": "2026-11-02T09:00:23Z",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/setup-node@v4",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run npm ci",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run npm run setup:local",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run npm run doctor",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run npm run lint",
+        "status": "completed",
+        "conclusion": "failure"
+      },
+      {
+        "name": "Run npm run typecheck",
+        "status": "completed",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "Run npm test",
+        "status": "completed",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "Run npm run test:providers",
+        "status": "completed",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "Run npm run data:export -- --provider local --output .data/test-export",
+        "status": "completed",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "Run npm run data:verify -- --input .data/test-export",
+        "status": "completed",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "Run npm run build",
+        "status": "completed",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "Post Run actions/setup-node@v4",
+        "status": "completed",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "Post Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "runtimeObserved": {
+    "os": "Ubuntu 24.04.5",
+    "node": "22.23.4"
+  },
+  "actualFailedCommand": {
+    "command": "npm run lint",
+    "exitCode": 1,
+    "errors": 1,
+    "warnings": 16,
+    "diagnostics": [
+      {
+        "file": "components/visualizations/composer.tsx",
+        "line": 177,
+        "column": 22,
+        "severity": "warning",
+        "message": "The ref value 'importEpochRef.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'importEpochRef.current' to a variable inside the effect, and use that variable in the cleanup function",
+        "rule": "react-hooks/exhaustive-deps"
+      },
+      {
+        "file": "components/visualizations/course-download.tsx",
+        "line": 50,
+        "column": 18,
+        "severity": "warning",
+        "message": "The ref value 'generation.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'generation.current' to a variable inside the effect, and use that variable in the cleanup function",
+        "rule": "react-hooks/exhaustive-deps"
+      },
+      {
+        "file": "tests/unit/course-artifact.cases.mjs",
+        "line": 180,
+        "column": 10,
+        "severity": "error",
+        "message": "Do not assign to the variable `module`. See: https://nextjs.org/docs/messages/no-assign-module-variable",
+        "rule": "@next/next/no-assign-module-variable"
+      },
+      {
+        "file": "tests/unit/course-download.cases.mjs",
+        "line": 88,
+        "column": 104,
+        "severity": "warning",
+        "message": "'variant' is defined but never used",
+        "rule": "@typescript-eslint/no-unused-vars"
+      },
+      {
+        "file": "tests/unit/course-download.cases.mjs",
+        "line": 88,
+        "column": 113,
+        "severity": "warning",
+        "message": "'size' is defined but never used",
+        "rule": "@typescript-eslint/no-unused-vars"
+      },
+      {
+        "file": "tests/unit/course-editor.cases.mjs",
+        "line": 50,
+        "column": 43,
+        "severity": "warning",
+        "message": "'variant' is defined but never used",
+        "rule": "@typescript-eslint/no-unused-vars"
+      },
+      {
+        "file": "tests/unit/course-editor.cases.mjs",
+        "line": 50,
+        "column": 52,
+        "severity": "warning",
+        "message": "'size' is defined but never used",
+        "rule": "@typescript-eslint/no-unused-vars"
+      },
+      {
+        "file": "tests/unit/course-editor.cases.mjs",
+        "line": 50,
+        "column": 58,
+        "severity": "warning",
+        "message": "'showCloseButton' is defined but never used",
+        "rule": "@typescript-eslint/no-unused-vars"
+      },
+      {
+        "file": "tests/unit/course-editor.cases.mjs",
+        "line": 50,
+        "column": 75,
+        "severity": "warning",
+        "message": "'open' is defined but never used",
+        "rule": "@typescript-eslint/no-unused-vars"
+      },
+      {
+        "file": "tests/unit/course-editor.cases.mjs",
+        "line": 50,
+        "column": 81,
+        "severity": "warning",
+        "message": "'onOpenChange' is defined but never used",
+        "rule": "@typescript-eslint/no-unused-vars"
+      },
+      {
+        "file": "tests/unit/report-download.cases.mjs",
+        "line": 72,
+        "column": 104,
+        "severity": "warning",
+        "message": "'variant' is defined but never used",
+        "rule": "@typescript-eslint/no-unused-vars"
+      },
+      {
+        "file": "tests/unit/report-download.cases.mjs",
+        "line": 72,
+        "column": 113,
+        "severity": "warning",
+        "message": "'size' is defined but never used",
+        "rule": "@typescript-eslint/no-unused-vars"
+      },
+      {
+        "file": "tests/unit/report-editor.cases.mjs",
+        "line": 58,
+        "column": 55,
+        "severity": "warning",
+        "message": "'variant' is defined but never used",
+        "rule": "@typescript-eslint/no-unused-vars"
+      },
+      {
+        "file": "tests/unit/report-editor.cases.mjs",
+        "line": 58,
+        "column": 64,
+        "severity": "warning",
+        "message": "'size' is defined but never used",
+        "rule": "@typescript-eslint/no-unused-vars"
+      },
+      {
+        "file": "tests/unit/report-editor.cases.mjs",
+        "line": 58,
+        "column": 70,
+        "severity": "warning",
+        "message": "'showCloseButton' is defined but never used",
+        "rule": "@typescript-eslint/no-unused-vars"
+      },
+      {
+        "file": "tests/unit/report-editor.cases.mjs",
+        "line": 58,
+        "column": 87,
+        "severity": "warning",
+        "message": "'open' is defined but never used",
+        "rule": "@typescript-eslint/no-unused-vars"
+      },
+      {
+        "file": "tests/unit/report-editor.cases.mjs",
+        "line": 58,
+        "column": 93,
+        "severity": "warning",
+        "message": "'onOpenChange' is defined but never used",
+        "rule": "@typescript-eslint/no-unused-vars"
+      }
+    ]
+  },
+  "priorStepsPassed": [
+    "npm ci",
+    "npm run setup:local",
+    "npm run doctor"
+  ],
+  "laterChecksSkipped": [
+    "npm run typecheck",
+    "npm test",
+    "npm run test:providers",
+    "npm run data:export",
+    "npm run data:verify",
+    "npm run build"
+  ],
+  "focusedRun": {
+    "id": 41416992025,
+    "url": "https://github.com/alvarovillalbaa/intelligent-visualization/actions/runs/41416992025",
+    "qualification": "A distinct workflow and acceptance result; this normal-CI failure neither accepts nor overrides its176 cases."
+  },
+  "actionsByReceiptAuthor": {
+    "sourceFixed": false,
+    "workflowDisabled": false,
+    "rerunRequested": false,
+    "publishedByReceiptAuthor": false
+  },
+  "limits": [
+    "This receipt preserves the existing normalCI's lint failure and all17 bounded diagnostics. It does not claim later checks ran.",
+    "Source or lint repairs, any resulting runs and final publication remain owner-coordinated; no assertions or CI gates were disabled."
+  ]
+}

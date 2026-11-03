@@ -1,0 +1,1265 @@
+{
+  "schemaVersion": 1,
+  "scope": "Focused Report CSV import176-case packet; first execution",
+  "result": "failed-browser-cases",
+  "testDate": "2026-11-02",
+  "receiptAuthoredOn": "2026-11-03",
+  "checkedSource": "e6f1e48d1b888b02bc4c18c6559f8f6527860947",
+  "activationCommit": "f460b04db4f5ee4c194eb3c62017b7adff3652b8",
+  "sourceSeal": {
+    "path": "docs/results/2026/10-30/report-csv-import-source.json",
+    "sha256": "3b57f9644516d4ee3c19bd92d9ef1d48dd8424e7e692d7e1fe8cc12d0228141a",
+    "sourceFiles": 373
+  },
+  "workflow": {
+    "path": ".github/workflows/report-csv-import-checks.yml",
+    "sha256": "d1c8f9c04f60e701649ccdedf6eb82eff99db65f1cb3bf63a4149f27388533ba",
+    "runner": "ubuntu-24.04",
+    "timeoutMinutes": 20,
+    "contentsPermission": "read",
+    "assertionsRelaxed": false,
+    "retiredInThisReceipt": false
+  },
+  "run": {
+    "id": 41416992025,
+    "attempt": 1,
+    "url": "https://github.com/alvarovillalbaa/intelligent-visualization/actions/runs/41416992025",
+    "status": "completed",
+    "conclusion": "failure",
+    "startedAt": "2026-11-02T08:58:49Z",
+    "completedAt": "2026-11-02T09:03:38Z"
+  },
+  "job": {
+    "id": 125183173724,
+    "name": "report-csv",
+    "status": "completed",
+    "conclusion": "failure",
+    "startedAt": "2026-11-02T08:58:53Z",
+    "completedAt": "2026-11-02T09:03:38Z",
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Validate the source pin",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Verify all reviewed inputs and allocate owned runner paths",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Install locked app dependencies and runner-only Chromium tooling",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run exactly 168 selected unit cases",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Materialize only the approved browser examples",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Run exactly eight desktop and narrow browser cases",
+        "status": "completed",
+        "conclusion": "failure"
+      },
+      {
+        "name": "Verify exact outcomes and unchanged reviewed source",
+        "status": "completed",
+        "conclusion": "failure"
+      },
+      {
+        "name": "Print bounded actual failure evidence before cleanup",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Remove only identity-checked owned files and tooling",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Post Run actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1",
+        "status": "completed",
+        "conclusion": "skipped"
+      },
+      {
+        "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+        "status": "completed",
+        "conclusion": "success"
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success"
+      }
+    ]
+  },
+  "runtimeObserved": {
+    "os": "Ubuntu 24.04.5",
+    "node": "24.21.0",
+    "playwright": "1.58.2",
+    "chromium": "145.0.7632.6",
+    "chromiumRevision": "1208",
+    "installation": "npm ci --ignore-scripts for unchanged app lock; runner-only Playwright"
+  },
+  "totals": {
+    "scheduled": 176,
+    "unitPassed": 168,
+    "browserPassed": 5,
+    "browserAssertionFailed": 1,
+    "browserTimedOut": 2,
+    "passed": 173,
+    "nonPassing": 3,
+    "skipped": 0,
+    "flaky": 0
+  },
+  "actualUnitOutcomes": {
+    "kind": "report-csv-unit-outcomes",
+    "source": "e6f1e48d1b888b02bc4c18c6559f8f6527860947",
+    "total": 168,
+    "passed": 168,
+    "failed": 0,
+    "pending": 0,
+    "todo": 0,
+    "cases": [
+      {
+        "file": "report-artifact.test.ts",
+        "name": "standalone Report compilation is deterministic with hashes covering exact authored document and output",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "compilation preserves frozen layout, snapshot, source and evidence values without annotation",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "Report HTML contains its standalone container and complete grid rather than a runtime dependency",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "standalone sm placement uses its own numeric CSS starts and spans",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "standalone md placement uses its own numeric CSS starts and spans",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "standalone lg placement uses its own numeric CSS starts and spans",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "container breakpoints, columns, row heights and gaps match Report authoring geometry",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "source DOM reading order survives a different visual order at every breakpoint",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "every grid region is named and keyboard-focusable while overflowing content remains scrollable",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "print CSS expands Report cells into source flow without fixed-size clipping",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "export keeps document metadata, Report context and edited link/image text visible",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "the visible source appendix preserves supplied source/dataset records and a zero row count without internal IDs",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "source appendix labels, provenance and supplied hashes remain escaped text",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "empty source and snapshot collections omit the appendix instead of inventing citations",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "Report narrative paragraph breaks survive escaped standalone text",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "hostile IDs and text stay escaped attributes/text and never become CSS selectors",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "Report theme text cannot terminate the standalone style element",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "empty generated layouts falls back to complete readable source flow with one structured warning",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "a sparse breakpoint falls back to complete readable source flow with one structured warning",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "duplicate placement identities falls back to complete readable source flow with one structured warning",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "unknown placement identities falls back to complete readable source flow with one structured warning",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "duplicate document block IDs falls back to complete readable source flow with one structured warning",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "fractional geometry falls back to complete readable source flow with one structured warning",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "negative geometry falls back to complete readable source flow with one structured warning",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "zero dimensions falls back to complete readable source flow with one structured warning",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "column overflow falls back to complete readable source flow with one structured warning",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "overlap falls back to complete readable source flow with one structured warning",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "minimum constraints falls back to complete readable source flow with one structured warning",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "maximum constraints falls back to complete readable source flow with one structured warning",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "valid standalone layouts beyond the editor row ceiling retain their authored geometry",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "standalone grid line representability is explicit at logical row 9998",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "standalone grid line representability is explicit at logical row 9999",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "standalone grid line representability is explicit at logical row 9007199254740989",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "line chart preserves both supplied series, signed/zero/null values and accessible table data",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "bar chart preserves both supplied series, signed/zero/null values and accessible table data",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "area chart preserves both supplied series, signed/zero/null values and accessible table data",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "composed chart preserves both supplied series, signed/zero/null values and accessible table data",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "bar SVG keeps negative bars below zero and positive bars above it, with zero height for zero",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "line plotted coordinates preserve signed magnitude ratios and connect the actual observations",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "line SVG segments stop at nulls and isolated non-null observations remain plotted",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "area plotted coordinates preserve signed magnitude ratios and connect the actual observations",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "area SVG segments stop at nulls and isolated non-null observations remain plotted",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "composed SVG renders real bar and line geometry rather than relabelling one chart kind",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "pie renders separate series facets with faithful positive slices and no fabricated zero/null slice",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "pie negative observations are visibly unavailable while the complete data table and notes remain",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "pie zero-total observations never manufacture a circular graph",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "donut renders separate series facets with faithful positive slices and no fabricated zero/null slice",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "donut negative observations are visibly unavailable while the complete data table and notes remain",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "donut zero-total observations never manufacture a circular graph",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "nonnumeric data is preserved in the table and never coerced into plotted numbers",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "numeric-looking string data is preserved in the table and never coerced into plotted numbers",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "missing series cell data is preserved in the table and never coerced into plotted numbers",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "empty chart data keeps title, source, provenance and illustrative qualification with no SVG",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "chart labels, extra data columns, source and SVG colors are escaped without dropping their table evidence",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "zero-only Cartesian values remain honest zero-height bars rather than decorative positive values",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "finite extreme Cartesian magnitudes stay finite in geometry and retain exact table values",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "duplicate series keys produces an explicit unavailable chart without inventing or losing table values",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "blank series keys produces an explicit unavailable chart without inventing or losing table values",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "preview/download artifacts contain no analytics or persistent-progress code",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "existing published runtime selection remains explicit rather than changing export metadata silently",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "Course preview=false explicitly advances to v2 while retaining immutable v1 fingerprints",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "Course preview=true explicitly advances to v2 while retaining immutable v1 fingerprints",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "existing slides preview=false HTML and manifest exactly match immutable baseline fingerprints",
+        "status": "passed"
+      },
+      {
+        "file": "report-artifact.test.ts",
+        "name": "existing slides preview=true HTML and manifest exactly match immutable baseline fingerprints",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "valid report validation clones without trimming or changing source/snapshot qualifications",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "all fifteen typed block factories can be added without changing their siblings",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "image insertion requires an existing attached asset instead of inventing one",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "preparing real-generation empty layouts fills every breakpoint deterministically",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "preparing partial layouts preserves supplied entries and places only missing entries below",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "preparing a complete report leaves all geometry intact",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "both validation and preparation reject supplied fractional coordinate",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "both validation and preparation reject supplied negative coordinate",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "both validation and preparation reject supplied zero width",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "both validation and preparation reject supplied out-of-grid width",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "both validation and preparation reject supplied row overflow",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "both validation and preparation reject supplied overlap",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "both validation and preparation reject supplied unknown block",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "both validation and preparation reject supplied duplicate block layout",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "both validation and preparation reject supplied minimum violation",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "both validation and preparation reject supplied maximum violation",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "layout changes affect only the selected breakpoint and preserve source constraints",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "invalid drop is atomic and does not move or resize any existing block",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "lock blocks position/size edits until explicit unlock and is breakpoint-specific",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "removal requires every breakpoint unlocked and keeps at least one block",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "duplicate recursively renews block/tab/chart IDs while retaining evidence values and independent data",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "report content validation rejects duplicate global IDs",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "report content validation rejects duplicate chart/block ID",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "report content validation rejects duplicate series keys",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "report content validation rejects nonnumeric chart values",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "report content validation rejects missing series cell",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "report content validation rejects missing category key",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "report content validation rejects negative snapshot count",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "report content validation rejects unsupported extra field",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "report content validation rejects blank title",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "numeric chart nulls and empty datasets remain valid without invented data",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "table rows retain exact column count and enforce bounded column/data size",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "report CTA validation accepts HTTP(S) and rejects executable/protocol-ambiguous links",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "bounded JSON rejects cycles, sparse arrays, accessors, hidden values and nonfinite numbers before schema parsing",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "report byte and nesting limits fail before unbounded parsing or cloning",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "block/row limits refuse oversized reports or insertions without changing the current draft",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "nested tab depth is bounded while four levels of authored tabs remain valid",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "applying edits preserves latest siblings, input, save state, provenance and immutable source snapshots",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "applying supports generated reports with original empty layouts and retains their snapshot records",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "applying removes absent optional subtitle without leaving undefined JSON",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "stale draft application preserves the newer draft and leaves authored fields available",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "apply refuses duplicate result identities, wrong formats, incomplete and missing drafts",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "guest report edits round-trip through existing store and retain all format siblings and four-hour retention",
+        "status": "passed"
+      },
+      {
+        "file": "report-authoring.test.ts",
+        "name": "guest quota failure keeps exact prior storage bytes and the applied in-memory report/siblings",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "UTF-8 review retains authored accents, emoji and literal table values",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "one leading UTF-8 BOM is omitted from headings but counted in file bytes",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "quoted commas, escaped quotes and embedded CRLF remain literal cell contents",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "spaces, empty trailing cells and a final record delimiter are preserved without an extra row",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "spreadsheet formulas, leading zeroes and HTML-like text remain inert strings",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "blank and duplicate literal headings are allowed without renaming them",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "no-header mode generates positional headings and retains the first record as data",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "empty and BOM-only files reject while nonempty blank headings remain literal",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "header-only files support zero rows and additional blank records remain actual data",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "source labels and header mode require explicit bounded values",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "ragged short and long records are rejected without modifying the supplied bytes",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "unterminated quoted fields are rejected rather than silently repaired",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "quotes inside unquoted fields and text after closing quotes are rejected",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "invalid UTF-8 sequences fail decoding instead of introducing replacement characters",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "decoded NUL characters are rejected in headings and quoted or unquoted data",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "the raw CSV byte cap accepts exactly 2 MiB and rejects one additional byte",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "32 literal columns are accepted and a 33rd column is rejected",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "header mode accepts 256 data rows plus headings and rejects row 257",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "no-header mode counts every record toward the 256-row cap",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "the content hash matches independent SHA-256 of canonical parsed columns and rows",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "equivalent CSV quoting, BOM and line endings share a parsed-data hash independent of labels",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "changing a literal heading, cell or header interpretation changes the fingerprint",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "missing or failing SHA-256 support rejects review creation without an unhashed fallback",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "prepared reviews, column arrays, row arrays and cells are deeply immutable",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "forged, spread, reconstructed and proxied reviews are rejected before reading their fields",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "mutating original bytes and options while hashing cannot change the prepared review",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "import appends one literal table and one qualified snapshot without changing original content",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "an imported table receives a full-width nonoverlapping placement at all three breakpoints",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "preparing missing generated layouts before import positions every old and new block",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "layout exhaustion rejects the whole import without an orphan table or snapshot",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "the full Report JSON cap rejects a valid raw-size CSV atomically",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "one history commit undoes and redoes the imported table, snapshot and all layouts together",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "Apply appends the imported snapshot while preserving immutable fields and draft metadata",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "Apply rejects deleting, reordering or rewriting any existing ordered snapshot prefix",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "Apply rejects invalid new snapshot fingerprints and blank qualifications without mutation",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "table-cell edits preserve the previously committed import fingerprint and snapshot qualification",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "stale Report Apply rejects the imported candidate and preserves the newer Report",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "Report Apply preserves a sibling completed after the editor captured its expected draft",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "successive CSV imports preserve the exact committed snapshot prefix in order",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "guest storage round-trips imported literals, snapshots, siblings and four-hour retention",
+        "status": "passed"
+      },
+      {
+        "file": "report-csv-import.test.ts",
+        "name": "guest quota failure retains prior bytes and the new imported in-memory Report and siblings",
+        "status": "passed"
+      },
+      {
+        "file": "report-editor.test.ts",
+        "name": "Report editor SSR labels fields and snapshots, escapes text and keeps source unchanged",
+        "status": "passed"
+      },
+      {
+        "file": "report-editor.test.ts",
+        "name": "all fifteen typed blocks expose their actual editing fields without raw JSON",
+        "status": "passed"
+      },
+      {
+        "file": "report-editor.test.ts",
+        "name": "pristine Cancel never applies and isolated field changes preserve caller input",
+        "status": "passed"
+      },
+      {
+        "file": "report-editor.test.ts",
+        "name": "dirty close blocks dismissal and keeps fields until explicit discard",
+        "status": "passed"
+      },
+      {
+        "file": "report-editor.test.ts",
+        "name": "Apply validates actual edited draft and retains it when the parent rejects",
+        "status": "passed"
+      },
+      {
+        "file": "report-editor.test.ts",
+        "name": "blank typed title blocks Apply without resetting its field",
+        "status": "passed"
+      },
+      {
+        "file": "report-editor.test.ts",
+        "name": "position typing is staged atomically through intermediate collisions and one Undo",
+        "status": "passed"
+      },
+      {
+        "file": "report-editor.test.ts",
+        "name": "invalid staged position survives errors, blocks switching, and can be corrected for Preview",
+        "status": "passed"
+      },
+      {
+        "file": "report-editor.test.ts",
+        "name": "pending position fields are dirty and Undo discards only that staged input first",
+        "status": "passed"
+      },
+      {
+        "file": "report-editor.test.ts",
+        "name": "Apply validates pending position before calling parent and retains invalid text",
+        "status": "passed"
+      },
+      {
+        "file": "report-editor.test.ts",
+        "name": "history caps at twenty, clears redo after a new edit, and distinguishes NaN from null",
+        "status": "passed"
+      },
+      {
+        "file": "report-editor.test.ts",
+        "name": "chart key rename retains exact numbers and null after blank/colliding proposals",
+        "status": "passed"
+      },
+      {
+        "file": "report-editor.test.ts",
+        "name": "numeric chart field keeps fractional typing and blank invalid text while updating its draft value",
+        "status": "passed"
+      },
+      {
+        "file": "report-editor.test.ts",
+        "name": "later parent document cannot replace isolated edits and malformed initial layout stays unchanged",
+        "status": "passed"
+      },
+      {
+        "file": "report-editor.test.ts",
+        "name": "pointer move stays transient and only the owning release commits one snapped change",
+        "status": "passed"
+      },
+      {
+        "file": "report-editor.test.ts",
+        "name": "pointer cancel/lost capture and changed canvas width never commit",
+        "status": "passed"
+      },
+      {
+        "file": "report-editor.test.ts",
+        "name": "pointer resize snaps within bounds and rejects an obsolete document owner",
+        "status": "passed"
+      },
+      {
+        "file": "report-editor.test.ts",
+        "name": "an abandoned render cannot replace the committed pointer gesture owner",
+        "status": "passed"
+      },
+      {
+        "file": "report-editor.test.ts",
+        "name": "committed context changes clear the ghost and capture without reviving the old gesture",
+        "status": "passed"
+      }
+    ]
+  },
+  "actualBrowserOutcomes": {
+    "kind": "report-csv-browser-outcomes",
+    "source": "e6f1e48d1b888b02bc4c18c6559f8f6527860947",
+    "stats": {
+      "startTime": "2026-11-02T08:59:59.633Z",
+      "duration": 215011.131,
+      "expected": 5,
+      "skipped": 0,
+      "unexpected": 3,
+      "flaky": 0
+    },
+    "cases": [
+      {
+        "title": "literal CSV review requires explicit Add and Apply, preserves snapshots and reaches only a stubbed HTML boundary",
+        "project": "desktop",
+        "expected": "passed",
+        "status": "unexpected",
+        "results": [
+          {
+            "status": "failed",
+            "retry": 0
+          }
+        ]
+      },
+      {
+        "title": "CSV errors, canceled reads, replacement and header changes cannot add stale cells or autosave",
+        "project": "desktop",
+        "expected": "passed",
+        "status": "unexpected",
+        "results": [
+          {
+            "status": "timedOut",
+            "retry": 0
+          }
+        ]
+      },
+      {
+        "title": "CSV table and snapshot undo and redo together while committed source prefixes survive later discarded imports",
+        "project": "desktop",
+        "expected": "passed",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "retry": 0
+          }
+        ]
+      },
+      {
+        "title": "guest reload and quota failure retain committed bytes while CSV Apply preserves a later Course sibling",
+        "project": "desktop",
+        "expected": "passed",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "retry": 0
+          }
+        ]
+      },
+      {
+        "title": "literal CSV review requires explicit Add and Apply, preserves snapshots and reaches only a stubbed HTML boundary",
+        "project": "mobile",
+        "expected": "passed",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "retry": 0
+          }
+        ]
+      },
+      {
+        "title": "CSV errors, canceled reads, replacement and header changes cannot add stale cells or autosave",
+        "project": "mobile",
+        "expected": "passed",
+        "status": "unexpected",
+        "results": [
+          {
+            "status": "timedOut",
+            "retry": 0
+          }
+        ]
+      },
+      {
+        "title": "CSV table and snapshot undo and redo together while committed source prefixes survive later discarded imports",
+        "project": "mobile",
+        "expected": "passed",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "retry": 0
+          }
+        ]
+      },
+      {
+        "title": "guest reload and quota failure retain committed bytes while CSV Apply preserves a later Course sibling",
+        "project": "mobile",
+        "expected": "passed",
+        "status": "expected",
+        "results": [
+          {
+            "status": "passed",
+            "retry": 0
+          }
+        ]
+      }
+    ],
+    "errors": []
+  },
+  "diagnosticEvidence": {
+    "kind": "report-csv-failure-evidence",
+    "source": "e6f1e48d1b888b02bc4c18c6559f8f6527860947",
+    "diagnosticOnly": true,
+    "unit": {
+      "status": "read",
+      "bytes": 51266,
+      "sha256": "4b4beed625328936be4a21df40834889087cd7097de6168652ad7c4bfdc9c8c5",
+      "stats": {
+        "total": 168,
+        "passed": 168,
+        "failed": 0,
+        "pending": 0,
+        "todo": 0
+      },
+      "failures": []
+    },
+    "browser": {
+      "status": "read",
+      "bytes": 26832,
+      "sha256": "0e3e886b5f878f7c273f73af49bf9d905c465c04b4fa04330a5ac52c308ccf1d",
+      "stats": {
+        "expected": 5,
+        "unexpected": 3,
+        "flaky": 0,
+        "skipped": 0,
+        "duration": 215011.131
+      },
+      "globalErrorCount": 0,
+      "failures": [
+        {
+          "title": "literal CSV review requires explicit Add and Apply, preserves snapshots and reaches only a stubbed HTML boundary",
+          "project": "desktop",
+          "status": "unexpected",
+          "resultStatus": "failed",
+          "retry": 0,
+          "firstErrorMessage": "Error: Every mutation must be a bounded authored response, never a real API request\n\nexpect(received).toEqual(expected) // deep equality\n\n- Expected  - 1\n+ Received  + 3\n\n- Array []\n+ Array [\n+   \"GET /__nextjs_font/geist-latin.woff2\",\n+ ]\n\n  81 |   state.releaseCourse?.()\n  82 |   await testInfo.attach(\"intercepted-requests\", { body: Buffer.from(JSON.stringify({ unexpected: state.unexpected, generation: state.generation, artifactRequests: state.artifacts.length })), contentType: \"application/json\" })\n> 83 |   expect(state.unexpected, \"Every mutation must be a bounded authored response, never a real API request\").toEqual([])\n     |                                                                                                            ^\n  84 |   expect(state.generation).toEqual(state.failCourseOnce ? [\"course\", \"report\", \"course\"] : [\"course\", \"report\"])\n  85 |   expect(state.artifacts).toHaveLength(state.allowArtifact ? 1 : 0)\n  86 |   expect(state.pageErrors).toEqual([])\n    at [repository]/tests/tmp/report-csv-import.spec.ts:83:108",
+          "messagePrefix": true,
+          "location": {
+            "file": "[repository]/tests/tmp/report-csv-import.spec.ts",
+            "line": 83,
+            "column": 108
+          }
+        },
+        {
+          "title": "CSV errors, canceled reads, replacement and header changes cannot add stale cells or autosave",
+          "project": "desktop",
+          "status": "unexpected",
+          "resultStatus": "timedOut",
+          "retry": 0,
+          "firstErrorMessage": "Test timeout of 90000ms exceeded.",
+          "messagePrefix": true,
+          "location": null
+        },
+        {
+          "title": "CSV errors, canceled reads, replacement and header changes cannot add stale cells or autosave",
+          "project": "mobile",
+          "status": "unexpected",
+          "resultStatus": "timedOut",
+          "retry": 0,
+          "firstErrorMessage": "Test timeout of 90000ms exceeded.",
+          "messagePrefix": true,
+          "location": null
+        }
+      ],
+      "failureCount": 3,
+      "failuresOmitted": 0
+    }
+  },
+  "additionalActualCliErrors": [
+    {
+      "project": "desktop",
+      "title": "CSV errors, canceled reads, replacement and header changes cannot add stale cells or autosave",
+      "reportedTimeoutMs": 90000,
+      "message": "Error: jsHandle.evaluate: Target page, context or browser has been closed",
+      "location": {
+        "file": "tests/tmp/report-csv-import.spec.ts",
+        "line": 221,
+        "column": 29
+      }
+    },
+    {
+      "project": "mobile",
+      "title": "CSV errors, canceled reads, replacement and header changes cannot add stale cells or autosave",
+      "reportedTimeoutMs": 90000,
+      "message": "Error: jsHandle.evaluate: Target page, context or browser has been closed",
+      "location": {
+        "file": "tests/tmp/report-csv-import.spec.ts",
+        "line": 221,
+        "column": 29
+      }
+    }
+  ],
+  "failureAssessment": {
+    "desktopLiteral": "Unexpected-request assertion at spec83:108 included GET /__nextjs_font/geist-latin.woff2.",
+    "canceledReadScenarios": "Both profiles reached the90-second test deadline; subsequent CLI errors identify pending jsHandle.evaluate at spec221:29. No underlying timeout cause or repair is claimed."
+  },
+  "sourceGuards": {
+    "preInstall": {
+      "status": "passed",
+      "actualRecord": {
+        "source": "e6f1e48d1b888b02bc4c18c6559f8f6527860947",
+        "node": "v24.21.0",
+        "sourceFiles": 373,
+        "unitCases": 168,
+        "browserCases": 8,
+        "inventorySha256": "3b57f9644516d4ee3c19bd92d9ef1d48dd8424e7e692d7e1fe8cc12d0228141a"
+      }
+    },
+    "postExecution": {
+      "status": "passed-before-browser-outcome-rejection",
+      "evidence": "The unchanged verification step checks HEAD, pinned inventory bytes and every373 path/mode/size/SHA256 before emitting either outcome record. Both actual outcome records were emitted; its later browser acceptance gate failed."
+    }
+  },
+  "exitEvidence": {
+    "unit": {
+      "exitCode": 0,
+      "proof": "Direct Node Vitest step success without continue-on-error; strict168-case gate passed."
+    },
+    "browser": {
+      "exitCode": 1,
+      "proof": "Direct Node Playwright step failed with actual exit1 log marker."
+    },
+    "acceptanceValidator": {
+      "exitCode": 1,
+      "proof": "Actual validation rejected three unexpected browser results."
+    }
+  },
+  "cleanup": {
+    "status": "passed",
+    "actualMessage": "Owned Report CSV tooling/output and copied files removed.",
+    "stepConclusion": "success",
+    "proof": "Always-run cleanup verified owned root/marker and copied-file identities before removing owned copied specs/config and temporary tools/browser/cache/output.",
+    "processLimit": "Playwright terminated and owns server/context teardown; no independent surviving-process inventory was recorded. Disposable runner teardown owns checkout dependencies/build cache."
+  },
+  "normalCI": {
+    "run": 41416992030,
+    "result": "failed-lint",
+    "separateReceipt": "report-csv-import-normal-ci-attempt-1.json",
+    "qualification": "NormalCI and focused176 outcomes are distinct."
+  },
+  "boundaries": {
+    "providerOrModelCallsRequested": false,
+    "productionData": false,
+    "realAccount": false,
+    "databaseProvisioning": false,
+    "hostedAuthConfigured": false,
+    "generation": "authored intercepted responses; browser artifact response does not invoke compiler",
+    "serverSandboxClaim": false,
+    "nativeFileChooserProof": false,
+    "nativeDownloadProof": false,
+    "physicalMobileProof": false,
+    "fullAppBuildProof": false
+  },
+  "laterEditionQualification": "Owner prepared a local lexical course-artifact fixture rename after normalCI failed; it is outside checked e6f1e48 and was not verified by this run.",
+  "actionsByReceiptAuthor": {
+    "sourceOrFixtureRepair": false,
+    "workflowDisabled": false,
+    "rerunRequested": false,
+    "publication": false
+  },
+  "limits": [
+    "This packet failed despite168 unit passes and5 browser passes. Both90-second timeouts and the exact unexpected font request remain failures; no acceptance condition was weakened.",
+    "All168 actual unit names and all8 actual title/profile/status/result/retry records match the seal. Report hashes and bounded actual errors are retained; full reports were deleted by owned cleanup.",
+    "Post-source-guard passage follows execution order reaching both outcome records; there is no second standalone source-guard JSON row.",
+    "Actual loopback UI/FileReader/WebCrypto/storage uses authored generation/artifact responses. This is not source-accuracy, real-provider/compiler-at-browser-boundary, production Auth/persistence, native chooser/download, Safari or physical-device proof."
+  ]
+}

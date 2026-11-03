@@ -177,7 +177,7 @@ export function registerCourseArtifactChecks(test) {
     assert.match(body, /<dt>Authored term<\/dt><dd>Authored definition\nwith a second line\.<\/dd>/);
     document.course.glossary = []; document.course.references = []; document.course.prerequisites = [];
     document.course.learnerProfile.assumedKnowledge = []; document.course.learnerProfile.goals = []; document.course.learnerProfile.constraints = [];
-    for (const module of document.course.modules) for (const lesson of module.lessons) lesson.references = [];
+    for (const courseModule of document.course.modules) for (const lesson of courseModule.lessons) lesson.references = [];
     const empty = main((await rt.compile(document)).html);
     assert.doesNotMatch(empty, /class="course-glossary"|class="course-references"|class="course-preparation"|Authored term|Link unavailable/);
   });
