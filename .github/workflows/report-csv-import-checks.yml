@@ -1,0 +1,219 @@
+# Temporary focused activation; existing automatic CI remains unchanged.
+name: Temporary Report CSV import checks
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/report-csv-import-checks.yml]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  report-csv:
+    if: >-
+      github.repository == 'alvarovillalbaa/intelligent-visualization' && github.event.repository.private == false &&
+      github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      SOURCE_COMMIT: abbd4d957290c89771d558a8e4d4498bbe6401f7
+      CI: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+      DO_NOT_TRACK: "1"
+      NEXT_PUBLIC_APP_URL: http://127.0.0.1:3100
+      PERSISTENCE_PROVIDER: local
+      STORAGE_PROVIDER: auto
+      AUTH_PROVIDER: portable
+      REALTIME_PROVIDER: auto
+      AI_ENABLED: "false"
+      EVE_ENABLED: "false"
+      WORKFLOWS_ENABLED: "false"
+      QUEUES_ENABLED: "false"
+      SANDBOX_QA_ENABLED: "false"
+      DATABASE_URL: ""
+      CONVEX_URL: ""
+      NEXT_PUBLIC_CONVEX_URL: ""
+      CONVEX_DEPLOYMENT: ""
+      CONVEX_DEPLOY_KEY: ""
+      CONVEX_SERVER_TOKEN: ""
+      CONVEX_ADMIN_KEY: ""
+      SUPABASE_URL: ""
+      NEXT_PUBLIC_SUPABASE_URL: ""
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ""
+      SUPABASE_SERVICE_ROLE_KEY: ""
+      CLOUDFLARE_DATA_API_URL: ""
+      CLOUDFLARE_DATA_API_SECRET: ""
+      CLOUDFLARE_ACCOUNT_ID: ""
+      CLOUDFLARE_API_TOKEN: ""
+      CLOUDFLARE_D1_DATABASE_ID: ""
+      CLOUDFLARE_R2_BUCKET: ""
+      CLOUDFLARE_R2_ACCESS_KEY_ID: ""
+      CLOUDFLARE_R2_SECRET_ACCESS_KEY: ""
+      BLOB_READ_WRITE_TOKEN: ""
+      AI_GATEWAY_API_KEY: ""
+      VERCEL_OIDC_TOKEN: ""
+      VERCEL: ""
+      OPENAI_API_KEY: ""
+      ANTHROPIC_API_KEY: ""
+      GOOGLE_GENERATIVE_AI_API_KEY: ""
+      FIRECRAWL_API_KEY: ""
+    steps:
+      - name: Validate the source pin
+        run: '[[ "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]'
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ env.SOURCE_COMMIT }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24.21.0
+          package-manager-cache: false
+      - name: Verify all reviewed inputs and allocate owned runner paths
+        run: |
+          node <<'NODE'
+          const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),cp=require('node:child_process');
+          const inventoryPath='docs/results/2026/11-03/report-csv-import-source-locator-repaired.json',inventoryStat=fs.lstatSync(inventoryPath);
+          if(!inventoryStat.isFile()||inventoryStat.isSymbolicLink()||inventoryStat.size>4194304)throw Error('Invalid source inventory file.');
+          const inventoryBytes=fs.readFileSync(inventoryPath),pinnedInventory=cp.execFileSync('git',['show',process.env.SOURCE_COMMIT+':'+inventoryPath],{maxBuffer:4194304});
+          if(!inventoryBytes.equals(pinnedInventory))throw Error('Source inventory differs from pinned Git bytes.');
+          const seal=JSON.parse(inventoryBytes.toString('utf8'));
+          if(cp.execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()!==process.env.SOURCE_COMMIT)throw Error('Source commit changed.');
+          const tracked=cp.execFileSync('git',['ls-files','-z'],{encoding:'utf8'}).split('\0').filter(p=>p&&!seal.excluded_prefixes.some(prefix=>p.startsWith(prefix))).sort();
+          const sealed=seal.source_files.map(entry=>entry.path).sort();
+          if(new Set(sealed).size!==sealed.length||JSON.stringify(tracked)!==JSON.stringify(sealed))throw Error('Source input set changed.');
+          for(const entry of seal.source_files){const stat=fs.lstatSync(entry.path),mode=stat.isSymbolicLink()?'120000':stat.isFile()?(stat.mode&0o111?'100755':'100644'):'unsupported',bytes=stat.isSymbolicLink()?Buffer.from(fs.readlinkSync(entry.path),'utf8'):fs.readFileSync(entry.path);if(mode!==entry.mode||bytes.length!==entry.bytes||crypto.createHash('sha256').update(bytes).digest('hex')!==entry.sha256)throw Error('Source seal mismatch: '+entry.path);}
+          for(const [key,count]of [['csv_case_names',41],['authoring_case_names',44],['editor_case_names',19],['artifact_case_names',64],['browser_case_names',4],['browser_profiles',2]])if(seal[key].length!==count||new Set(seal[key]).size!==count)throw Error('Unexpected case manifest: '+key);
+          if(JSON.stringify([...seal.browser_profiles].sort())!==JSON.stringify(['desktop','mobile']))throw Error('Unexpected browser profiles.');
+          const pkg=JSON.parse(fs.readFileSync('package.json','utf8'));
+          if(process.version!=='v24.21.0'||pkg.dependencies.next!=='16.1.6'||pkg.dependencies['@playwright/test']||pkg.devDependencies['@playwright/test'])throw Error('Re-review changed runtime/tool baseline.');
+          const temp=path.resolve(process.env.RUNNER_TEMP||'');
+          if(!process.env.RUNNER_TEMP||!process.env.GITHUB_ENV||fs.realpathSync(temp)!==temp||fs.lstatSync(temp).isSymbolicLink()||!/^\d+$/.test(process.env.GITHUB_RUN_ID||'')||!/^\d+$/.test(process.env.GITHUB_RUN_ATTEMPT||''))throw Error('Missing canonical runner identity.');
+          const root=fs.mkdtempSync(path.join(temp,'iv-report-csv-'+process.env.GITHUB_RUN_ID+'-'+process.env.GITHUB_RUN_ATTEMPT+'-'));
+          const stat=fs.statSync(root);fs.writeFileSync(path.join(root,'owner.json'),JSON.stringify({root,dev:stat.dev,ino:stat.ino}));
+          fs.appendFileSync(process.env.GITHUB_ENV,[['IV_REPORT_CSV_ROOT',root],['IV_REPORT_CSV_TOOLS',path.join(root,'tools')],['PLAYWRIGHT_BROWSERS_PATH',path.join(root,'browsers')],['IV_REPORT_CSV_OUTPUT',path.join(root,'output')],['IV_REPORT_CSV_BROWSER_RESULTS',path.join(root,'browser-results.json')],['npm_config_cache',path.join(root,'npm-cache')],['NODE_PATH',path.join(root,'tools','node_modules')]].map(([k,v])=>k+'='+v).join('\n')+'\n');
+          console.log(JSON.stringify({source:process.env.SOURCE_COMMIT,node:process.version,sourceFiles:sealed.length,unitCases:168,browserCases:8,inventorySha256:crypto.createHash('sha256').update(fs.readFileSync('docs/results/2026/11-03/report-csv-import-source-locator-repaired.json')).digest('hex')}));
+          NODE
+      - name: Install locked app dependencies and runner-only Chromium tooling
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npm install --prefix "$IV_REPORT_CSV_TOOLS" --no-save --package-lock=false --ignore-scripts --no-audit --no-fund @playwright/test@1.58.2
+          node -e 'const p=require(process.env.IV_REPORT_CSV_TOOLS+"/node_modules/@playwright/test/package.json");if(p.version!=="1.58.2")throw Error("Unexpected runner-only Playwright version");console.log("Playwright "+p.version)'
+          git diff --exit-code -- package.json package-lock.json
+          node "$IV_REPORT_CSV_TOOLS/node_modules/@playwright/test/cli.js" install --with-deps chromium
+      - name: Run exactly 168 selected unit cases
+        id: units
+        run: |
+          node node_modules/vitest/vitest.mjs run tests/unit/report-csv-import.test.ts tests/unit/report-authoring.test.ts tests/unit/report-editor.test.ts tests/unit/report-artifact.test.ts --maxWorkers=1 --no-file-parallelism --retry=0 --reporter=tap --reporter=json --outputFile.json="$IV_REPORT_CSV_ROOT/unit-results.json"
+      - name: Materialize only the approved browser examples
+        run: |
+          node <<'NODE'
+          const fs=require('node:fs'),path=require('node:path'),root=process.env.IV_REPORT_CSV_ROOT;
+          if(fs.existsSync('tests/tmp')&&(!fs.lstatSync('tests/tmp').isDirectory()||fs.lstatSync('tests/tmp').isSymbolicLink()))throw Error('Unsafe test copy directory.');
+          fs.mkdirSync('tests/tmp',{recursive:true});
+          const copies=[['docs/proposals/report-csv-import-browser.test.ts.example','tests/tmp/report-csv-import.spec.ts'],['docs/proposals/report-csv-import-browser.config.ts.example','tests/tmp/report-csv-import.config.ts']],owned=[];
+          for(const [source,target]of copies){fs.copyFileSync(source,target,fs.constants.COPYFILE_EXCL);const stat=fs.lstatSync(target);owned.push({path:target,dev:stat.dev,ino:stat.ino});fs.writeFileSync(path.join(root,'copies.json'),JSON.stringify(owned));}
+          NODE
+      - name: Run exactly eight desktop and narrow browser cases
+        id: browser
+        run: node "$IV_REPORT_CSV_TOOLS/node_modules/@playwright/test/cli.js" test --config tests/tmp/report-csv-import.config.ts
+      - name: Verify exact outcomes and unchanged reviewed source
+        if: always()
+        env:
+          UNIT_OUTCOME: ${{ steps.units.outcome }}
+          BROWSER_OUTCOME: ${{ steps.browser.outcome }}
+        run: |
+          node <<'NODE'
+          const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),cp=require('node:child_process');
+          const inventoryPath='docs/results/2026/11-03/report-csv-import-source-locator-repaired.json',inventoryStat=fs.lstatSync(inventoryPath);
+          if(!inventoryStat.isFile()||inventoryStat.isSymbolicLink()||inventoryStat.size>4194304)throw Error('Invalid source inventory file.');
+          const inventoryBytes=fs.readFileSync(inventoryPath),pinnedInventory=cp.execFileSync('git',['show',process.env.SOURCE_COMMIT+':'+inventoryPath],{maxBuffer:4194304});
+          if(!inventoryBytes.equals(pinnedInventory))throw Error('Source inventory differs from pinned Git bytes.');
+          const seal=JSON.parse(inventoryBytes.toString('utf8'));
+          if(cp.execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim()!==process.env.SOURCE_COMMIT)throw Error('Source identity changed.');
+          const tracked=cp.execFileSync('git',['ls-files','-z'],{encoding:'utf8'}).split('\0').filter(p=>p&&!seal.excluded_prefixes.some(prefix=>p.startsWith(prefix))).sort();
+          if(JSON.stringify(tracked)!==JSON.stringify(seal.source_files.map(e=>e.path).sort()))throw Error('Source file set changed.');
+          for(const entry of seal.source_files){const stat=fs.lstatSync(entry.path),mode=stat.isSymbolicLink()?'120000':stat.isFile()?(stat.mode&0o111?'100755':'100644'):'unsupported',bytes=stat.isSymbolicLink()?Buffer.from(fs.readlinkSync(entry.path),'utf8'):fs.readFileSync(entry.path);if(mode!==entry.mode||bytes.length!==entry.bytes||crypto.createHash('sha256').update(bytes).digest('hex')!==entry.sha256)throw Error('Source changed: '+entry.path);}
+          if(!process.env.IV_REPORT_CSV_ROOT)throw Error('Checks did not reach preparation.');
+          const read=name=>{const file=path.join(process.env.IV_REPORT_CSV_ROOT,name),stat=fs.lstatSync(file);if(!stat.isFile()||stat.isSymbolicLink()||stat.size>2097152)throw Error('Missing or oversized outcome: '+name);return JSON.parse(fs.readFileSync(file,'utf8'));};
+          const report=read('unit-results.json'),expected=new Map([['report-csv-import.test.ts',seal.csv_case_names],['report-authoring.test.ts',seal.authoring_case_names],['report-editor.test.ts',seal.editor_case_names],['report-artifact.test.ts',seal.artifact_case_names]]);
+          const seen=new Set(),unitCases=[];let valid=true;
+          for(const suite of report.testResults||[]){const file=path.basename(suite.name),names=(suite.assertionResults||[]).map(item=>item.fullName);if(seen.has(file)||!expected.has(file)||JSON.stringify([...names].sort())!==JSON.stringify([...(expected.get(file)||[])].sort())||new Set(names).size!==names.length)valid=false;seen.add(file);for(const item of suite.assertionResults||[])unitCases.push({file,name:item.fullName,status:item.status});}
+          console.log(JSON.stringify({kind:'report-csv-unit-outcomes',source:process.env.SOURCE_COMMIT,total:report.numTotalTests,passed:report.numPassedTests,failed:report.numFailedTests,pending:report.numPendingTests,todo:report.numTodoTests,cases:unitCases}));
+          if(process.env.UNIT_OUTCOME!=='success'||!valid||seen.size!==4||report.success!==true||report.numTotalTests!==168||report.numPassedTests!==168||report.numFailedTests!==0||report.numPendingTests!==0||report.numTodoTests!==0||unitCases.length!==168||unitCases.some(item=>item.status!=='passed'))throw Error('The 168 unit cases did not all pass.');
+          const browser=read('browser-results.json'),cases=[];
+          function visit(suites){for(const suite of suites||[]){for(const spec of suite.specs||[])for(const test of spec.tests||[])cases.push({title:spec.title,project:test.projectName,expected:test.expectedStatus,status:test.status,results:(test.results||[]).map(item=>({status:item.status,retry:item.retry}))});visit(suite.suites);}}
+          visit(browser.suites);const pairs=cases.map(item=>item.project+':'+item.title).sort(),approved=seal.browser_profiles.flatMap(profile=>seal.browser_case_names.map(name=>profile+':'+name)).sort();
+          console.log(JSON.stringify({kind:'report-csv-browser-outcomes',source:process.env.SOURCE_COMMIT,stats:browser.stats,cases,errors:browser.errors}));
+          if(process.env.BROWSER_OUTCOME!=='success'||JSON.stringify(pairs)!==JSON.stringify(approved)||new Set(pairs).size!==8||(browser.errors||[]).length||browser.stats.expected!==8||browser.stats.unexpected||browser.stats.flaky||browser.stats.skipped||cases.some(item=>item.expected!=='passed'||item.status!=='expected'||item.results.length!==1||item.results[0].status!=='passed'||item.results[0].retry!==0))throw Error('The eight browser cases did not all pass exactly once.');
+          NODE
+      - name: Print bounded actual failure evidence before cleanup
+        if: failure() && env.IV_REPORT_CSV_ROOT != ''
+        run: |
+          node <<'NODE'
+          const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),root=process.env.IV_REPORT_CSV_ROOT,cap=65536;
+          const hash=bytes=>crypto.createHash('sha256').update(bytes).digest('hex');
+          function clean(value,limit=1500){
+            let text=String(value).replace(/\x1b\[[0-?]*[ -/]*[@-~]/g,'').replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g,'');
+            text=text.replace(/Bearer\s+[^\s"',}]+/gi,'Bearer [redacted]').replace(/([a-z][a-z0-9+.-]*:\/\/)[^\s"'<>/@]+:[^\s"'<>/@]+@/gi,'$1[redacted]@');
+            text=text.split(root).join('[owned-task]').split(process.cwd()).join('[repository]');
+            return Buffer.from(text).subarray(0,limit).toString('utf8');
+          }
+          try{
+            const temp=path.resolve(process.env.RUNNER_TEMP||''),stat=fs.lstatSync(root),ownerPath=path.join(root,'owner.json'),marker=fs.lstatSync(ownerPath);
+            if(!stat.isDirectory()||stat.isSymbolicLink()||path.dirname(root)!==temp||fs.realpathSync(temp)!==temp||fs.realpathSync(root)!==root||!path.basename(root).startsWith('iv-report-csv-'+process.env.GITHUB_RUN_ID+'-'+process.env.GITHUB_RUN_ATTEMPT+'-')||!marker.isFile()||marker.isSymbolicLink()||marker.size>4096)throw Error('diagnostic_owner_invalid');
+            const ownerBytes=fs.readFileSync(ownerPath),markerAfter=fs.lstatSync(ownerPath),owner=JSON.parse(ownerBytes.toString('utf8'));
+            if(marker.dev!==markerAfter.dev||marker.ino!==markerAfter.ino||marker.size!==markerAfter.size||marker.mtimeMs!==markerAfter.mtimeMs||owner.root!==root||owner.dev!==stat.dev||owner.ino!==stat.ino)throw Error('diagnostic_owner_changed');
+            function read(name){
+              if(!['unit-results.json','browser-results.json'].includes(name))throw Error('diagnostic_path_invalid');
+              const file=path.join(root,name);let before;
+              try{before=fs.lstatSync(file);}catch(error){if(error.code==='ENOENT')return {status:'not-produced'};throw error;}
+              if(!before.isFile()||before.isSymbolicLink()||before.size>2097152)throw Error('diagnostic_report_kind_or_bound');
+              const bytes=fs.readFileSync(file),after=fs.lstatSync(file);
+              if(before.dev!==after.dev||before.ino!==after.ino||before.size!==after.size||before.mtimeMs!==after.mtimeMs||bytes.length!==before.size)throw Error('diagnostic_report_changed');
+              const metadata={status:'read',bytes:bytes.length,sha256:hash(bytes)};
+              try{return {...metadata,report:JSON.parse(new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(bytes))};}
+              catch(error){return {...metadata,status:'parse-failed',message:clean(error.message,400)};}
+            }
+            const unitFile=read('unit-results.json'),browserFile=read('browser-results.json'),packet={kind:'report-csv-failure-evidence',source:process.env.SOURCE_COMMIT,diagnosticOnly:true,unit:{...unitFile},browser:{...browserFile}};
+            delete packet.unit.report;delete packet.browser.report;
+            const number=value=>typeof value==='number'&&Number.isFinite(value)?value:null;
+            if(unitFile.report){
+              const report=unitFile.report;packet.unit.stats={total:number(report.numTotalTests),passed:number(report.numPassedTests),failed:number(report.numFailedTests),pending:number(report.numPendingTests),todo:number(report.numTodoTests)};packet.unit.failures=[];
+              for(const file of ['report-csv-import.test.ts','report-authoring.test.ts','report-editor.test.ts','report-artifact.test.ts']){
+                const suite=(Array.isArray(report.testResults)?report.testResults:[]).find(item=>typeof item?.name==='string'&&path.basename(item.name)===file);
+                if(!suite)continue;
+                const failed=(Array.isArray(suite.assertionResults)?suite.assertionResults:[]).find(item=>item.status!=='passed');
+                if(!failed&&suite.status==='passed')continue;
+                const message=(Array.isArray(failed?.failureMessages)?failed.failureMessages:[]).find(value=>typeof value==='string')??(typeof suite.message==='string'?suite.message:null);
+                packet.unit.failures.push({file,name:typeof failed?.fullName==='string'?clean(failed.fullName,512):null,status:typeof failed?.status==='string'?clean(failed.status,32):clean(suite.status,32),firstErrorMessage:message===null?null:clean(message),messagePrefix:true});
+              }
+            }
+            if(browserFile.report){
+              const report=browserFile.report;packet.browser.stats={};for(const key of ['expected','unexpected','flaky','skipped','duration'])packet.browser.stats[key]=number(report.stats?.[key]);
+              packet.browser.globalErrorCount=Array.isArray(report.errors)?report.errors.length:null;packet.browser.failures=[];let failureCount=0;
+              const add=record=>{failureCount++;if(packet.browser.failures.length<8)packet.browser.failures.push(record);};
+              for(const error of Array.isArray(report.errors)?report.errors:[])add({title:'[global reporter error]',project:null,status:'global-error',firstErrorMessage:typeof error?.message==='string'?clean(error.message):null,messagePrefix:true});
+              const suites=Array.isArray(report.suites)?[...report.suites].reverse():[];
+              while(suites.length){const suite=suites.pop();for(const spec of Array.isArray(suite?.specs)?suite.specs:[])for(const test of Array.isArray(spec?.tests)?spec.tests:[]){
+                const result=test.results?.[0];if(test.status==='expected'&&result?.status==='passed')continue;
+                const error=(Array.isArray(result?.errors)?result.errors:[]).find(value=>typeof value?.message==='string')??(typeof result?.error?.message==='string'?result.error:null),location=error?.location??result?.errorLocation;
+                add({title:clean(spec.title,256),project:clean(test.projectName,32),status:clean(test.status,32),resultStatus:result?clean(result.status,32):null,retry:Number.isInteger(result?.retry)?result.retry:null,firstErrorMessage:error?clean(error.message):null,messagePrefix:true,location:location?{file:typeof location.file==='string'?clean(location.file,192):null,line:Number.isInteger(location.line)?location.line:null,column:Number.isInteger(location.column)?location.column:null}:null});
+              }for(const child of Array.isArray(suite?.suites)?[...suite.suites].reverse():[])suites.push(child);}
+              packet.browser.failureCount=failureCount;packet.browser.failuresOmitted=Math.max(0,failureCount-packet.browser.failures.length);
+            }
+            const output=JSON.stringify(packet);if(Buffer.byteLength(output)>cap)throw Error('diagnostic_output_bound');console.log(output);
+          }catch{console.log(JSON.stringify({kind:'report-csv-failure-evidence',status:'unavailable',reason:'owned_report_identity_or_bound_failed'}));process.exitCode=1;}
+          NODE
+      - name: Remove only identity-checked owned files and tooling
+        if: always()
+        run: |
+          node <<'NODE'
+          const fs=require('node:fs'),path=require('node:path'),root=process.env.IV_REPORT_CSV_ROOT;
+          if(!root){console.log('No task root allocated.');process.exit(0);}
+          const temp=path.resolve(process.env.RUNNER_TEMP||''),stat=fs.lstatSync(root),owner=JSON.parse(fs.readFileSync(path.join(root,'owner.json'),'utf8'));
+          if(!stat.isDirectory()||stat.isSymbolicLink()||path.dirname(root)!==temp||fs.realpathSync(temp)!==temp||!path.basename(root).startsWith('iv-report-csv-'+process.env.GITHUB_RUN_ID+'-'+process.env.GITHUB_RUN_ATTEMPT+'-')||owner.root!==root||owner.dev!==stat.dev||owner.ino!==stat.ino)throw Error('Refusing unowned temporary cleanup.');
+          const failures=[],file=path.join(root,'copies.json');
+          for(const entry of fs.existsSync(file)?JSON.parse(fs.readFileSync(file,'utf8')):[]){try{if(!['tests/tmp/report-csv-import.spec.ts','tests/tmp/report-csv-import.config.ts'].includes(entry.path))throw Error('Unknown copied path');const folder=fs.lstatSync('tests/tmp');if(!folder.isDirectory()||folder.isSymbolicLink()||fs.realpathSync('tests/tmp')!==path.resolve('tests/tmp'))throw Error('Copied directory ownership changed');if(!fs.existsSync(entry.path))continue;const current=fs.lstatSync(entry.path);if(!current.isFile()||current.isSymbolicLink()||current.dev!==entry.dev||current.ino!==entry.ino)throw Error('Copied file ownership changed');fs.unlinkSync(entry.path);}catch(error){failures.push(String(error));}}
+          fs.rmSync(root,{recursive:true});
+          if(failures.length)throw Error(failures.join('; '));
+          console.log('Owned Report CSV tooling/output and copied files removed.');
+          NODE
