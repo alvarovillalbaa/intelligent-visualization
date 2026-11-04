@@ -1,0 +1,49 @@
+{
+  "schemaVersion": 1,
+  "kind": "deployment-metadata-only",
+  "observedAtUtc": "2026-11-04T10:30:31Z",
+  "provenance": {
+    "observer": "Parent root agent",
+    "service": "Vercel",
+    "tool": "get_deployment",
+    "basis": "Root directly observed the deployment and relayed the metadata to this receipt author.",
+    "newLiveCallsByReceiptAuthor": 0
+  },
+  "source": {
+    "repository": "alvarovillalbaa/intelligent-visualization",
+    "commit": "6347a457a4e9f29e19dce970e5f79b6d42c373bc",
+    "tree": "47465881c0b208af051868fb16b4dfbb0a476013",
+    "rootVerifiedNativeAndRemoteLeaves": 455,
+    "rootVerifiedCleanCheckout": true,
+    "checkedInputEdition": {
+      "sealedInputs": 373,
+      "unchangedInputs": 370,
+      "laterDocumentationPaths": [
+        "README.md",
+        "docs/report-csv-import.md",
+        "docs/proposals/report-csv-import-checks.md"
+      ],
+      "qualification": "Those three documentation edits are outside the checked source; reproduction and prior outcomes remain pinned in report-csv-import-checks.md."
+    }
+  },
+  "deployment": {
+    "id": "dpl_SQuws5mvMNv6tMVuBu4i2f4PoMNV",
+    "projectId": "prj_HrrKVYcDrHajz290uNt7uTpU8DtA",
+    "teamId": "team_JpdIsOJgYNpX0ywVZ54Zdb7m",
+    "state": "READY",
+    "target": "production",
+    "sha": "6347a457a4e9f29e19dce970e5f79b6d42c373bc",
+    "observedAliasIncluded": "intelligent-visualization.vercel.app",
+    "completeAliasListRecorded": false
+  },
+  "relatedCheckReceipts": [
+    "report-csv-import-checks.json",
+    "report-csv-import-normal-ci.json"
+  ],
+  "limits": [
+    "READY/production and the alias association are deployment/build metadata returned by get_deployment; no new build-log or artifact inspection is included.",
+    "No new HTTP, browser, Auth, provider, persistence or model acceptance checks were performed for this record. The separate focused CI browser evidence is not hosted-production proof.",
+    "The listed alias was reported by deployment metadata; this record supplies no new DNS, HTTP-response, sign-in, stored-data or live-model observation.",
+    "No source/runtime edit, live call, test, build, staging or publication was performed by the receipt author. Root owns final metadata-only publication and readback."
+  ]
+}
