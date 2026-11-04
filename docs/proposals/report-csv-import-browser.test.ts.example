@@ -235,7 +235,7 @@ test("CSV errors, canceled reads, replacement and header changes cannot add stal
     await phase("slow.reading", () => expect(csvImport(page).getByRole("status")).toHaveText("Reading CSV…"))
     await phase("slow.ready", () => expect.poll(() => delayed.evaluate((held) => held.ready())).toBe(true))
     const header = csvImport(page).getByRole("checkbox", { name: "First row contains column headings", exact: true })
-    await phase("slow.header-toggle", () => activate(csvImport(page).locator("label").filter({ has: header }), mobile))
+    await phase("slow.header-toggle", () => activate(csvImport(page).locator("label").filter({ has: page.getByRole("checkbox", { name: "First row contains column headings", exact: true }) }), mobile))
     await phase("slow.header-unchecked", () => expect(header).not.toBeChecked())
     await phase("slow.header-review", () => expectReview(page, ["Column 1", "Column 2"], [["Old", "Value"], ["Stale", "1"]]))
     await phase("slow.replacement-choose", () => file(page, "Replacement.csv", "Fresh,2"))

@@ -8,7 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 
-const repository = fileURLToPath(new URL('../../', import.meta.url));
+const repository = path.resolve(fileURLToPath(new URL('../../', import.meta.url)));
 const external = createRequire(path.join(process.env.IV_TEST_PROJECT_ROOT || repository, 'package.json'));
 const ts = external('typescript');
 const plain = (value) => JSON.parse(JSON.stringify(value));

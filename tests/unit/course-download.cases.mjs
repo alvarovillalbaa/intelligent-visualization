@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url';
 import vm from 'node:vm';
 import { authoredCourseDocument } from './course-artifact.cases.mjs';
 
-const repository = fileURLToPath(new URL('../../', import.meta.url));
+const repository = path.resolve(fileURLToPath(new URL('../../', import.meta.url)));
 const load = createRequire(path.join(process.env.IV_TEST_PROJECT_ROOT || repository, 'package.json'));
 const ts = load('typescript'), React = load('react');
 const { renderToStaticMarkup } = load('react-dom/server');

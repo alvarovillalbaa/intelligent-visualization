@@ -1,0 +1,395 @@
+{
+  "schemaVersion": 1,
+  "scope": "Existing normal automatic CI, observed separately from focused Report CSV176 acceptance",
+  "result": "failed-course-test-fixture-loader",
+  "testDate": "2026-11-03",
+  "receiptAuthoredOn": "2026-11-04",
+  "checkedCommit": "c57370e076909ea1ebc25f82c898bc90cd95258c",
+  "productSourceBase": "435e69ef7d5c1e17377bf448d277c26b4d3a3836",
+  "workflow": {
+    "path": ".github/workflows/ci.yml",
+    "sha256": "02cf694be09a858017d77e64c95bb60e981ad29e4fed9f574fab62a43af58741",
+    "modified": false,
+    "suppressed": false
+  },
+  "run": {
+    "id": 41737159119,
+    "attempt": 1,
+    "url": "https://github.com/alvarovillalbaa/intelligent-visualization/actions/runs/41737159119",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "failure",
+    "startedAt": "2026-11-03T23:11:33Z",
+    "updatedAt": "2026-11-03T23:13:29Z"
+  },
+  "job": {
+    "id": 126269194739,
+    "name": "local-quality",
+    "status": "completed",
+    "conclusion": "failure",
+    "run_id": 41737159119,
+    "logs_url": null,
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1
+      },
+      {
+        "name": "Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2
+      },
+      {
+        "name": "Run actions/setup-node@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3
+      },
+      {
+        "name": "Run npm ci",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4
+      },
+      {
+        "name": "Run npm run setup:local",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5
+      },
+      {
+        "name": "Run npm run doctor",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6
+      },
+      {
+        "name": "Run npm run lint",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7
+      },
+      {
+        "name": "Run npm run typecheck",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8
+      },
+      {
+        "name": "Run npm test",
+        "status": "completed",
+        "conclusion": "failure",
+        "number": 9
+      },
+      {
+        "name": "Run npm run test:providers",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 10
+      },
+      {
+        "name": "Run npm run data:export -- --provider local --output .data/test-export",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 11
+      },
+      {
+        "name": "Run npm run data:verify -- --input .data/test-export",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 12
+      },
+      {
+        "name": "Run npm run build",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 13
+      },
+      {
+        "name": "Post Run actions/setup-node@v4",
+        "status": "completed",
+        "conclusion": "skipped",
+        "number": 25
+      },
+      {
+        "name": "Post Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 26
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 27
+      }
+    ],
+    "url": "https://github.com/alvarovillalbaa/intelligent-visualization/actions/runs/41737159119/job/126269194739"
+  },
+  "runtimeObserved": {
+    "os": "Ubuntu 26.04.1 LTS",
+    "runnerLabel": "ubuntu-latest",
+    "image": "ubuntu-26.04",
+    "imageVersion": "20261025.179.1",
+    "node": "v22.23.4",
+    "sameProfileAsFocusedRun": false
+  },
+  "actualFailedCommand": {
+    "command": "npm test",
+    "exitCode": 1,
+    "files": {
+      "total": 24,
+      "passed": 22,
+      "failed": 2
+    },
+    "tests": {
+      "total": 474,
+      "passed": 433,
+      "failed": 41
+    },
+    "reportedDurationSeconds": 10.25,
+    "failedCases": [
+      {
+        "file": "tests/unit/course-artifact.test.ts",
+        "name": "Course artifact: deterministic v2 compilation binds document and HTML hashes"
+      },
+      {
+        "file": "tests/unit/course-artifact.test.ts",
+        "name": "Course artifact: frozen source asset theme and authored content remain unchanged"
+      },
+      {
+        "file": "tests/unit/course-artifact.test.ts",
+        "name": "Course artifact: visible metadata and separate search metadata preserve authored values"
+      },
+      {
+        "file": "tests/unit/course-artifact.test.ts",
+        "name": "Course artifact: mission learner preparation objectives and supplied durations survive export"
+      },
+      {
+        "file": "tests/unit/course-artifact.test.ts",
+        "name": "Course artifact: module lesson content and practice follow authored reading order"
+      },
+      {
+        "file": "tests/unit/course-artifact.test.ts",
+        "name": "Course artifact: all six block kinds retain their complete authored content"
+      },
+      {
+        "file": "tests/unit/course-artifact.test.ts",
+        "name": "Course artifact: multiple-choice inputs share a safe group and preserve the actual answer index"
+      },
+      {
+        "file": "tests/unit/course-artifact.test.ts",
+        "name": "Course artifact: free-recall labels and guidance name their actual response control"
+      },
+      {
+        "file": "tests/unit/course-artifact.test.ts",
+        "name": "Course artifact: lesson feedback summaries and explicit practice regions remain visible"
+      },
+      {
+        "file": "tests/unit/course-artifact.test.ts",
+        "name": "Course artifact: prerequisites resolve to lesson titles and retain unavailable references as escaped text"
+      },
+      {
+        "file": "tests/unit/course-artifact.test.ts",
+        "name": "Course artifact: linked citations resolve internally while unmatched citations stay literal"
+      },
+      {
+        "file": "tests/unit/course-artifact.test.ts",
+        "name": "Course artifact: HTTP and HTTPS reference URLs preserve notes with safe external-link attributes"
+      },
+      {
+        "file": "tests/unit/course-artifact.test.ts",
+        "name": "Course artifact: unsafe reference schemes become inert readable entries"
+      },
+      {
+        "file": "tests/unit/course-artifact.test.ts",
+        "name": "Course artifact: glossary and empty optional collections do not manufacture content"
+      },
+      {
+        "file": "tests/unit/course-artifact.test.ts",
+        "name": "Course artifact: hostile authored IDs cannot become DOM IDs radio names or broken links"
+      },
+      {
+        "file": "tests/unit/course-artifact.test.ts",
+        "name": "Course artifact: hostile metadata lesson prose citations and notes remain escaped text"
+      },
+      {
+        "file": "tests/unit/course-artifact.test.ts",
+        "name": "Course artifact: theme text cannot close CSS and responsive print reduced-motion rules remain"
+      },
+      {
+        "file": "tests/unit/course-artifact.test.ts",
+        "name": "Course artifact: preview includes only in-memory learner interactions and no persistent or network runtime"
+      },
+      {
+        "file": "tests/unit/course-artifact.test.ts",
+        "name": "Course artifact: published runtime selection remains explicit and uses authored data identities"
+      },
+      {
+        "file": "tests/unit/course-artifact.test.ts",
+        "name": "Course artifact: Report and Slides bytes are independent of Course rendering CSS and runtime"
+      },
+      {
+        "file": "tests/unit/course-download.test.ts",
+        "name": "Course download: filenames normalize unsafe characters with a bounded Course prefix"
+      },
+      {
+        "file": "tests/unit/course-download.test.ts",
+        "name": "Course download: request captures the complete validated clone and exact endpoint contract"
+      },
+      {
+        "file": "tests/unit/course-download.test.ts",
+        "name": "Course download: actual compiler round-trips full authored fields and blocks through the helper"
+      },
+      {
+        "file": "tests/unit/course-download.test.ts",
+        "name": "Course download: invalid or oversized Course input fails finitely before fetch"
+      },
+      {
+        "file": "tests/unit/course-download.test.ts",
+        "name": "Course download: pre-abort avoids fetch and a late fetched response is canceled on abort"
+      },
+      {
+        "file": "tests/unit/course-download.test.ts",
+        "name": "Course download: status media JSON and incomplete-envelope errors use finite codes"
+      },
+      {
+        "file": "tests/unit/course-download.test.ts",
+        "name": "Course download: advertised and streamed response bounds cancel oversized bodies"
+      },
+      {
+        "file": "tests/unit/course-download.test.ts",
+        "name": "Course download: chunked UTF-8 retains authored Unicode and malformed encoding fails finitely"
+      },
+      {
+        "file": "tests/unit/course-download.test.ts",
+        "name": "Course download: abort cancels a stalled response reader instead of leaving pending owned work"
+      },
+      {
+        "file": "tests/unit/course-download.test.ts",
+        "name": "Course download: SSR renders a labelled preparation control without requesting or saving a file"
+      },
+      {
+        "file": "tests/unit/course-download.test.ts",
+        "name": "Course download: explicit preparation exposes a native Save link for the exact HTML bytes"
+      },
+      {
+        "file": "tests/unit/course-download.test.ts",
+        "name": "Course download: synchronous duplicate preparation callbacks share one pending request"
+      },
+      {
+        "file": "tests/unit/course-download.test.ts",
+        "name": "Course download: finite preparation failure retains the draft and allows an explicit retry"
+      },
+      {
+        "file": "tests/unit/course-download.test.ts",
+        "name": "Course download: Blob allocation failure keeps the authored draft and releases pending state"
+      },
+      {
+        "file": "tests/unit/course-download.test.ts",
+        "name": "Course download: committed A to B to A changes cannot revive a revoked ready URL"
+      },
+      {
+        "file": "tests/unit/course-download.test.ts",
+        "name": "Course download: pending replacement aborts only on commit and old success cannot replace a newer file"
+      },
+      {
+        "file": "tests/unit/course-download.test.ts",
+        "name": "Course download: an old rejection cannot attach errors to or unlock a newer pending request"
+      },
+      {
+        "file": "tests/unit/course-download.test.ts",
+        "name": "Course download: unmount aborts pending work clears timers and fences late responses"
+      },
+      {
+        "file": "tests/unit/course-download.test.ts",
+        "name": "Course download: timeout unlocks retry and the expired result cannot replace its successor"
+      },
+      {
+        "file": "tests/unit/course-download.test.ts",
+        "name": "Course download: preparing another copy revokes the prior URL and unmount releases the final copy"
+      },
+      {
+        "file": "tests/unit/course-download.test.ts",
+        "name": "Course download: a late acknowledgement cannot beat a delayed deadline timer"
+      }
+    ],
+    "firstFailureExcerpt": [
+      " FAIL  tests/unit/course-artifact.test.ts > Course artifact: deterministic v2 compilation binds document and HTML hashes",
+      "AssertionError: Only repository modules may load.",
+      "",
+      "- Expected",
+      "+ Received",
+      "",
+      "- true",
+      "+ false",
+      "",
+      " ❯ actual tests/unit/course-artifact.cases.mjs:66:12",
+      "     64|   function actual(relative) {",
+      "     65|     const filename = path.resolve(repository, relative.endsWith('.ts')…",
+      "     66|     assert.ok(filename.startsWith(repository + path.sep), 'Only reposi…",
+      "       |            ^",
+      "     67|     if (courseOverride && filename === path.join(repository, 'lib/arti…",
+      "     68|     if (modules.has(filename)) return modules.get(filename).exports;",
+      " ❯ createCourseArtifactRuntime tests/unit/course-artifact.cases.mjs:84:44",
+      " ❯ tests/unit/course-artifact.cases.mjs:98:16"
+    ]
+  },
+  "priorStepsPassed": [
+    "Set up job",
+    "Run actions/checkout@v4",
+    "Run actions/setup-node@v4",
+    "Run npm ci",
+    "Run npm run setup:local",
+    "Run npm run doctor",
+    "Run npm run lint",
+    "Run npm run typecheck"
+  ],
+  "laterChecksSkipped": [
+    "Run npm run test:providers",
+    "Run npm run data:export -- --provider local --output .data/test-export",
+    "Run npm run data:verify -- --input .data/test-export",
+    "Run npm run build"
+  ],
+  "failureAssessment": {
+    "actualError": "AssertionError: Only repository modules may load.",
+    "firstLocation": "tests/unit/course-artifact.cases.mjs:66:12",
+    "groups": [
+      {
+        "file": "tests/unit/course-artifact.test.ts",
+        "failed": 20
+      },
+      {
+        "file": "tests/unit/course-download.test.ts",
+        "failed": 21
+      }
+    ],
+    "sourceDiagnosis": "Both Course fixture loaders retained a trailing separator in repository=fileURLToPath(new URL('../../', import.meta.url)); appending path.sep again caused their repository containment guard to reject otherwise in-repository modules.",
+    "laterLocalEdition": "Root subsequently normalized both repository roots with path.resolve(...), retaining the containment guards and assertions. That later source edition was not exercised by this run and is not claimed to pass here."
+  },
+  "focusedRun": {
+    "id": 41737159189,
+    "receipt": "report-csv-import-checks-attempt-2.json",
+    "separateProfileAndTotals": true
+  },
+  "sourceGuardQualification": "The unchanged normal workflow does not perform the focused 373-input seal guard. Its checkout is the activation commit; do not substitute the focused checked-source pin.",
+  "cleanup": {
+    "ephemeralHostedRunner": true,
+    "taskSpecificResourceInventory": false,
+    "noCustomDatabaseOrProviderFixture": true
+  },
+  "actionsByReceiptAuthor": [
+    "Read the completed existing run/job and actual job log.",
+    "Preserved the 41 exact failed case identities and first assertion separately from focused acceptance.",
+    "No restart, test run, source edit or publication was performed to obtain this result."
+  ],
+  "limits": [
+    "The provider checks, data export, data verification and build were skipped after npm test failed.",
+    "The normal Node22/Ubuntu26 profile differs from the focused Node24/Ubuntu24 profile.",
+    "No production, provider, full browser acceptance or later-fixture-fix proof is claimed.",
+    "Historical Nov2 normal-CI lint failure remains independently recorded."
+  ]
+}
