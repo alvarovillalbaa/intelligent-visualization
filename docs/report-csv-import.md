@@ -43,8 +43,10 @@ limits, so a file within its own budget can still be too large to add.
 Replacing a file, changing header mode, canceling or leaving the editor revokes
 the previous read. Late read/hash results cannot replace the current review.
 Read, hash or Add errors retain the current file/review for correction or
-cancellation. Browser behavior remains subject to the separately proposed
-[focused checks](proposals/report-csv-import-checks.md).
+cancellation. The [focused checks](results/2026/11-04/report-csv-import-checks.md)
+passed all 168 unit and eight desktop/narrow Chromium cases at
+`abbd4d957290c89771d558a8e4d4498bbe6401f7`. They include real FileReader delivery,
+header changes, replacement and cancellation, with authored generation responses.
 
 ## Source fingerprints and retention
 
@@ -77,5 +79,7 @@ The reader follows a deliberately bounded profile of the
 [RFC 4180 quoting rules](https://www.rfc-editor.org/rfc/rfc4180) with the stated
 UTF-8/line-ending extensions. Fatal decoding and leading-BOM behavior follow
 the [TextDecoder interface](https://encoding.spec.whatwg.org/#interface-textdecoder).
-No general CSV interoperability or live browser acceptance is claimed from
-source inspection alone.
+This bounded Chromium proof does not establish general CSV interoperability,
+the native file chooser, physical touch hardware, other browsers or hosted
+production behavior. The separate [quality result](results/2026/11-04/report-csv-import-normal-ci.md)
+records the production build and local-provider checks. Temporary CSV CI is retired.

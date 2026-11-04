@@ -1,15 +1,19 @@
-# Report CSV import checks, pending approval
+# Report CSV import checks
 
-30 October 2026. **Authored and inactive; none of these checks has run.**
-The supplied AGENTS.md section 7 requires approval for this new domain/browser
-scope; section 14 requires approval for temporary CI and runner-only tooling.
-Earlier editor/export approvals do not authorize this increment.
+Prepared 30 October 2026; **176/176 passed on 4 November** under the owner's
+continued approval and instruction to keep going. The
+[result](../results/2026/11-04/report-csv-import-checks.md) preserves exact outcomes,
+the earlier failed attempts and cleanup. The latest checked source is
+`abbd4d957290c89771d558a8e4d4498bbe6401f7`, with its
+[locator-repaired inventory](../results/2026/11-03/report-csv-import-source-locator-repaired.json).
+The procedure below retains the original scope; temporary CSV CI is retired.
 
-The [source inventory](../results/2026/10-30/report-csv-import-source.json) seals
-the complete reviewed source set and exact case names. The [browser source](report-csv-import-browser.test.ts.example),
-[configuration](report-csv-import-browser.config.ts.example) and
-[workflow](report-csv-import-browser.yml.example) remain outside discovery and
-active CI until approval.
+The [original inventory](../results/2026/10-30/report-csv-import-source.json)
+retains the first reviewed source set and exact case names. The
+[browser source](report-csv-import-browser.test.ts.example),
+[configuration](report-csv-import-browser.config.ts.example) and inactive
+[workflow example](report-csv-import-browser.yml.example) remain outside routine
+discovery. The completed runner used only its reviewed temporary copies.
 
 ## Exactly 176 checks
 
@@ -59,13 +63,14 @@ owner's native file chooser. Touch emulation is not physical-device/Safari proof
 
 ## Activation and result gates
 
-After approval, install only the focused workflow on canonical public main,
-using the existing `[skip actions]` activation/removal convention so the broad
-push workflow remains unrun. Dispatch once with the full approved forty-character
-source commit. Checkout uses that immutable source rather than the activation
-commit. The job verifies HEAD, complete tracked input paths, sizes and SHA-256s
-against the reviewed inventory before installation and again after execution.
-Missing/unexpected source or altered package/lock bytes fail the job.
+The completed focused job used canonical public main and a hard-pinned immutable
+preparation commit. Its temporary self-path push trigger did not alter the
+existing quality workflow, which also ran and
+[passed separately](../results/2026/11-04/report-csv-import-normal-ci.md).
+Only preparation/removal documentation commits used `[skip actions]`; these
+are not test proof. The focused job verified HEAD, complete tracked input paths,
+modes, sizes, SHA-256s and pinned inventory bytes before installation and after
+execution. Missing/unexpected source or altered package/lock bytes failed closed.
 
 The job selects exactly the four unit wrappers above, one worker, zero retries,
 and the copied browser example/config. It checks every unit name against its

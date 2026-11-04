@@ -27,6 +27,13 @@ Implemented in the current migration slice:
 - [Report HTML export](docs/report-export.md) for a standalone copy of a committed Report draft.
 - [Course HTML export](docs/course-export.md) preserves the committed learner content in a standalone Course copy.
 
+The [Report CSV checks](docs/results/2026/11-04/report-csv-import-checks.md)
+passed all 176 focused cases on 4 November 2026. The separate
+[normal quality CI](docs/results/2026/11-04/report-csv-import-normal-ci.md)
+passed 474 tests, three local-provider checks, typecheck, export verification
+and the production build; lint retains 16 warnings. This verifies the authored
+local-provider flow and Chromium profiles, with hosted acceptance still open.
+
 Still in progress:
 
 - Full replacement of deck-facing UI/routes with visualization terminology.

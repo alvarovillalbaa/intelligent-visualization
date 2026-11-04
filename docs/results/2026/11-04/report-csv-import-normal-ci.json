@@ -1,0 +1,288 @@
+{
+  "schemaVersion": 1,
+  "scope": "Existing normal automatic local-provider CI, separate from focused Report CSV176 acceptance",
+  "result": "passed",
+  "testDate": "2026-11-04",
+  "receiptAuthoredOn": "2026-11-04",
+  "checkedCommit": "7a70755b9a56656d3510f7427075e556eb69ea84",
+  "productSourceBase": "abbd4d957290c89771d558a8e4d4498bbe6401f7",
+  "workflow": {
+    "path": ".github/workflows/ci.yml",
+    "sha256": "02cf694be09a858017d77e64c95bb60e981ad29e4fed9f574fab62a43af58741",
+    "modified": false,
+    "suppressed": false
+  },
+  "run": {
+    "id": 41812991753,
+    "attempt": 1,
+    "url": "https://github.com/alvarovillalbaa/intelligent-visualization/actions/runs/41812991753",
+    "event": "push",
+    "status": "completed",
+    "conclusion": "success",
+    "startedAt": "2026-11-04T10:15:43Z",
+    "updatedAt": "2026-11-04T10:18:32Z",
+    "headSha": "7a70755b9a56656d3510f7427075e556eb69ea84"
+  },
+  "job": {
+    "id": 126516617939,
+    "name": "local-quality",
+    "status": "completed",
+    "conclusion": "success",
+    "run_id": 41812991753,
+    "logs_url": null,
+    "steps": [
+      {
+        "name": "Set up job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 1
+      },
+      {
+        "name": "Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 2
+      },
+      {
+        "name": "Run actions/setup-node@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 3
+      },
+      {
+        "name": "Run npm ci",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 4
+      },
+      {
+        "name": "Run npm run setup:local",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 5
+      },
+      {
+        "name": "Run npm run doctor",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 6
+      },
+      {
+        "name": "Run npm run lint",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 7
+      },
+      {
+        "name": "Run npm run typecheck",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 8
+      },
+      {
+        "name": "Run npm test",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 9
+      },
+      {
+        "name": "Run npm run test:providers",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 10
+      },
+      {
+        "name": "Run npm run data:export -- --provider local --output .data/test-export",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 11
+      },
+      {
+        "name": "Run npm run data:verify -- --input .data/test-export",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 12
+      },
+      {
+        "name": "Run npm run build",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 13
+      },
+      {
+        "name": "Post Run actions/setup-node@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 25
+      },
+      {
+        "name": "Post Run actions/checkout@v4",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 26
+      },
+      {
+        "name": "Complete job",
+        "status": "completed",
+        "conclusion": "success",
+        "number": 27
+      }
+    ],
+    "url": "https://github.com/alvarovillalbaa/intelligent-visualization/actions/runs/41812991753/job/126516617939"
+  },
+  "runtimeObserved": {
+    "os": "Ubuntu 26.04.1 LTS",
+    "runnerLabel": "ubuntu-latest",
+    "image": "ubuntu-26.04",
+    "imageVersion": "20261101.186.1",
+    "node": "v22.23.4",
+    "next": "16.1.6",
+    "buildMode": "webpack",
+    "sameProfileAsFocusedRun": false
+  },
+  "commands": {
+    "install": {
+      "command": "npm ci",
+      "exitCode": 0
+    },
+    "setup": {
+      "command": "npm run setup:local",
+      "exitCode": 0
+    },
+    "doctor": {
+      "command": "npm run doctor",
+      "exitCode": 0
+    },
+    "lint": {
+      "command": "npm run lint",
+      "exitCode": 0,
+      "errors": 0,
+      "warnings": 16
+    },
+    "typecheck": {
+      "command": "npm run typecheck",
+      "exitCode": 0
+    },
+    "tests": {
+      "command": "npm test",
+      "exitCode": 0,
+      "files": {
+        "total": 24,
+        "passed": 24,
+        "failed": 0
+      },
+      "cases": {
+        "total": 474,
+        "passed": 474,
+        "failed": 0
+      },
+      "reportedDurationSeconds": 13
+    },
+    "providers": {
+      "command": "npm run test:providers",
+      "exitCode": 0,
+      "files": {
+        "total": 1,
+        "passed": 1
+      },
+      "cases": {
+        "total": 3,
+        "passed": 3
+      },
+      "provider": "local",
+      "reportedDurationMs": 572
+    },
+    "dataExport": {
+      "command": "npm run data:export -- --provider local --output .data/test-export",
+      "exitCode": 0,
+      "actualResult": {
+        "ok": true,
+        "output": ".data/test-export",
+        "entityCounts": {
+          "users": 1,
+          "teams": 1,
+          "team_memberships": 1,
+          "invites": 0,
+          "workspaces": 1,
+          "visualizations": 3,
+          "visualization_versions": 3,
+          "visualization_checkpoints": 0,
+          "visualization_sources": 0,
+          "visualization_assets": 0,
+          "review_requests": 0,
+          "review_comments": 0,
+          "analytics_events": 0,
+          "leads": 0,
+          "experiments": 0,
+          "experiment_variants": 0,
+          "experiment_exposures": 0,
+          "workflow_runs": 0
+        }
+      }
+    },
+    "dataVerify": {
+      "command": "npm run data:verify -- --input .data/test-export",
+      "exitCode": 0,
+      "actualResult": {
+        "ok": true,
+        "input": ".data/test-export",
+        "filesChecked": 18
+      }
+    },
+    "build": {
+      "command": "npm run build",
+      "exitCode": 0,
+      "compiler": "Next.js 16.1.6 (webpack)",
+      "compiledSuccessfully": true,
+      "reportedCompileSeconds": 19.9,
+      "generatedStaticPages": 15
+    }
+  },
+  "actualSummaryLines": [
+    "✖ 16 problems (0 errors, 16 warnings)",
+    " Test Files  24 passed (24)",
+    "      Tests  474 passed (474)",
+    "   Start at  10:17:19",
+    "   Duration  13.00s (transform 767ms, setup 0ms, import 15.84s, tests 16.62s, environment 3ms)",
+    " Test Files  1 passed (1)",
+    "      Tests  3 passed (3)",
+    "   Start at  10:17:33",
+    "   Duration  572ms (transform 151ms, setup 0ms, import 307ms, tests 86ms, environment 0ms)",
+    "▲ Next.js 16.1.6 (webpack)",
+    "✓ Compiled successfully in 19.9s",
+    "✓ Generating static pages using 3 workers (15/15) in 378.0ms"
+  ],
+  "logEvidence": {
+    "representation": "UTF-8 encoding of the complete decoded GitHub job log returned by the connector, before ANSI/timestamp normalization; not the original archive bytes",
+    "bytes": 38843,
+    "sha256": "8834e0783717894de3e2bc6d34befef884569c1c2c35b28ee507094ac93d3246",
+    "retention": "Canonical job link, hash and bounded summaries retained; raw decoded log was not copied into the repository."
+  },
+  "focusedRun": {
+    "id": 41812992637,
+    "receipt": "report-csv-import-checks.json",
+    "separateProfileAndTotals": true,
+    "unitScopesOverlap": true
+  },
+  "sourceGuardQualification": "The unchanged normal workflow checks the activation commit and has no focused 373-input source seal guard. The focused workflow separately checks the preparation commit and all sealed inputs.",
+  "historicalFailuresPreserved": [
+    "../11-02/report-csv-import-normal-ci-attempt-1.json",
+    "../11-03/report-csv-import-normal-ci-attempt-2.json"
+  ],
+  "observations": [
+    "The two previously failing Course fixture files now pass as part of the actual 474-case run.",
+    "Lint still reports 16 existing warnings across unused-variable and hook-dependency rules, with zero errors.",
+    "The normal job is a hosted ephemeral local-provider fixture run, not actual provider or production-data acceptance."
+  ],
+  "actionsByReceiptAuthor": [
+    "Observed the original first-attempt run through terminal success.",
+    "Read actual step conclusions, test totals, export/verify JSON and build output.",
+    "No restart, source modification, local test/build/install or publication was performed to obtain this receipt."
+  ],
+  "limits": [
+    "The three provider checks exercise the local provider only.",
+    "No production account, hosted Auth, live external-provider/model or physical-device acceptance is implied.",
+    "Normal474 and focused168 unit scopes overlap and are not additive unique coverage.",
+    "No task-specific surviving-resource inventory was part of the unchanged normal workflow."
+  ]
+}
