@@ -1,25 +1,30 @@
 #!/usr/bin/env node
-// Four local Course export browser cases; all runtime work stays in owned public CI.
+// One completion case and three separately verified historical Course export passes.
 import fs from 'node:fs';
 import path from 'node:path';
 import net from 'node:net';
 import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { gzipSync } from 'node:zlib';
+import { gzipSync, gunzipSync } from 'node:zlib';
 const REPOSITORY = 'alvarovillalbaa/intelligent-visualization';
 const BRANCH = 'refs/heads/qa/iv-course-export-20261105';
 const ACTIVE = '.github/workflows/course-export-browser.yml';
 const SPEC = 'docs/proposals/course-export-browser-v2.test.ts.example';
-const SPEC_SHA = 'f61bdf287eaf6ebd06a71e27c292758aa9ebaf3dee3c11115ae38fec57c8aee2';
+const SPEC_SHA = '269c9d4038770223791edd2959008c498aa47af2edde2532661af620cd50372c';
 const ORIGIN = 'http://127.0.0.1:3100';
 const CONFIG = 'docs/proposals/course-export-browser-v2.config.ts.example';
-const CONFIG_SHA = '5b110a71c0f7abcd4ddfad5fafc953702460ba12adad6f906c73945ea38e9886';
+const CONFIG_SHA = '2d58df550f607ec6164675fe92bfd762ab9a199680658473e0b55d60e39573d6';
 const EXISTING_CI_BLOB = 'd758b9ae4a9cdf72a96fdf02285ba6d45cafdbaf';
 const TITLES = [
   'native Course HTML export retains authored content and its local interactive runtime across a file reload',
   'failed Course preparation preserves the stored draft and Retry calls the real local artifact route',
 ];
 const PROJECTS = ['desktop', 'mobile'];
+const CURRENT_GREP = '(?:^|\\s)' + TITLES[0] + '$';
+const PRIOR_RECEIPT = 'docs/results/2026/11-05/course-export-browser-attempt-1.json';
+const PRIOR_SHA = 'ab30f778d525bf738e355bb2cd55957937eac3af595d0882bc1d9216333f155c';
+const PRIOR_SOURCE = 'bc13c7c269bd29dd5987e257e69ae6f76922cc95';
+const PRIOR_BROWSER_SHA = '329885528442aa4ebf60057b5ddac16be787a109a3513d0226f676edb2ea0aaf';
 const STREAM_LIMIT = 524288, REPORT_LIMIT = 1048576, BROWSER_LIMIT = 2097152;
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
 const gitBlob = bytes => createHash('sha1').update(`blob ${bytes.length}\0`).update(bytes).digest('hex');
@@ -73,17 +78,19 @@ const report = {
   status: 'failed', startedAtUtc: new Date().toISOString(),
   runtime: { node: process.version, platform: process.platform, architecture: process.arch,
     tmpDirectoryBytes: Buffer.byteLength(path.join(root, 'tmp')), chromiumSocketReserveBytes: 64 },
-  scope: { scenarios: TITLES, projects: PROJECTS, cases: 4, retries: 0, workers: 1, productionBuild: false, nextDevelopmentCompilation: true,
+  scope: { scenarios: TITLES, projects: PROJECTS, cases: 1, selectedCases: [{ project: 'desktop', title: TITLES[0] }],
+    carriedCases: 3, combinedCases: 4, retries: 0, workers: 1, productionBuild: false, nextDevelopmentCompilation: true,
     applicationDependencies: 'unchanged frozen npm lock, lifecycle scripts disabled, owned export only',
     accounts: false, models: false, physicalDevice: false, old106UnitCasesRepeated: false, broad474CaseCIRepeated: false,
     server: 'actual loopback Next development server --webpack', generation: 'authored intercepted fixture',
     artifact: 'actual local preview compiler route', sourceExport: 'runtime input subset only' },
-  limits: { workSeconds: 1020, cleanupSeconds: 90, browserSeconds: 660, jobMinutes: 20,
+  limits: { workSeconds: 960, cleanupSeconds: 90, browserSeconds: 300, jobMinutes: 18,
     streamBytes: STREAM_LIMIT, streamGzipBytes: 131072, allStreamsGzipBytes: 524288,
-    browserGlobalSeconds: 600, browserJsonBytes: BROWSER_LIMIT, reportBytes: REPORT_LIMIT, assetFetchSeconds: 8 },
+    browserGlobalSeconds: 240, browserJsonBytes: BROWSER_LIMIT, reportBytes: REPORT_LIMIT, assetFetchSeconds: 8 },
   commands: [], guards: [], errors: [], sourceFiles: [],
   proofLimits: [
-    'Four actual local browser cases run once. The 106 old unit cases and the existing broad CI are not selected or repeated.',
+    'Only the desktop native-export case runs in this completion invocation. Three passed pairs remain historical evidence from the pinned failed first invocation; no single four-pass invocation is claimed.',
+    'The 106 old unit cases and the existing broad CI are not selected or repeated. Historical carry requires all 238 runtime-export inputs to remain byte/mode/blob identical.',
     'Only an exact runtime-input subset is exported under owned scratch. No .git, documentation, prior evidence or existing dependency folder is copied.',
     'The generation response is authored and intercepted. The preview artifact route, native download, exact saved-file opening and inline learner runtime are actual selected behavior.',
     'The app initializes its anonymous modules/in-memory seeds; no session cookie means the reviewed guest path returns before repository lookup. Browser guards are not a server-side network sandbox.',
@@ -93,7 +100,7 @@ const report = {
     'Desktop/mobile Chromium emulation and local standalone files do not prove hosted/authenticated persistence, physical devices, all browsers, print fidelity or generation quality.',
   ],
 };
-const workEnd = Date.now() + 1020000;
+const workEnd = Date.now() + 960000;
 let cleanupEnd, interrupted = false, globalExpired = false, baseline, allGzip = 0, browserAttempted = false;
 let browserScanUncertain = false, lastBrowserScan = 0;
 const browserProcesses = new Map();
@@ -401,7 +408,7 @@ function ownedServerAlive() {
   return { pid: item.pid, starttime: item.starttime, executable: item.executable };
 }
 async function waitForServer() {
-  const end = Math.min(Date.now() + 180000, workEnd - 667000);
+  const end = Math.min(Date.now() + 180000, workEnd - 307000);
   need(end > Date.now(), 'server_readiness_window_unavailable');
   let last = 'no_response';
   while (Date.now() < end) {
@@ -473,11 +480,17 @@ function diagnosticMetadata(attachment) {
   need(attachment.name === 'error-context' && attachment.contentType === 'text/markdown' && typeof attachment.path === 'string'
     && path.basename(attachment.path) === 'error-context.md' && attachment.body === undefined, 'browser_extra_attachment');
   const file = path.resolve(attachment.path); need(file.startsWith(outputDirectory + '/'), 'diagnostic_path_outside_output');
+  const missing = { name: attachment.name, contentType: attachment.contentType, exists: false, bytes: null,
+    contentsRetained: false, reason: 'not_retained_preserve_output_never' };
   for (let at = path.dirname(file); at !== path.join(root, 'output'); at = path.dirname(at)) {
-    const item = fs.lstatSync(at); need(item.isDirectory() && !item.isSymbolicLink() && item.uid === process.getuid(), 'diagnostic_ancestor_identity');
+    let item;
+    try { item = fs.lstatSync(at); } catch (error) { if (error.code === 'ENOENT') return missing; throw error; }
+    need(item.isDirectory() && !item.isSymbolicLink() && item.uid === process.getuid(), 'diagnostic_ancestor_identity');
   }
-  const item = fs.lstatSync(file); need(item.isFile() && !item.isSymbolicLink() && item.uid === process.getuid() && item.size <= 1048576, 'diagnostic_file_metadata');
-  return { name: attachment.name, contentType: attachment.contentType, bytes: item.size, contentsRetained: false };
+  let item;
+  try { item = fs.lstatSync(file); } catch (error) { if (error.code === 'ENOENT') return missing; throw error; }
+  need(item.isFile() && !item.isSymbolicLink() && item.uid === process.getuid() && item.size <= 1048576, 'diagnostic_file_metadata');
+  return { name: attachment.name, contentType: attachment.contentType, exists: true, bytes: item.size, contentsRetained: false };
 }
 function validateBoundary(item, title, project) {
   exactKeys(item, ['kind', 'schemaVersion', 'profile', 'title', 'generation', 'artifact', 'downloads', 'standalone', 'boundary', 'cleanup'], 'boundary_shape');
@@ -511,6 +524,105 @@ function validateBoundary(item, title, project) {
   need(item.cleanup.pageClosed === true && item.cleanup.standaloneContextsClosed === (first ? 1 : 0) && item.cleanup.downloadsDeleted === 1
     && item.cleanup.directoriesCreated === 1 && item.cleanup.directoriesRemoved === 1 && Array.isArray(item.cleanup.failures)
     && item.cleanup.failures.length === 0 && item.cleanup.passed === true, 'boundary_owned_cleanup');
+}
+function recordedBytes(value, maximum = STREAM_LIMIT) {
+  need(value?.encoding === 'gzip-base64' && Number.isSafeInteger(value.bytes) && value.bytes >= 0 && value.bytes <= maximum
+    && Number.isSafeInteger(value.compressedBytes) && value.compressedBytes > 0 && value.compressedBytes <= 131072
+    && typeof value.data === 'string' && value.data.length <= 174764 && /^[a-f0-9]{64}$/.test(value.sha256), 'carry_capture_shape');
+  const zip = Buffer.from(value.data, 'base64');
+  need(zip.toString('base64') === value.data && zip.length === value.compressedBytes, 'carry_capture_encoding');
+  const bytes = gunzipSync(zip, { maxOutputLength: maximum + 1 });
+  need(bytes.length === value.bytes && sha(bytes) === value.sha256, 'carry_capture_digest'); return bytes;
+}
+function carryAccepted() {
+  const bytes = read(path.join(repo, PRIOR_RECEIPT), 1048576);
+  need(bytes.length === 381031 && sha(bytes) === PRIOR_SHA, 'carry_receipt_pin');
+  const old = JSON.parse(bytes.toString());
+  need(old.schemaVersion === 'iv.course-export-browser.v2' && old.sourceCommit === PRIOR_SOURCE && old.origin === ORIGIN
+    && old.status === 'failed' && old.interrupted === false && old.startedAtUtc === '2026-11-05T23:18:17.237Z'
+    && old.completedAtUtc === '2026-11-05T23:19:21.694Z' && old.runtime?.node === 'v24.21.0'
+    && old.runtime.playwright === '1.64.1' && old.scope?.cases === 4 && old.scope.retries === 0 && old.scope.workers === 1
+    && JSON.stringify(old.scope.scenarios) === JSON.stringify(TITLES) && JSON.stringify(old.scope.projects) === JSON.stringify(PROJECTS), 'carry_receipt_identity');
+  need(Array.isArray(old.commands) && old.commands.length === 31 && new Set(old.commands.map(item => item.label)).size === 31, 'carry_command_count');
+  let captures = 0, compressedBytes = 0;
+  for (const command of old.commands) {
+    need(command.released === true && command.exitObservedAndReaped === true && command.closeObserved === true
+      && JSON.stringify(command.pipesEOF) === '[true,true]' && command.forcedDrain === false
+      && command.originalProcessGroupAbsent === true && command.killSent === false
+      && Array.isArray(command.streams) && command.streams.length === 2, 'carry_command_closure');
+    if (command.label === 'browser_cases') need(command.exitCode === 1 && command.signal === null && command.stopReason === null
+      && command.termSent === false && command.intentionalServerStop === false, 'carry_browser_exit');
+    else if (command.label === 'next_server') need(command.exitCode === 0 && command.signal === null
+      && command.stopReason === 'expected_server_stop' && command.termSent === true && command.intentionalServerStop === true, 'carry_server_exit');
+    else need(command.exitCode === 0 && command.signal === null && command.stopReason === null
+      && command.termSent === false && command.intentionalServerStop === false, 'carry_command_exit');
+    need(command.streams[0].name === 'stdout' && command.streams[1].name === 'stderr', 'carry_stream_identity');
+    for (const stream of command.streams) {
+      const raw = recordedBytes(stream.raw); captures++; compressedBytes += stream.raw.compressedBytes;
+      need(stream.complete === true && stream.observedBytes === raw.length && stream.observedSha256 === sha(raw), 'carry_observed_capture');
+    }
+  }
+  const sourceVector = sha(JSON.stringify(old.sourceFiles));
+  need(Array.isArray(old.sourceFiles) && old.sourceFiles.length === 461
+    && old.sourceFiles.reduce((sum, item) => sum + item.bytes, 0) === 3621170
+    && sourceVector === '4bf828a9e26fec52b5705a0803b616c0a0c62a07f50e7a3d034762f71347bf12', 'carry_source_vector');
+  need(Array.isArray(old.guards) && JSON.stringify(old.guards.map(item => item.label)) === '["before","before_browser","after","after_cleanup"]'
+    && old.guards.every(item => item.passed === true && item.trackedFiles === 461 && item.sourceBytes === 3621170
+      && item.vectorSha256 === sourceVector && item.fullHeadIndexModesAndBytes === true && item.noUntrackedOrIgnoredOutput === true), 'carry_source_guards');
+  const exportVector = sha(JSON.stringify(exported));
+  need(exported.length === 238 && old.runtimeExport?.fileCount === 238 && old.runtimeExport.totalBytes === 1957569
+    && JSON.stringify(old.runtimeExport.files) === JSON.stringify(exported)
+    && Array.isArray(old.runtimeExport.guards) && old.runtimeExport.guards.length === 3
+    && JSON.stringify(old.runtimeExport.guards.map(item => item.label)) === '["before_tool_work","after_frozen_npm_ci","after_tool_work"]'
+    && old.runtimeExport.guards.every(item => item.passed === true && item.files === 238 && item.vectorSha256 === exportVector), 'carry_runtime_inputs_changed');
+  need(old.processCleanup?.passed === true && old.processCleanup.started === 31 && old.networkCleanup?.passed === true
+    && old.server?.accepted === true && old.server.intentionalStop === true && old.scratchCleanup === 'passed'
+    && old.browserProcessCleanup?.passed === true && old.browserProcessCleanup.scanUncertain === false
+    && old.browserProcessCleanup.termSent === 0 && old.browserProcessCleanup.killSent === 0
+    && Array.isArray(old.browserProcessCleanup.remaining) && old.browserProcessCleanup.remaining.length === 0
+    && Array.isArray(old.portChecks) && old.portChecks.length === 2 && old.portChecks.every(item => item.unbound === true), 'carry_cleanup');
+  const browserBytes = recordedBytes(old.browser?.raw, BROWSER_LIMIT); compressedBytes += old.browser.raw.compressedBytes;
+  need(captures === 62 && compressedBytes <= 524288 && browserBytes.length === 19612 && sha(browserBytes) === PRIOR_BROWSER_SHA
+    && old.browser.accepted === false && old.browser.rawBytes === browserBytes.length && old.browser.rawSha256 === PRIOR_BROWSER_SHA, 'carry_browser_pin');
+  const value = JSON.parse(browserBytes.toString()), rows = [];
+  need(Array.isArray(value.errors) && value.errors.length === 0 && value.stats?.expected === 3 && value.stats.unexpected === 1
+    && value.stats.flaky === 0 && value.stats.skipped === 0, 'carry_browser_totals');
+  let suiteCount = 0;
+  const walk = suites => {
+    need(Array.isArray(suites), 'carry_suite_shape');
+    for (const suite of suites) {
+      need(++suiteCount <= 32 && Array.isArray(suite.specs) && (suite.suites === undefined || Array.isArray(suite.suites)), 'carry_suite_shape');
+      for (const spec of suite.specs) {
+        need(Array.isArray(spec.tests), 'carry_spec_shape');
+        for (const test of spec.tests) { need(rows.length < 4, 'carry_case_count'); rows.push({ title: spec.title, ...test }); }
+      }
+      walk(suite.suites ?? []);
+    }
+  };
+  walk(value.suites);
+  const expected = new Set(PROJECTS.flatMap(project => TITLES.map(title => project + ':' + title))), seen = new Set(), carried = [];
+  need(rows.length === 4, 'carry_case_count');
+  for (const row of rows) {
+    const key = row.projectName + ':' + row.title;
+    need(expected.has(key) && !seen.has(key) && row.expectedStatus === 'passed' && Array.isArray(row.results) && row.results.length === 1, 'carry_case_identity'); seen.add(key);
+    const result = row.results[0];
+    need(result.retry === 0 && Array.isArray(result.errors) && Array.isArray(result.attachments), 'carry_case_attempt');
+    const attachments = result.attachments.filter(item => item.name === 'iv-course-export-boundary');
+    need(attachments.length === 1, 'carry_boundary_count'); const boundary = readBoundary(attachments[0]);
+    if (key === 'desktop:' + TITLES[0]) {
+      need(row.status === 'unexpected' && result.status === 'failed' && result.errors.length === 1
+        && boundary.value.boundary?.unexpectedCount === 1, 'carry_excluded_failure'); continue;
+    }
+    need(row.status === 'expected' && result.status === 'passed' && result.errors.length === 0 && result.attachments.length === 1, 'carry_case_failure');
+    validateBoundary(boundary.value, row.title, row.projectName);
+    carried.push({ project: row.projectName, title: row.title, accepted: true, status: 'passed', retry: 0, boundarySha256: boundary.sha256 });
+  }
+  need(carried.length === 3, 'carry_accepted_count');
+  report.carriedEvidence = { accepted: true, path: PRIOR_RECEIPT, bytes: bytes.length, sha256: PRIOR_SHA, sourceCommit: PRIOR_SOURCE,
+    runId: 42128567312, jobId: 127599002235, browserBytes: browserBytes.length, browserSha256: PRIOR_BROWSER_SHA,
+    rawCommandCapturesVerified: captures, sourceVectorSha256: sourceVector, runtimeExportFiles: exported.length,
+    runtimeExportVectorSha256: exportVector, cases: carried, excludedFailedCases: 1,
+    qualification: 'Three historical passes only, from a failed four-case invocation. All 238 runtime-export inputs are identical; the current invocation runs only the previously failed desktop pair.' };
 }
 function browserResults() {
   need(fs.existsSync(resultFile), 'browser_json_missing');
@@ -546,10 +658,10 @@ function browserResults() {
     }
   };
   walk(value.suites);
-  need(Array.isArray(value.errors) && value.errors.length === 0 && value.stats?.expected === 4 && value.stats?.unexpected === 0
+  need(Array.isArray(value.errors) && value.errors.length === 0 && value.stats?.expected === 1 && value.stats?.unexpected === 0
     && value.stats?.flaky === 0 && value.stats?.skipped === 0, 'browser_global_failure');
-  const expected = new Set(PROJECTS.flatMap(project => TITLES.map(title => project + ':' + title))), seen = new Set();
-  need(cases.length === 4, 'browser_case_count');
+  const expected = new Set(['desktop:' + TITLES[0]]), seen = new Set();
+  need(cases.length === 1, 'browser_case_count');
   for (const row of cases) {
     const key = row.project + ':' + row.title; need(expected.has(key) && !seen.has(key), 'browser_case_identity'); seen.add(key);
     need(row.expectedStatus === 'passed' && row.status === 'expected' && row.results.length === 1
@@ -567,6 +679,7 @@ try {
   need(packageSource.name === 'intelligent-visualization' && packageSource.dependencies?.next === '16.1.6'
     && !packageSource.dependencies?.['@playwright/test'] && !packageSource.devDependencies?.['@playwright/test'], 'package_scope_changed');
   exportRuntime();
+  carryAccepted();
   report.runtime.nodeSha256 = sha(read(process.execPath, 268435456));
   const npm = fs.realpathSync(path.join(path.dirname(process.execPath), 'npm'));
   report.runtime.npmCliSha256 = sha(read(npm, 1048576));
@@ -591,12 +704,12 @@ try {
   materializeBrowser();
   await portFree('before_server');
   const next = path.join(app, 'node_modules/next/dist/bin/next');
-  serverTask = run('next_server', process.execPath, [next, 'dev', '--webpack', '--hostname', '127.0.0.1', '--port', '3100'], 1020,
+  serverTask = run('next_server', process.execPath, [next, 'dev', '--webpack', '--hostname', '127.0.0.1', '--port', '3100'], 960,
     { cwd: app, retainFailure: true }).then(value => { serverOutcome = value; return value; }, error => { serverError = error; });
   await waitForServer();
   await guard('before_browser');
-  ownedServerAlive(); need(workEnd - Date.now() >= 667000, 'browser_window_unavailable'); browserAttempted = true;
-  const browser = await run('browser_cases', process.execPath, [cli, 'test', '--config', configFile, '--workers=1', '--retries=0'], 660,
+  ownedServerAlive(); need(workEnd - Date.now() >= 307000, 'browser_window_unavailable'); browserAttempted = true;
+  const browser = await run('browser_cases', process.execPath, [cli, 'test', '--config', configFile, '--project=desktop', '--grep', CURRENT_GREP, '--workers=1', '--retries=0'], 300,
     { cwd: app, retainFailure: true });
   browserResults(); need(browser.accepted, 'browser_cli_failed');
   await guard('after_browser');
@@ -628,7 +741,8 @@ finally {
   if (interrupted) report.errors.push('interrupted');
   if (globalExpired || Date.now() > workEnd + 90000) report.errors.push('global_deadline');
   report.interrupted = interrupted; report.completedAtUtc = new Date().toISOString();
-  report.status = !report.errors.length && report.browser?.accepted === true && report.processCleanup.passed && report.browserProcessCleanup?.passed === true
+  report.status = !report.errors.length && report.browser?.accepted === true && report.carriedEvidence?.accepted === true
+    && report.processCleanup.passed && report.browserProcessCleanup?.passed === true
     && report.networkCleanup.passed && report.server?.accepted === true && report.runtimeExport?.guards?.length >= 2
     && report.scratchCleanup === 'passed' ? 'passed' : 'failed';
   let text = JSON.stringify(report);

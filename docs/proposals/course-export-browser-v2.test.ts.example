@@ -153,7 +153,7 @@ test.beforeEach(async ({ context, page, baseURL }) => {
       state.actualArtifacts++; await route.continue(); return // Actual approved LOCAL route, never a compiled HTML fixture.
     }
     if (!["GET", "HEAD"].includes(request.method()) || !(url.pathname === "/" || url.pathname.startsWith("/_next/") || url.pathname === "/favicon.ico")) {
-      unexpected(state, "Unexpected local request"); await route.abort("blockedbyclient"); return
+      unexpected(state, `Unexpected local request: ${request.method()} ${url.pathname}`); await route.abort("blockedbyclient"); return
     }
     state.allowedReads++
     await route.continue()

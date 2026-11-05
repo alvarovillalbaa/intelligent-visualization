@@ -1,6 +1,7 @@
-# INACTIVE. Root pins the clean preparation before the owned QA push.
+# INACTIVE. Desktop-native completion only; validate/carry the three prior pairs.
+# Root pins the clean preparation before the owned QA push.
 # Main preparation/retirement use [skip actions]; QA activation must omit it.
-name: Temporary Course export browser v2
+name: Temporary Course export desktop completion
 on:
   push:
     branches: [qa/iv-course-export-20261105]
@@ -13,7 +14,7 @@ jobs:
   browser:
     if: github.event_name == 'push' && github.repository == 'alvarovillalbaa/intelligent-visualization' && github.event.repository.private == false && github.ref == 'refs/heads/qa/iv-course-export-20261105'
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 18
     env:
       CI: 'true'
       SOURCE_COMMIT: PREPARATION_SHA_REPLACED_BY_ROOT
@@ -29,7 +30,7 @@ jobs:
         with:
           node-version: 24.21.0
           package-manager-cache: false
-      - name: Run only the pinned four Course export browser identities
+      - name: Run only desktop native-file completion and validate pinned history
         shell: bash
         run: |
           set -euo pipefail

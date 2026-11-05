@@ -1,6 +1,30 @@
-# Course export browser v2 — prepared, unrun
+# Course export browser v2 — desktop completion prepared
 
-Last updated: 2026-11-05
+Last updated: 2026-11-06
+
+The [first attempt](../results/2026/11-05/course-export-browser-attempt-1.json)
+failed overall. Its immutable 381,031-byte receipt has SHA256
+`ab30f778d525bf738e355bb2cd55957937eac3af595d0882bc1d9216333f155c`.
+Desktop retry and both mobile pairs passed once. Desktop native-file assertions
+completed, but its strict boundary recorded one unexpected local request;
+the method/path was not retained, so its cause is unproven. This is not a
+four-pass invocation.
+
+The completion job selects **only desktop's first title below**. The observer
+adds method and pathname diagnostics without query strings; unknown requests
+remain blocked and fail acceptance. The other three pairs are carried only
+from the pinned raw Playwright report, after validating its complete streams,
+passing boundaries/cleanup and exact equivalence of all 238 runtime inputs.
+No accepted pair or old unit suite is rerun; all original bodies remain intact.
+
+The same pinned-source QA workflow now has an 18-minute ceiling: 960 seconds
+work, 90 cleanup, 2 stdout; browser child 300 seconds, Playwright global 240,
+minimum remaining window 307. The first job's 75 seconds plus 1080 seconds is
+1155, below the original 1200-second allowance. No desktop completion result
+is claimed yet. The original preparation below is retained history; the
+[inactive example](course-export-browser-v2.yml.example) now describes completion.
+
+## Original four-case preparation — retained history
 
 Standing “I approve everything” / “Do all the work” covers this focused packet.
 The [original proposal](course-export-browser.md), browser examples and historic

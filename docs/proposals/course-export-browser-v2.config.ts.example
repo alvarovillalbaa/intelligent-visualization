@@ -15,7 +15,7 @@ export default defineConfig({
   workers: 1,
   retries: 0,
   timeout: 120_000,
-  globalTimeout: 600_000,
+  globalTimeout: 240_000,
   expect: { timeout: 10_000 },
   reporter: [["line"], ["json", { outputFile: process.env.IV_COURSE_BROWSER_RESULTS }]],
   outputDir: process.env.IV_COURSE_OUTPUT,
