@@ -34,6 +34,13 @@ passed 474 tests, three local-provider checks, typecheck, export verification
 and the production build; lint retains 16 warnings. This verifies the authored
 local-provider flow and Chromium profiles, with hosted acceptance still open.
 
+The separate [Course download/file checks](docs/results/2026/11-05/course-export-browser-checks.md)
+accept four desktop/mobile-emulated identities across three executions: actual
+local compilation, browser download, reopened learner interactions and 503 retry.
+Generation uses authored responses. Three first-run passes were retained; the
+desktop completion passed after correcting a documented Next development-font
+boundary. Both failures remain preserved; no single four-pass run is claimed.
+
 Still in progress:
 
 - Full replacement of deck-facing UI/routes with visualization terminology.

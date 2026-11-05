@@ -15,3 +15,9 @@
   stay in owned runner storage; no local install/build/server/browser follows
   the failed Storage Guard reserve. Generation is authored; artifact compilation
   and saved-file behavior must be actual, with no account, database or model call.
+- Course export's four browser identities are accepted: three first-run passes
+  and one desktop completion, with exact runtime-input equivalence. Preserve
+  both failures and do not rerun accepted journeys unchanged. Only the exact
+  query-free Next development font joins the app's static-read boundary; the
+  standalone file retains all network/storage tripwires. No application,
+  dependency, lock or permanent CI change was made by this verification packet.

@@ -1,8 +1,19 @@
-# Course export browser v2 — desktop completion prepared
+# Course export browser v2 — accepted and retired
 
 Last updated: 2026-11-06
 
-## Current 17-minute completion plan
+## Accepted scoped result
+
+The [canonical receipt](../results/2026/11-05/course-export-browser-checks.md)
+accepts four identities across three executions: three first-run passes and
+one desktop completion at `a684ada8c7331800ca648715ea903bc7d4e6b597`.
+Both failures remain preserved. No accepted pair was rerun, and no single
+four-pass invocation is claimed. All 238 runtime inputs stayed identical.
+Temporary workflow `408748668` is disabled and its active file removed;
+permanent CI is unchanged. The three jobs used 214 seconds total. Real
+generation, hosted persistence and physical-device proof remain separate.
+
+## 17-minute completion preparation — retained history
 
 The [second attempt](../results/2026/11-05/course-export-browser-attempt-2.md)
 also failed the desktop request boundary, after completing its functional

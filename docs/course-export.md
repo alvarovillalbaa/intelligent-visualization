@@ -72,3 +72,12 @@ authored compiler/download checks and four native Chromium scenarios using one
 disposable local server. Existing Report-export and Course-editor browser scopes
 remain separate. See the [owning receipt](results/2026/10-29/course-html-export.md)
 for checks actually performed and remaining proof limits.
+
+The later [browser receipt](results/2026/11-05/course-export-browser-checks.md)
+accepts four existing desktop/mobile-emulated identities across three runs.
+With authored generation responses, the actual local compiler produced a real
+downloaded Course; the reopened file's learner content, quiz, recall, completion
+and reload behavior passed. A controlled 503/retry preserved the browser draft.
+The first two failures, exact development-font exception and three carried
+passes remain explicit. Real generation, production hosting/persistence,
+physical touch/printing and unrestricted-file behavior remain separate proof.
