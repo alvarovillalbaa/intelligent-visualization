@@ -1,0 +1,28 @@
+// INACTIVE. The controller copies this into its owned export's tests/tmp.
+// The controller owns the real loopback Next development server and teardown.
+import { defineConfig } from "@playwright/test"
+import path from "node:path"
+
+const baseURL = "http://127.0.0.1:3100"
+const root = process.env.IV_COURSE_RUN_ROOT
+if (!root || !path.isAbsolute(root) || process.env.IV_COURSE_BROWSER_RESULTS !== path.join(root, "browser-results.json")
+  || process.env.IV_COURSE_OUTPUT !== path.join(root, "output", "results")) throw new Error("Invalid owned Course report/output paths")
+export default defineConfig({
+  testDir: ".",
+  testMatch: "course-export.spec.ts",
+  forbidOnly: true,
+  fullyParallel: false,
+  workers: 1,
+  retries: 0,
+  timeout: 120_000,
+  globalTimeout: 600_000,
+  expect: { timeout: 10_000 },
+  reporter: [["line"], ["json", { outputFile: process.env.IV_COURSE_BROWSER_RESULTS }]],
+  outputDir: process.env.IV_COURSE_OUTPUT,
+  preserveOutput: "never",
+  use: { baseURL, acceptDownloads: true, storageState: { cookies: [], origins: [] }, serviceWorkers: "block", actionTimeout: 10_000, navigationTimeout: 30_000, trace: "off", screenshot: "off", video: "off" },
+  projects: [
+    { name: "desktop", use: { browserName: "chromium", viewport: { width: 1440, height: 1000 }, isMobile: false, hasTouch: false } },
+    { name: "mobile", use: { browserName: "chromium", viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true } },
+  ],
+})

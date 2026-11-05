@@ -1,0 +1,38 @@
+# INACTIVE. Root pins the clean preparation before the owned QA push.
+# Main preparation/retirement use [skip actions]; QA activation must omit it.
+name: Temporary Course export browser v2
+on:
+  push:
+    branches: [qa/iv-course-export-20261105]
+permissions:
+  contents: read
+concurrency:
+  group: iv-course-export-20261105
+  cancel-in-progress: false
+jobs:
+  browser:
+    if: github.event_name == 'push' && github.repository == 'alvarovillalbaa/intelligent-visualization' && github.event.repository.private == false && github.ref == 'refs/heads/qa/iv-course-export-20261105'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CI: 'true'
+      SOURCE_COMMIT: PREPARATION_SHA_REPLACED_BY_ROOT
+      IV_COURSE_PUBLIC_REPOSITORY: ${{ github.event.repository.private == false }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ env.SOURCE_COMMIT }}
+          persist-credentials: false
+          clean: false
+          fetch-depth: 1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24.21.0
+          package-manager-cache: false
+      - name: Run only the pinned four Course export browser identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_COMMIT" =~ ^[a-f0-9]{40}$ ]]
+          [[ "$(git rev-parse HEAD)" == "$SOURCE_COMMIT" ]]
+          node scripts/course-export-browser-controller.mjs --source-commit "$SOURCE_COMMIT"
