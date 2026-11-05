@@ -10,7 +10,7 @@ const REPOSITORY = 'alvarovillalbaa/intelligent-visualization';
 const BRANCH = 'refs/heads/qa/iv-course-export-20261105';
 const ACTIVE = '.github/workflows/course-export-browser.yml';
 const SPEC = 'docs/proposals/course-export-browser-v2.test.ts.example';
-const SPEC_SHA = '269c9d4038770223791edd2959008c498aa47af2edde2532661af620cd50372c';
+const SPEC_SHA = '1575344db0aa6f023e9e61286964f67882894e6329a9c4aab11310168633d6c1';
 const ORIGIN = 'http://127.0.0.1:3100';
 const CONFIG = 'docs/proposals/course-export-browser-v2.config.ts.example';
 const CONFIG_SHA = '2d58df550f607ec6164675fe92bfd762ab9a199680658473e0b55d60e39573d6';
@@ -84,7 +84,7 @@ const report = {
     accounts: false, models: false, physicalDevice: false, old106UnitCasesRepeated: false, broad474CaseCIRepeated: false,
     server: 'actual loopback Next development server --webpack', generation: 'authored intercepted fixture',
     artifact: 'actual local preview compiler route', sourceExport: 'runtime input subset only' },
-  limits: { workSeconds: 960, cleanupSeconds: 90, browserSeconds: 300, jobMinutes: 18,
+  limits: { workSeconds: 900, cleanupSeconds: 90, browserSeconds: 300, jobMinutes: 17,
     streamBytes: STREAM_LIMIT, streamGzipBytes: 131072, allStreamsGzipBytes: 524288,
     browserGlobalSeconds: 240, browserJsonBytes: BROWSER_LIMIT, reportBytes: REPORT_LIMIT, assetFetchSeconds: 8 },
   commands: [], guards: [], errors: [], sourceFiles: [],
@@ -100,7 +100,7 @@ const report = {
     'Desktop/mobile Chromium emulation and local standalone files do not prove hosted/authenticated persistence, physical devices, all browsers, print fidelity or generation quality.',
   ],
 };
-const workEnd = Date.now() + 960000;
+const workEnd = Date.now() + 900000;
 let cleanupEnd, interrupted = false, globalExpired = false, baseline, allGzip = 0, browserAttempted = false;
 let browserScanUncertain = false, lastBrowserScan = 0;
 const browserProcesses = new Map();
@@ -704,7 +704,7 @@ try {
   materializeBrowser();
   await portFree('before_server');
   const next = path.join(app, 'node_modules/next/dist/bin/next');
-  serverTask = run('next_server', process.execPath, [next, 'dev', '--webpack', '--hostname', '127.0.0.1', '--port', '3100'], 960,
+  serverTask = run('next_server', process.execPath, [next, 'dev', '--webpack', '--hostname', '127.0.0.1', '--port', '3100'], 900,
     { cwd: app, retainFailure: true }).then(value => { serverOutcome = value; return value; }, error => { serverError = error; });
   await waitForServer();
   await guard('before_browser');

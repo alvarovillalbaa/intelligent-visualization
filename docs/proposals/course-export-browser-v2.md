@@ -2,6 +2,31 @@
 
 Last updated: 2026-11-06
 
+## Current 17-minute completion plan
+
+The [second attempt](../results/2026/11-05/course-export-browser-attempt-2.md)
+also failed the desktop request boundary, after completing its functional
+assertions. Its observer recorded `GET /__nextjs_font/geist-latin.woff2`.
+The linked pinned Next 16.1.6 sources identify that exact loopback asset as a
+bundled development font, rather than a model/Auth API or external font request.
+The checker correction permits only GET/HEAD for that path without a query;
+other unknown requests still fail. Standalone-file guards, original bodies
+and assertions remain unchanged. Attempt 1's unrecorded URL remains unknown.
+
+Both failed receipts remain immutable. The [second raw report](../results/2026/11-05/course-export-browser-attempt-2.json)
+is 378,015 bytes, SHA256
+`8e4fc3fb4b4e488b2b0e13bac3b7591f41299b026f4d1f1f71cc72f30ed04a09`;
+it grants no additional acceptance. Only desktop native-file completion is
+selected again. The other three pairs retain their first-run evidence, subject
+to the same pinned-report and 238-input runtime-equivalence checks.
+
+The [inactive example](course-export-browser-v2.yml.example) now allows 17 minutes:
+900 seconds work, 90 cleanup and 2 stdout. Browser child/global/minimum remaining
+limits stay 300/240/307 seconds. The two jobs used 141 seconds; 141 + 1020 = 1161,
+below the original 1200-second allowance. Desktop acceptance remains open.
+
+## First failure and 18-minute completion plan — retained history
+
 The [first attempt](../results/2026/11-05/course-export-browser-attempt-1.json)
 failed overall. Its immutable 381,031-byte receipt has SHA256
 `ab30f778d525bf738e355bb2cd55957937eac3af595d0882bc1d9216333f155c`.

@@ -152,7 +152,7 @@ test.beforeEach(async ({ context, page, baseURL }) => {
       if (state.failFirst && state.artifacts === 1) { state.mocked503++; await route.fulfill({ status: 503, json: { error: "Authored first-attempt failure." } }); return }
       state.actualArtifacts++; await route.continue(); return // Actual approved LOCAL route, never a compiled HTML fixture.
     }
-    if (!["GET", "HEAD"].includes(request.method()) || !(url.pathname === "/" || url.pathname.startsWith("/_next/") || url.pathname === "/favicon.ico")) {
+    if (!["GET", "HEAD"].includes(request.method()) || !(url.pathname === "/" || url.pathname.startsWith("/_next/") || url.pathname === "/favicon.ico" || (url.pathname === "/__nextjs_font/geist-latin.woff2" && url.search === ""))) {
       unexpected(state, `Unexpected local request: ${request.method()} ${url.pathname}`); await route.abort("blockedbyclient"); return
     }
     state.allowedReads++
