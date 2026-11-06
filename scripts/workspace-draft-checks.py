@@ -19,13 +19,16 @@ import time
 
 repo = Path.cwd()
 source = os.environ["SOURCE_COMMIT"]
-branch = "qa/workspace-drafts-20261106-4"
+branch = "qa/workspace-drafts-20261106-5"
 app_url = "postgresql://iv_ci:authored-ci-only@127.0.0.1:54431/intelligent_visualization_ci"
 admin_url = "postgresql://iv_ci:authored-ci-only@127.0.0.1:54431/postgres"
 lock_sha = "b18dd278e6eded698e269d2e8400b0359083a8ba34de4721227a70b5e27c0d59"
 carry_path = "docs/results/2026/11-06/workspace-drafts-attempt-2.json"
 carry_sha = "833ecc3780a19a148ca97ec5bc3d4d0f67a8dfd48f34f4e26578ec843b27c13b"
 carry_source = "feb450d17a8aa3c7022c4785e6b96b80067e3e0d"
+http_carry_path = "docs/results/2026/11-06/workspace-drafts-attempt-4.json"
+http_carry_sha = "2f00328ba2a4d126d3beefd512031917f4eaba2f4cecae3160655d7a32bfe8c4"
+http_carry_source = "c60dea6dec75ffa0a97956afd47ed93723878818"
 assert re.fullmatch(r"[0-9a-f]{40}", source)
 assert os.environ.get("CI") == os.environ.get("IV_WORKSPACE_PUBLIC_REPOSITORY") == "true"
 assert os.environ.get("GITHUB_REPOSITORY") == "alvarovillalbaa/intelligent-visualization"
@@ -86,7 +89,7 @@ def vector():
 
 before = vector()
 report = {"schemaVersion": 1, "sourceCommit": source, "startedAt": time.time(), "commands": [],
-    "scope": "Carry exactly 16 PostgreSQL passes from immutable attempt 2; execute 8 current HTTP unit and 4 browser cases plus current static/setup/doctor checks; old HTTP unit results remain historical only; no model/hosted provider/build",
+    "scope": "Carry 16 PostgreSQL passes from immutable attempt 2 and 8 HTTP unit passes from immutable attempt 4; execute 4 browser cases plus static/setup/doctor checks. Browser save bodies use a bounded in-page real fetch Response.clone observer forwarding original fetch unchanged; generation alone is fulfilled. No model/hosted provider/build",
     "sourceFiles": before, "sourceGuards": []}
 
 
@@ -348,7 +351,7 @@ def carry_core():
     assert captures == 33
     prior_inputs = old["sourceExport"]["inputs"]
     assert len(prior_inputs) == 257 and set(prior_inputs) == set(export)
-    allowed_changes = {"lib/workspace-draft-http.ts", "lib/client/workspace-drafts.ts", "tests/unit/workspace-drafts-http.test.ts", "tests/e2e/workspace-drafts.spec.ts"}
+    allowed_changes = {"lib/workspace-draft-http.ts", "lib/client/workspace-drafts.ts", "tests/unit/workspace-drafts-http.test.ts", "tests/e2e/workspace-drafts.spec.ts", "components/visualizations/generation-results.tsx"}
     assert allowed_changes <= prior_inputs.keys()
     for name, row in prior_inputs.items():
         assert row == old["sourceFiles"][name]
@@ -356,9 +359,75 @@ def carry_core():
     assert old["frozenLock"] == {"bytes": 618662, "sha256": lock_sha}
     assert sha((app / "package-lock.json").read_bytes()) == lock_sha
     report["carriedCore"] = {"validated": True, "sourceCommit": carry_source, "receipt": carry_path, "receiptBytes": len(raw), "receiptSha256": carry_sha,
-        "originalCapturesVerified": captures, "phases": {"postgres": phases["postgres"]}, "unchangedRuntimeInputs": 253,
-        "historicalUnitReference": {**phases["unit"], "acceptedForCurrentSource": False, "currentUnitExecutionRequired": True},
+        "originalCapturesVerified": captures, "phases": {"postgres": phases["postgres"]}, "unchangedRuntimeInputs": 252,
+        "historicalUnitReference": {**phases["unit"], "acceptedForCurrentSource": False, "replacementUnitReceiptRequired": True},
         "allowedChangedRuntimeInputs": {name: {"before": prior_inputs[name], "current": export[name]} for name in sorted(allowed_changes)},
+        "priorBrowser": {"passed": 0, "failed": 4, "acceptedThisAttempt": False, "originalJsonBytes": old["browserOriginalJson"]["bytes"], "originalJsonSha256": old["browserOriginalJson"]["sha256"]}}
+
+
+def carry_http():
+    raw = (repo / http_carry_path).read_bytes()
+    assert len(raw) == 287174 and sha(raw) == http_carry_sha
+    old = json.loads(raw)
+    assert old["schemaVersion"] == 1 and old["sourceCommit"] == http_carry_source and old["passed"] is False and old["error"] == "AssertionError: "
+    assert len(old["sourceFiles"]) == 498 and sum(row["bytes"] for row in old["sourceFiles"].values()) == 7805625
+    vector_sha = sha(json.dumps(old["sourceFiles"], sort_keys=True, separators=(",", ":")).encode())
+    assert vector_sha == "812407a366fc1531c0fdecfae0aa7081a96930ab9a12e1578606941c89718eae"
+    assert [row["label"] for row in old["sourceGuards"]] == ["before", "after-install", "after-focused-checks", "after-cleanup"]
+    assert all(row == {"label": row["label"], "files": 498, "bytes": 7805625, "matches": True, "vectorSha256": vector_sha} for row in old["sourceGuards"])
+    for key in ["databaseRemoved", "portReleased", "exportUnchanged", "scratchIdentityMatches", "scratchRemoved"]: assert old[key] is True
+    assert old["processCleanup"]["remaining"] == old["processCleanup"]["uncertain"] == [] and old["processCleanup"]["originalGroupsAbsent"] is True
+    assert old["residualBeforeEscalation"] == [] and old.get("cleanupSignals", []) == []
+    assert old["databaseCleanup"] == {"operation": "drop", "marker": "iv-workspace-drafts:" + http_carry_source, "fixturesAbsent": True, "fixtureDatabases": [], "databaseRemoved": True}
+    assert old["fixtureAuditBeforeSetup"]["fixturesAbsent"] is True and old["fixtureAuditBeforeSetup"]["fixtureDatabases"] == []
+    assert old["server"]["exitCode"] == 0 and old["server"]["intentionalStop"] is True and old["server"]["originalProcessGroupAbsent"] is True
+    assert old["carriedCore"]["validated"] is True and old["carriedCore"]["receiptSha256"] == carry_sha
+    assert old["carriedCore"]["phases"]["postgres"] == report["carriedCore"]["phases"]["postgres"]
+    captures = 0
+    def verify(item):
+        nonlocal captures
+        data = gzip.decompress(base64.b64decode(item["gzipBase64"], validate=True))
+        assert item["complete"] is True and len(data) == item["bytes"] <= MAX and sha(data) == item["sha256"]
+        captures += 1
+        return data
+    assert len(old["commands"]) == 13
+    for index, command in enumerate(old["commands"]):
+        assert command["exitCode"] == (1 if index == 11 else 0)
+        assert command["exitObservedAndReaped"] is True and command["pipesEOF"] == [True, True] and command["originalProcessGroupAbsent"] is True
+        assert not any(command[key] for key in ["timedOut", "termSent", "killSent", "forcedDrain"])
+        for label in ["stdout", "stderr"]: verify(command[label])
+    for label in ["stdout", "stderr"]: verify(old["server"][label])
+    result = json.loads(verify(old["unitOriginalJson"]))
+    file = "tests/unit/workspace-drafts-http.test.ts"
+    content = (app / file).read_text()
+    assert not re.search(r"\b(?:it|test|describe)\.(?:only|skip|todo)\b", content)
+    suites = re.findall(r'describe(?:\.sequential)?\("([^"]+)"', content)
+    titles = re.findall(r'\bit\("([^"]+)"', content)
+    assert len(suites) == 1 and len(titles) == len(set(titles)) == 8
+    names = sorted(suites[0] + " " + title for title in titles)
+    assert names == sorted(old["expectedIdentities"]["unit"])
+    command = old["commands"][5]
+    assert command["argv"][:6] == ["node_modules/.bin/vitest", "run", "--config", "vitest.workspace-drafts.config.ts", file, "--reporter=json"]
+    assert len(command["argv"]) == 7 and command["argv"][6].endswith("/unit.json")
+    assert result == old["unit"] and result["success"] is True and result["numTotalTests"] == result["numPassedTests"] == 8
+    assert all(result[key] == 0 for key in ["numFailedTests", "numPendingTests", "numTodoTests", "numFailedTestSuites", "numPendingTestSuites"])
+    rows = [row for suite in result["testResults"] for row in suite["assertionResults"]]
+    assert len(rows) == 8 and sorted(row["fullName"] for row in rows) == names and all(row["status"] == "passed" for row in rows)
+    browser = json.loads(verify(old["browserOriginalJson"]))
+    assert browser == old["browser"] and not browser["errors"] and browser["stats"]["expected"] == 0 and browser["stats"]["unexpected"] == 4
+    assert browser["stats"]["flaky"] == browser["stats"]["skipped"] == 0 and captures == 30
+    assert old["commands"][11]["argv"] == ["node_modules/.bin/playwright", "test", "--config", "playwright.workspace-drafts.config.ts"]
+    prior = old["sourceExport"]["inputs"]
+    allowed = {"components/visualizations/generation-results.tsx", "tests/e2e/workspace-drafts.spec.ts"}
+    assert len(prior) == 257 and set(prior) == set(export) and allowed <= prior.keys()
+    for name, row in prior.items():
+        assert row == old["sourceFiles"][name]
+        if name not in allowed: assert export[name] == row, "HTTP checked runtime input changed: " + name
+    assert old["frozenLock"] == {"bytes": 618662, "sha256": lock_sha}
+    report["carriedHttp"] = {"validated": True, "sourceCommit": http_carry_source, "receipt": http_carry_path, "receiptBytes": len(raw), "receiptSha256": http_carry_sha,
+        "passed": 8, "identities": names, "originalJsonBytes": old["unitOriginalJson"]["bytes"], "originalJsonSha256": old["unitOriginalJson"]["sha256"], "executedThisAttempt": False,
+        "originalCapturesVerified": captures, "unchangedRuntimeInputs": 255,
+        "allowedChangedRuntimeInputs": {name: {"before": prior[name], "current": export[name]} for name in sorted(allowed)},
         "priorBrowser": {"passed": 0, "failed": 4, "acceptedThisAttempt": False, "originalJsonBytes": old["browserOriginalJson"]["bytes"], "originalJsonSha256": old["browserOriginalJson"]["sha256"]}}
 
 
@@ -386,10 +455,15 @@ def check_browser():
         assert boundary["profile"] == case["projectName"] and boundary["title"] == spec["title"]
         assert boundary["status"] == "passed" and boundary["stage"] == "complete" and boundary["primaryError"] is None
         assert boundary["authoredGenerationResponses"] == 1 and boundary["realSaveRequests"] == 2
+        observer = boundary["responseObserver"]
+        assert observer["kind"] == "native-fetch-response-clone" and observer["maxResponseBytes"] == 5242880 and observer["pendingJobs"] == 0 and observer["failures"] == []
+        assert len(observer["reads"]) == 2 and len({row["requestId"] for row in observer["reads"]}) == 2
+        assert all(row["status"] == 200 and "no-store" in row["cacheControl"] and 0 < row["bytes"] <= 5242880 and re.fullmatch(r"[0-9a-f]{64}", row["sha256"]) for row in observer["reads"])
         assert boundary["observations"]["newSessionRestored"] is True
         saves = boundary["observations"]["saves"]
         assert len(saves) == 2 and [row["revision"] for row in saves] == [1, 2] and saves[0]["id"] == saves[1]["id"]
         assert saves[0]["requestId"] != saves[1]["requestId"] and saves[0]["documentHash"] != saves[1]["documentHash"]
+        assert [row["requestId"] for row in observer["reads"]] == [row["requestId"] for row in saves]
         assert all(value == 0 for value in boundary["boundary"]["counts"].values())
         rows = boundary["boundary"]["navigationCancellations"]
         assert boundary["boundary"]["navigationCancellationCount"] == len(rows) <= 16
@@ -414,6 +488,7 @@ try:
     report["sourceExport"] = {"files": len(export), "bytes": sum(row["bytes"] for row in export.values()), "inputs": export}
     check_export()
     carry_core()
+    carry_http()
     assert run(["node", "--version"]).strip() == b"v24.21.0"
     assert sha((app / "package-lock.json").read_bytes()) == lock_sha
     report["frozenLock"] = {"bytes": (app / "package-lock.json").stat().st_size, "sha256": lock_sha}
@@ -425,7 +500,6 @@ try:
     run(["node_modules/.bin/eslint", *scoped], 60)
     (app / "tsconfig.workspace-drafts-checks.json").write_text(json.dumps({"extends": "./tsconfig.json", "include": scoped, "exclude": ["node_modules", "components/ai-elements"], "compilerOptions": {"incremental": False, "plugins": []}}))
     run(["node_modules/.bin/tsc", "--noEmit", "-p", "tsconfig.workspace-drafts-checks.json"], 60)
-    vitest("unit", "tests/unit/workspace-drafts-http.test.ts", 8)
     report["fixtureAuditBeforeSetup"] = database_guard("audit")
     assert report["fixtureAuditBeforeSetup"]["fixturesAbsent"]
     guard("after-focused-checks")
@@ -539,6 +613,6 @@ finally:
     captures += [report[key] for key in ["unitOriginalJson", "postgresOriginalJson", "browserOriginalJson"] if key in report]
     captures += [report["server"][key] for key in ["stdout", "stderr"] if key in report.get("server", {})]
     report["finishedAt"] = time.time()
-    report["passed"] = status == 0 and report.get("carriedCore", {}).get("validated") is True and report.get("unit", {}).get("numPassedTests") == 8 and len(report["sourceGuards"]) == 5 and all(report.get(key) for key in ["databaseRemoved", "portReleased", "exportUnchanged", "scratchRemoved", "scratchIdentityMatches"]) and all(row["complete"] for row in captures)
+    report["passed"] = status == 0 and report.get("carriedCore", {}).get("validated") is True and report.get("carriedHttp", {}).get("validated") is True and len(report["sourceGuards"]) == 5 and all(report.get(key) for key in ["databaseRemoved", "portReleased", "exportUnchanged", "scratchRemoved", "scratchIdentityMatches"]) and all(row["complete"] for row in captures)
     print("IV_WORKSPACE_DRAFT_RESULT=" + json.dumps(report, separators=(",", ":")), flush=True)
 raise SystemExit(0 if report["passed"] else 1)

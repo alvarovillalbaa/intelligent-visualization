@@ -60,6 +60,18 @@ Missing/invalid configuration fails closed. Attempt 4 reruns the updated eight
 HTTP/client cases and four browser identities while carrying only the unchanged
 sixteen PostgreSQL passes. The old eight-case result remains historical evidence.
 
+Attempt 4 passed the updated eight HTTP/client cases and reached four successful
+first-save POSTs, but completed no browser identity. Attempt 5 uses actual links
+for new Course/Report navigation. Its explicit browser observation adapter
+forwards the original fetch arguments, Promise and Response unchanged; it reads
+only a bounded clone of the real save response, matched to the real POST request
+UUID. This avoids relying on CDP response-body retrieval. Only generation remains
+fulfilled. Observer failures, incomplete reads or undrained jobs fail the case.
+The run validates all 33 original attempt-2 captures and all 30 attempt-4 captures,
+carrying only sixteen PostgreSQL and eight HTTP passes. Of 257 runtime inputs,
+252 match attempt 2 and 255 match attempt 4; the explicitly declared differences
+are checked separately. None of the prior failed browser cases is accepted.
+
 This is local saving acceptance, not hosted Supabase/Auth/RLS/storage, publication,
 AI/Eve, physical touch/device, every editor action or full-product proof. Guest
 drafts still require explicit recovery; creating an account does not transfer them.

@@ -1,11 +1,13 @@
-import { randomUUID } from "node:crypto"
-import { expect, test, type Page, type Request, type TestInfo } from "@playwright/test"
+import { createHash, randomUUID } from "node:crypto"
+import { expect, test, type Page, type Request as PlaywrightRequest, type TestInfo } from "@playwright/test"
 import { createStarterCourseDocument, createStarterReportDocument } from "../../packages/domain/fixtures"
 
 const ORIGIN = "http://127.0.0.1:3100"
 const WORKSPACE = "/app/workspaces/core-growth"
 const API = "/api/workspaces/core-growth/visualizations"
 type Kind = "course" | "report"
+type ResponseClone = { requestId: string; status: number; cacheControl: string; contentType: string; bytes: number; body: string }
+type ResponseObserver = { requests: number; jobs: Set<Promise<void>>; records: Record<string, ResponseClone>; failures: string[] }
 
 function bounded(value: unknown, limit = 384) {
   return String(value).replace(/https?:\/\/[^\s<>"']+/g, "[URL]").replace(/[\u0000-\u001f\u007f]/g, " ").slice(0, limit)
@@ -40,9 +42,13 @@ async function journey(kind: Kind, page: Page, testInfo: TestInfo) {
   const counts = { unexpectedRequests: 0, unexpectedWebSockets: 0, requestFailures: 0, httpErrors: 0, pageErrors: 0, consoleErrors: 0, dialogs: 0 }
   const diagnostics: Array<{ kind: string; stage: string; detail: string }> = []
   const observations: Record<string, unknown> = { kind, authoredGeneration: true, layout: [], saves: [] }
+  const observerKey = `iv_workspace_response_${randomUUID().replaceAll("-", "")}`
+  const observerReads: Array<{ requestId: string; status: number; cacheControl: string; bytes: number; sha256: string }> = []
+  const observerFailures: string[] = []
+  let observerPending = 0
   const completed = new Set<string>(), pending = new Set<Promise<void>>(), cleanupFailures: string[] = []
-  const admitted = new WeakMap<Request, { kind: "read" | "action"; transition: string; target: string | null }>()
-  const received = new WeakMap<Request, { status: number; contentType: string; path: string | null; redirect: string | null }>()
+  const admitted = new WeakMap<PlaywrightRequest, { kind: "read" | "action"; transition: string; target: string | null }>()
+  const received = new WeakMap<PlaywrightRequest, { status: number; contentType: string; path: string | null; redirect: string | null }>()
   const cancellations: Array<{ transition: string; method: string; path: string; target: string; status: number; contentType: string; redirect: string | null }> = []
   function problem(key: keyof typeof counts, detail: unknown) {
     counts[key]++
@@ -53,7 +59,7 @@ async function journey(kind: Kind, page: Page, testInfo: TestInfo) {
     try { const url = new URL(raw.split(";")[0], ORIGIN); return url.origin === ORIGIN && !url.username && !url.password && !url.hash && pages.has(url.pathname) && query(url, true) ? url.pathname : null }
     catch { return null }
   }
-  function requestLabel(request: Request) {
+  function requestLabel(request: PlaywrightRequest) {
     const url = new URL(request.url())
     return `${request.method()} ${url.origin === ORIGIN ? url.pathname : "cross-origin"} queryKeys=${[...url.searchParams.keys()].sort().join(",")}`
   }
@@ -122,14 +128,28 @@ async function journey(kind: Kind, page: Page, testInfo: TestInfo) {
   }
   async function save(buttonName: string, revision: number, title: string) {
     stage = revision === 1 ? "save-first" : "save-revision"; target = savedPath
+    const deadline = Date.now() + 10_000
+    const remaining = () => Math.max(1, deadline - Date.now())
     try {
     const [response] = await Promise.all([
-      page.waitForResponse((response) => response.url() === ORIGIN + API && response.request().method() === "POST"),
-      page.getByRole("button", { name: buttonName, exact: true }).click(),
+      page.waitForResponse((response) => response.url() === ORIGIN + API && response.request().method() === "POST", { timeout: remaining() }),
+      page.getByRole("button", { name: buttonName, exact: true }).click({ timeout: remaining() }),
     ])
     expect(response.status()).toBe(200)
     expect(response.headers()["cache-control"]).toContain("no-store")
-    const ack = await response.json()
+    const requestId = response.request().postDataJSON().requestId
+    expect(requestId).toMatch(/^[0-9a-f-]{36}$/)
+    await expect.poll(() => page.evaluate(({ key, requestId }) => {
+      const state = (window as unknown as Record<string, ResponseObserver>)[key]
+      return !state || state.failures.length ? "failed" : state.records[requestId] && state.jobs.size === 0 ? "ready" : "pending"
+    }, { key: observerKey, requestId }), { timeout: remaining() }).toBe("ready")
+    const observed = await page.evaluate(({ key, requestId }) => (window as unknown as Record<string, ResponseObserver>)[key].records[requestId], { key: observerKey, requestId })
+    expect(observed.requestId).toBe(requestId); expect(observed.status).toBe(200)
+    expect(observed.cacheControl).toContain("no-store"); expect(observed.contentType).toMatch(/^application\/json(?:;|$)/)
+    expect(observed.bytes).toBe(Buffer.byteLength(observed.body, "utf8")); expect(observed.bytes).toBeLessThanOrEqual(5 * 1024 * 1024)
+    const ack = JSON.parse(observed.body)
+    expect(ack.receipt.requestId).toBe(requestId)
+    observerReads.push({ requestId, status: observed.status, cacheControl: observed.cacheControl, bytes: observed.bytes, sha256: createHash("sha256").update(observed.body).digest("hex") })
     expect(ack.status).toBe("saved"); expect(ack.receipt.status).toBe("saved")
     expect(ack.draft.id).toMatch(/^[0-9a-f-]{36}$/)
     expect(ack.draft.kind).toBe(kind); expect(ack.draft.title).toBe(title)
@@ -174,6 +194,67 @@ async function journey(kind: Kind, page: Page, testInfo: TestInfo) {
     }
   }
   try {
+    // Explicit observation adapter: only real save responses are cloned. The
+    // original fetch arguments, Promise and Response reach the app unchanged.
+    await context.addInitScript(({ key, origin, api }) => {
+      const state: ResponseObserver = { requests: 0, jobs: new Set(), records: Object.create(null), failures: [] }
+      Object.defineProperty(window, key, { value: state })
+      async function text(copy: Request | Response, maximum: number) {
+        if (!copy.body) throw new Error("observer-empty-body")
+        const reader = copy.body.getReader(), chunks: Uint8Array[] = []
+        let bytes = 0
+        const end = Date.now() + 10_000
+        try {
+          while (true) {
+            let timer: ReturnType<typeof setTimeout> | undefined
+            const part = await Promise.race([reader.read(), new Promise<never>((_, reject) => {
+              timer = setTimeout(() => reject(new Error("observer-body-timeout")), Math.max(1, end - Date.now()))
+            })]).finally(() => clearTimeout(timer))
+            if (part.done) break
+            bytes += part.value.byteLength
+            if (bytes > maximum) throw new Error("observer-body-overflow")
+            chunks.push(part.value)
+          }
+          const joined = new Uint8Array(bytes)
+          let offset = 0
+          for (const chunk of chunks) { joined.set(chunk, offset); offset += chunk.byteLength }
+          return { bytes, value: new TextDecoder("utf-8", { fatal: true }).decode(joined) }
+        } catch (error) {
+          void reader.cancel().catch(() => {})
+          throw error
+        } finally { reader.releaseLock() }
+      }
+      const original = window.fetch
+      window.fetch = function (this: unknown, ...args: Parameters<typeof window.fetch>) {
+        const [input, init] = args
+        let selected = false, requestCopy: Request | null = null
+        try {
+          const url = new URL(input instanceof Request ? input.url : String(input), location.href)
+          selected = url.origin === origin && url.pathname === api && !url.search && !url.hash && !url.username && !url.password
+            && String(init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase() === "POST"
+          if (selected) {
+            state.requests++
+            if (typeof init?.body === "string") requestCopy = new Request(url, { method: "POST", body: init.body }).clone()
+            else if (input instanceof Request && init?.body === undefined) requestCopy = input.clone()
+            else state.failures.push("observer-unsupported-request-body")
+          }
+        } catch { state.failures.push("observer-request-clone-failed") }
+        const result = Reflect.apply(original, this, args) as Promise<Response>
+        if (selected) {
+          const job = result.then(async (response) => {
+            const copy = response.clone()
+            if (!requestCopy) throw new Error("observer-request-copy-missing")
+            const [requestBody, responseBody] = await Promise.all([text(requestCopy, 2 * 1024 * 1024), text(copy, 5 * 1024 * 1024)])
+            const requestId: unknown = JSON.parse(requestBody.value).requestId
+            if (typeof requestId !== "string" || !/^[0-9a-f-]{36}$/.test(requestId) || state.records[requestId]) throw new Error("observer-request-identity-invalid")
+            if (state.requests > 4) throw new Error("observer-request-count-exceeded")
+            state.records[requestId] = { requestId, status: response.status, cacheControl: response.headers.get("cache-control") ?? "", contentType: response.headers.get("content-type") ?? "", bytes: responseBody.bytes, body: responseBody.value }
+          }).catch(() => { if (state.failures.length < 8) state.failures.push("observer-real-save-body-failed") }).finally(() => state.jobs.delete(job))
+          state.jobs.add(job)
+        }
+        return result
+      }
+    }, { key: observerKey, origin: ORIGIN, api: API })
     await context.routeWebSocket("**/*", (route) => {
       const url = new URL(route.url())
       if (url.protocol === "ws:" && url.host === "127.0.0.1:3100" && url.pathname === "/_next/webpack-hmr" && !url.username && !url.password && !url.hash && url.search.length <= 256) { developmentWebSockets++; route.connectToServer() }
@@ -263,12 +344,24 @@ async function journey(kind: Kind, page: Page, testInfo: TestInfo) {
   } catch (error) { primary = error }
   finally {
     postPath = null
+    try {
+      const finalObserver = await page.locator("body").evaluate(async (_body, key) => {
+        const state = (window as unknown as Record<string, ResponseObserver>)[key]
+        if (!state) return { pending: 0, failures: ["observer-state-missing"] }
+        let timer: ReturnType<typeof setTimeout> | undefined
+        await Promise.race([Promise.allSettled([...state.jobs]), new Promise<void>((resolve) => { timer = setTimeout(resolve, 1000) })]).finally(() => clearTimeout(timer))
+        return { pending: state.jobs.size, failures: state.failures.slice(0, 8) }
+      }, observerKey, { timeout: 1500 })
+      observerPending = finalObserver.pending; observerFailures.push(...finalObserver.failures)
+    } catch { observerFailures.push("observer-final-drain-failed") }
+    if (observerPending || observerFailures.length) cleanupFailures.push("Real save response observation did not close completely")
     try { await context.close(); closed = true } catch (error) { cleanupFailures.push(bounded(error)) }
     await Promise.allSettled([...pending]); await new Promise<void>((resolve) => setImmediate(resolve))
     for (const row of cancellations) if (primary || stage !== "complete" || !completed.has(row.transition) || observations.newSessionRestored !== true) problem("requestFailures", `Unproven cancellation ${row.method} ${row.path} ${row.transition}`)
     const report = { kind: "iv-workspace-draft-boundary", schemaVersion: 1, title: testInfo.title, profile: testInfo.project.name, documentKind: kind,
       stage, status: !primary && Object.values(counts).every((value) => value === 0) && closed && cleanupFailures.length === 0 ? "passed" : "failed",
       authoredGenerationResponses: generationResponses, realSaveRequests: saveRequests, observations,
+      responseObserver: { kind: "native-fetch-response-clone", maxResponseBytes: 5 * 1024 * 1024, reads: observerReads, pendingJobs: observerPending, failures: observerFailures },
       primaryError: primary ? bounded(primary instanceof Error ? primary.message : primary, 4096) : null,
       boundary: { counts, diagnostics, allowedReads, allowedActions, developmentWebSockets, navigationCancellationCount: cancellations.length, navigationCancellations: cancellations },
       cleanup: { contextsCreated: 1, contextsClosed: Number(closed), pendingJobs: pending.size, failures: cleanupFailures } }
