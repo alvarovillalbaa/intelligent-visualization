@@ -59,6 +59,16 @@ identities require current-source acceptance. An anonymous bounded workspace
 readiness probe requires the existing redirect to `/auth`; browser assertions,
 timeouts and cancellation rules stay unchanged. No application auth fix is claimed.
 
+Attempt 2 accepted desktop Course/Report and narrow Course; narrow Report still
+failed one status GET despite completing its functional assertions. Attempt 3
+carries those three exact passes and the forty core passes, validating all 63
+original captures. Only the observational browser fixture changes: bounded native
+GET response clones/signals and an actual Playwright Request timeline record EOF,
+body hashes and abort timing. Fetch arguments, Promise and Response are forwarded
+unchanged, and request failures remain fatal. Only narrow Report runs. All 268
+other browser runtime inputs stay exact; method/path/ordinal/time correlation is
+explicitly not claimed as exact JS-to-Playwright request identity.
+
 Fresh host Storage Guard measured 17.8 GiB free against 34.0 required. No local
 install, build, database, server or browser runs. This verifies the local canonical
 publication slice; hosted Supabase/Auth/RLS/storage, original assets, physical

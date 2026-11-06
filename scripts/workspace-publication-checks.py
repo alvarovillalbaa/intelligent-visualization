@@ -21,13 +21,17 @@ from urllib.parse import urlsplit
 
 repo = Path.cwd()
 source = os.environ["SOURCE_COMMIT"]
-branch = "qa/workspace-publications-20261106-2"
+branch = "qa/workspace-publications-20261106-3"
 app_url = "postgresql://iv_ci:authored-ci-only@127.0.0.1:54431/intelligent_visualization_ci"
 admin_url = "postgresql://iv_ci:authored-ci-only@127.0.0.1:54431/postgres"
 lock_sha = "b18dd278e6eded698e269d2e8400b0359083a8ba34de4721227a70b5e27c0d59"
 carry_path = "docs/results/2026/11-06/workspace-publications-attempt-1.json"
 carry_sha = "7964d501e29a06143646d23c8e697b738b5d04d741ac55cff44e77a8d0ab7833"
 carry_source = "3f1eee91e7e7372d011267d1f0d2f5c5d6ce209f"
+browser_carry_path = "docs/results/2026/11-06/workspace-publications-attempt-2.json"
+browser_carry_sha = "6bd3e991f40628be178485db8b690b492831aeffab1eaba0bfe9caf98dae2203"
+browser_carry_source = "6d43b8d4b9393061ba0080aa4d93f87a814259ce"
+REPORT_TITLE = "a Report publishes saved revisions to an anonymous live link while prior version bytes stay immutable"
 assert re.fullmatch(r"[0-9a-f]{40}", source)
 assert os.environ.get("CI") == os.environ.get("IV_PUBLICATION_PUBLIC_REPOSITORY") == "true"
 assert os.environ.get("GITHUB_REPOSITORY") == "alvarovillalbaa/intelligent-visualization"
@@ -83,7 +87,7 @@ def vector():
 
 before = vector()
 report = {"schemaVersion": 1, "sourceCommit": source, "startedAt": time.time(), "commands": [], "sourceFiles": before, "sourceGuards": [],
-    "scope": "Carry exactly 40 HTTP/client/PostgreSQL identities from immutable attempt 1; execute 4 current publication browser identities plus static/setup/doctor checks. The old narrow Course pass is historical only after publisher lifecycle changes. No core reruns/generation/model/provider/build. Browser real save/publish bodies use a bounded native-fetch Response.clone observer forwarding original fetch unchanged."}
+    "scope": "Carry 40 core passes from immutable attempt 1 and 3 full browser passes from immutable attempt 2 with unchanged application inputs. Execute only narrow Report with diagnostic exact publication GET clone EOF/state/hash/native-signal and actual Playwright-request timelines; no failure classification change or exact JS-to-request binding claim. No accepted-case reruns/generation/model/provider/build."}
 
 def guard(label):
     current = vector()
@@ -353,7 +357,7 @@ def carry_core(tests):
     assert len(outcomes) == 4 and [row for row in outcomes if row["status"] == "passed"] == [{"title": "a Course publishes saved revisions to an anonymous live link while prior version bytes stay immutable", "profile": "narrow-chromium", "status": "passed"}]
     assert sum(row["status"] == "failed" for row in outcomes) == 3
     prior = old["sourceExport"]["inputs"]
-    allowed = {"components/visualizations/workspace-publisher.tsx"}
+    allowed = {"components/visualizations/workspace-publisher.tsx", "tests/e2e/workspace-publications.spec.ts"}
     assert len(prior) == 269 and set(prior) == set(export) and allowed <= prior.keys()
     for name, row in prior.items():
         assert row == old["sourceFiles"][name]
@@ -361,77 +365,167 @@ def carry_core(tests):
     assert old["frozenLock"] == {"bytes": 618662, "sha256": lock_sha}
     assert sha((app / "package-lock.json").read_bytes()) == lock_sha
     report["carriedCore"] = {"validated": True, "sourceCommit": carry_source, "receipt": carry_path, "receiptBytes": len(raw), "receiptSha256": carry_sha,
-        "originalCapturesVerified": captures, "phases": phases, "passed": 40, "executedThisAttempt": False, "unchangedRuntimeInputs": 268,
+        "originalCapturesVerified": captures, "phases": phases, "passed": 40, "executedThisAttempt": False, "unchangedRuntimeInputs": 267,
         "allowedChangedRuntimeInputs": {name: {"before": prior[name], "current": export[name]} for name in sorted(allowed)},
         "priorBrowser": {"passed": 1, "failed": 3, "acceptedForCurrentSource": False, "outcomes": outcomes, "originalJsonBytes": old["browserOriginalJson"]["bytes"], "originalJsonSha256": old["browserOriginalJson"]["sha256"]}}
 
 
+def validate_browser_case(spec, case, include_get=False):
+    assert case["expectedStatus"] == "passed" and case["status"] == "expected" and len(case["results"]) == 1
+    result = case["results"][0]
+    assert result["status"] == "passed" and result["retry"] == 0 and not result.get("errors")
+    attachments = [row for row in result["attachments"] if row["name"] == "iv-workspace-publication-boundary" and row["contentType"] == "application/json"]
+    assert len(attachments) == 1
+    raw = base64.b64decode(attachments[0]["body"], validate=True)
+    assert len(raw) <= 24576
+    boundary = json.loads(raw)
+    entry = {"bytes": len(raw), "sha256": sha(raw), "result": boundary}
+    assert boundary["kind"] == "iv-workspace-publication-boundary" and boundary["schemaVersion"] == 1
+    assert boundary["profile"] == case["projectName"] and boundary["title"] == spec["title"]
+    assert boundary["documentKind"] == ("course" if spec["title"].startswith("a Course") else "report")
+    assert boundary["status"] == "passed" and boundary["stage"] == "complete" and boundary["primaryError"] is None
+    assert boundary["realPublishRequests"] == 2 and boundary["realSaveRequests"] == 1
+    obs = boundary["observations"]
+    assert obs["seed"]["actualAuthenticatedRequest"] is True and obs["seed"]["revision"] == 1
+    assert all(obs[key] is True for key in ["unsavedPublicationBlocked", "anonymousCookiesAbsent", "originalVersionBytesUnchanged", "reservedNamespaceProbeDoesNotClaimKnownStagedKey"])
+    publications = obs["publications"]
+    assert len(publications) == 2 and [row["sourceRevision"] for row in publications] == [1, 2]
+    assert publications[0]["publicId"] == publications[1]["publicId"] and publications[0]["versionId"] != publications[1]["versionId"]
+    assert publications[0]["requestId"] != publications[1]["requestId"]
+    for row in publications:
+        assert re.fullmatch(boundary["documentKind"] + r"_[0-9a-f]{32}", row["publicId"])
+        assert re.fullmatch(r"[0-9a-f-]{36}", row["versionId"]) and re.fullmatch(r"[0-9a-f-]{36}", row["requestId"])
+        assert re.fullmatch(r"[0-9a-f]{64}", row["documentHash"]) and re.fullmatch(r"[0-9a-f]{64}", row["artifactHash"])
+    immutable = obs["immutableReads"]
+    first_path = "/v/" + publications[0]["publicId"] + "/" + publications[0]["versionId"]
+    original_reads = [row for row in immutable if row["path"] == first_path]
+    assert len(immutable) == 4 and len(original_reads) == 3
+    assert len({(row["bytes"], row["sha256"]) for row in original_reads}) == 1
+    assert all(0 < row["bytes"] <= 8388608 and re.fullmatch(r"[0-9a-f]{64}", row["sha256"]) for row in immutable)
+    assert len(obs["liveTargets"]) == 3 and all(row["status"] == 307 for row in obs["liveTargets"])
+    assert obs["liveTargets"][0]["target"] == obs["liveTargets"][1]["target"] == first_path
+    assert obs["liveTargets"][2]["target"] == "/v/" + publications[1]["publicId"] + "/" + publications[1]["versionId"]
+    assert len(obs["probes"]) == 4 and all(row["status"] == 404 for row in obs["probes"])
+    if boundary["documentKind"] == "course":
+        assert obs["reader"] == {"kind": "course", "feedbackCorrect": True, "completionRestoredAfterReload": True, "quizFeedbackReset": True}
+        assert obs["newVersionInitiallyIncomplete"] is True
+    else:
+        assert boundary["documentKind"] == "report" and obs["reader"] == {"kind": "report", "literalMarkupVisible": True, "noInjectedImage": True}
+    observer = boundary["responseObserver"]
+    assert observer["kind"] == "native-fetch-response-clone" and observer["maxResponseBytes"] == 5242880 and observer["pendingJobs"] == 0 and observer["failures"] == []
+    reads = observer["reads"]
+    assert len(reads) == len({row["requestId"] for row in reads}) == 3
+    assert all(row["status"] == 200 and "no-store" in row["cacheControl"] and 0 < row["bytes"] <= 5242880 and re.fullmatch(r"[0-9a-f]{64}", row["sha256"]) for row in reads)
+    assert [row["requestId"] for row in reads if row["path"].endswith("/publications")] == [row["requestId"] for row in publications]
+    assert boundary["boundary"]["counts"] == {key: 0 for key in ["unexpectedRequests", "unexpectedWebSockets", "requestFailures", "httpErrors", "pageErrors", "consoleErrors", "dialogs", "analyticsRequests"]}
+    rows = boundary["boundary"]["navigationCancellations"]
+    assert boundary["boundary"]["navigationCancellationCount"] == len(rows) <= 16
+    for row in rows:
+        assert row["transition"] in ["sign-in", "private-seed", "private-open", "publish-1", "public-reader", "unsaved-edit", "save-2", "publish-2", "final-proof"]
+        assert row["status"] == 200 and row["contentType"].startswith("text/x-component") or row["method"] == "POST" and row["status"] in [303, 307, 308]
+        assert row["path"] == row["target"] if row["method"] == "GET" else row["method"] == "POST" and row["redirect"] == row["target"]
+    assert boundary["cleanup"] == {"contextsCreated": 2, "contextsClosed": 2, "pendingJobs": 0, "failures": []}
+    if include_get:
+        observation = boundary["publicationGetObserver"]
+        assert observation["kind"] == "native-fetch-publication-get-clone" and observation["maxBodyBytes"] == 131072
+        assert observation["correlation"] == "method-path-ordinal-and-time-only" and observation["exactFailedRequestBindingClaimed"] is False
+        assert observation["snapshotBeforeContextClose"] is True and observation["signalsDetached"] is True
+        assert observation["pendingJobs"] == 0 and observation["failures"] == []
+        assert observation["nodePendingRequests"] == 0 and 1 <= observation["nodeRequests"] == len(observation["nodeTimeline"]) <= 8
+        assert observation["nodeRequests"] == observation["requests"]
+        for row in observation["nodeTimeline"]:
+            assert row["path"] == "/api/workspaces/core-growth/visualizations/" + obs["seed"]["id"] + "/publications"
+            assert isinstance(row["startedAt"], int) and row["startedAt"] > 0 and isinstance(row["responseAt"], int) and row["responseAt"] > 0
+            assert row["status"] == 200 and row["contentType"].startswith("application/json") and isinstance(row["requestfinishedAt"], int)
+            assert row["requestfailedAt"] is None and row["errorText"] is None
+        reads = observation["reads"]
+        assert 1 <= observation["requests"] == len(reads) <= 8
+        assert [row["ordinal"] for row in reads] == list(range(1, len(reads) + 1))
+        for row in reads:
+            assert row["path"] == "/api/workspaces/core-growth/visualizations/" + obs["seed"]["id"] + "/publications"
+            assert row["status"] == 200 and "no-store" in row["cacheControl"] and row["contentType"].startswith("application/json")
+            assert row["eof"] is True and row["bodyError"] is None and 0 < row["bytes"] <= 131072 and re.fullmatch(r"[0-9a-f]{64}", row["sha256"])
+            assert all(isinstance(row[key], int) and row[key] > 0 for key in ["startedAt", "responseAt", "eofAt"])
+            state = row["state"]
+            assert state["id"] == obs["seed"]["id"] and state["workspaceSlug"] == "core-growth" and state["kind"] == "report"
+            assert state["draftRevision"] in [1, 2] and re.fullmatch(r"[0-9a-f]{64}", state["draftHash"])
+            signal = row["signal"]
+            assert signal["present"] is True and isinstance(signal["initialAborted"], bool) and isinstance(signal["abortedAtEOF"], bool) and isinstance(signal["finalAborted"], bool)
+            assert signal["abortObservedAt"] is None or isinstance(signal["abortObservedAt"], int) and signal["abortObservedAt"] > 0
+    return entry
+
+def carry_browser():
+    raw = (repo / browser_carry_path).read_bytes()
+    assert len(raw) == 257639 and sha(raw) == browser_carry_sha
+    old = json.loads(raw)
+    assert old["schemaVersion"] == 1 and old["sourceCommit"] == browser_carry_source and old["passed"] is False and old["error"] == "AssertionError: "
+    assert len(old["sourceFiles"]) == 537 and sum(row["bytes"] for row in old["sourceFiles"].values()) == 9204397
+    vector_sha = sha(json.dumps(old["sourceFiles"], sort_keys=True, separators=(",", ":")).encode())
+    assert vector_sha == "6f6c0e1438def63ce06ed4540de5900aa73c7954fa223b2daf261608966e58e1"
+    assert [row["label"] for row in old["sourceGuards"]] == ["before", "after-install", "after-focused-checks", "after-cleanup"]
+    assert all(row == {"label": row["label"], "files": 537, "bytes": 9204397, "matches": True, "vectorSha256": vector_sha} for row in old["sourceGuards"])
+    for key in ["databaseRemoved", "portReleased", "exportUnchanged", "scratchIdentityMatches", "scratchRemoved"]: assert old[key] is True
+    assert old["processCleanup"]["remaining"] == old["processCleanup"]["uncertain"] == [] and old["processCleanup"]["originalGroupsAbsent"] is True
+    assert old["residualBeforeEscalation"] == [] and old.get("cleanupSignals", []) == []
+    assert old["databaseCleanup"] == {"operation": "drop", "marker": "iv-workspace-publications:" + browser_carry_source, "fixturesAbsent": True, "fixtureDatabases": [], "databaseRemoved": True}
+    assert old["fixtureAuditBeforeSetup"]["fixturesAbsent"] is True and old["fixtureAuditBeforeSetup"]["fixtureDatabases"] == []
+    assert old["server"]["exitCode"] == 0 and old["server"]["intentionalStop"] is True and old["server"]["originalProcessGroupAbsent"] is True
+    assert old["carriedCore"]["validated"] is True and old["carriedCore"]["receiptSha256"] == carry_sha and old["carriedCore"]["phases"] == report["carriedCore"]["phases"]
+    captures = 0
+    def verify(item):
+        nonlocal captures
+        data = gzip.decompress(base64.b64decode(item["gzipBase64"], validate=True))
+        assert item["complete"] is True and len(data) == item["bytes"] <= MAX and sha(data) == item["sha256"]
+        captures += 1
+        return data
+    assert len(old["commands"]) == 12
+    for index, command in enumerate(old["commands"]):
+        assert command["exitCode"] == (1 if index == 10 else 0)
+        assert command["exitObservedAndReaped"] is True and command["pipesEOF"] == [True, True] and command["originalProcessGroupAbsent"] is True
+        assert not any(command[key] for key in ["timedOut", "termSent", "killSent", "forcedDrain"])
+        for label in ["stdout", "stderr"]: verify(command[label])
+    for label in ["stdout", "stderr"]: verify(old["server"][label])
+    browser = json.loads(verify(old["browserOriginalJson"]))
+    assert captures == 27 and browser == old["browser"] and not browser["errors"]
+    assert browser["stats"]["expected"] == 3 and browser["stats"]["unexpected"] == 1 and browser["stats"]["flaky"] == browser["stats"]["skipped"] == 0
+    assert old["commands"][10]["argv"] == ["node_modules/.bin/playwright", "test", "--config", "playwright.workspace-publications.config.ts"]
+    def walk(suites):
+        return [spec for suite in suites for spec in suite.get("specs", [])] + [spec for suite in suites for spec in walk(suite.get("suites", []))]
+    titles = ["a Course publishes saved revisions to an anonymous live link while prior version bytes stay immutable", REPORT_TITLE]
+    cases = [(spec, case) for spec in walk(browser["suites"]) for case in spec["tests"]]
+    assert len(cases) == 4 and sorted((spec["title"], case["projectName"]) for spec, case in cases) == sorted((title, profile) for title in titles for profile in ["desktop-chromium", "narrow-chromium"])
+    accepted, failed = [], []
+    for spec, case in cases:
+        assert case["expectedStatus"] == "passed" and len(case["results"]) == 1 and case["results"][0]["retry"] == 0
+        if (spec["title"], case["projectName"]) == (REPORT_TITLE, "narrow-chromium"):
+            assert case["status"] == "unexpected" and case["results"][0]["status"] == "failed"
+            failed.append({"title": spec["title"], "profile": case["projectName"], "status": "failed"})
+        else:
+            accepted.append(validate_browser_case(spec, case))
+    assert len(accepted) == 3 and len(failed) == 1
+    prior = old["sourceExport"]["inputs"]
+    allowed = {"tests/e2e/workspace-publications.spec.ts"}
+    assert len(prior) == 269 and set(prior) == set(export)
+    for name, row in prior.items():
+        assert row == old["sourceFiles"][name]
+        if name not in allowed: assert export[name] == row, "Accepted browser runtime input changed: " + name
+    assert old["frozenLock"] == {"bytes": 618662, "sha256": lock_sha}
+    report["carriedBrowser"] = {"validated": True, "sourceCommit": browser_carry_source, "receipt": browser_carry_path, "receiptBytes": len(raw),
+        "receiptSha256": browser_carry_sha, "originalCapturesVerified": captures, "originalBrowserJsonBytes": old["browserOriginalJson"]["bytes"],
+        "originalBrowserJsonSha256": old["browserOriginalJson"]["sha256"], "passed": 3, "executedThisAttempt": False, "unchangedRuntimeInputs": 268,
+        "diagnosticFixtureChange": {"before": prior["tests/e2e/workspace-publications.spec.ts"], "current": export["tests/e2e/workspace-publications.spec.ts"]},
+        "acceptedBoundaries": accepted, "priorFailure": failed}
+
 def check_browser():
     value = read_report("browser")
     assert report["commands"][-1]["exitCode"] == 0 and not value["errors"]
-    assert value["stats"]["expected"] == 4 and all(value["stats"][key] == 0 for key in ["unexpected", "flaky", "skipped"])
+    assert value["stats"]["expected"] == 1 and all(value["stats"][key] == 0 for key in ["unexpected", "flaky", "skipped"])
     def walk(suites):
         return [spec for suite in suites for spec in suite.get("specs", [])] + [spec for suite in suites for spec in walk(suite.get("suites", []))]
-    titles = ["a Course publishes saved revisions to an anonymous live link while prior version bytes stay immutable",
-        "a Report publishes saved revisions to an anonymous live link while prior version bytes stay immutable"]
     cases = [(spec, case) for spec in walk(value["suites"]) for case in spec["tests"]]
-    assert len(cases) == 4 and sorted((spec["title"], case["projectName"]) for spec, case in cases) == sorted(
-        (title, profile) for title in titles for profile in ["desktop-chromium", "narrow-chromium"])
-    report["browserBoundaries"] = []
-    for spec, case in cases:
-        assert case["expectedStatus"] == "passed" and case["status"] == "expected" and len(case["results"]) == 1
-        result = case["results"][0]
-        assert result["status"] == "passed" and result["retry"] == 0 and not result.get("errors")
-        attachments = [row for row in result["attachments"] if row["name"] == "iv-workspace-publication-boundary" and row["contentType"] == "application/json"]
-        assert len(attachments) == 1
-        raw = base64.b64decode(attachments[0]["body"], validate=True)
-        assert len(raw) <= 24576
-        boundary = json.loads(raw)
-        report["browserBoundaries"].append({"bytes": len(raw), "sha256": sha(raw), "result": boundary})
-        assert boundary["kind"] == "iv-workspace-publication-boundary" and boundary["schemaVersion"] == 1
-        assert boundary["profile"] == case["projectName"] and boundary["title"] == spec["title"]
-        assert boundary["status"] == "passed" and boundary["stage"] == "complete" and boundary["primaryError"] is None
-        assert boundary["realPublishRequests"] == 2 and boundary["realSaveRequests"] == 1
-        obs = boundary["observations"]
-        assert obs["seed"]["actualAuthenticatedRequest"] is True and obs["seed"]["revision"] == 1
-        assert all(obs[key] is True for key in ["unsavedPublicationBlocked", "anonymousCookiesAbsent", "originalVersionBytesUnchanged", "reservedNamespaceProbeDoesNotClaimKnownStagedKey"])
-        publications = obs["publications"]
-        assert len(publications) == 2 and [row["sourceRevision"] for row in publications] == [1, 2]
-        assert publications[0]["publicId"] == publications[1]["publicId"] and publications[0]["versionId"] != publications[1]["versionId"]
-        assert publications[0]["requestId"] != publications[1]["requestId"]
-        for row in publications:
-            assert re.fullmatch(boundary["documentKind"] + r"_[0-9a-f]{32}", row["publicId"])
-            assert re.fullmatch(r"[0-9a-f-]{36}", row["versionId"]) and re.fullmatch(r"[0-9a-f-]{36}", row["requestId"])
-            assert re.fullmatch(r"[0-9a-f]{64}", row["documentHash"]) and re.fullmatch(r"[0-9a-f]{64}", row["artifactHash"])
-        immutable = obs["immutableReads"]
-        first_path = "/v/" + publications[0]["publicId"] + "/" + publications[0]["versionId"]
-        original_reads = [row for row in immutable if row["path"] == first_path]
-        assert len(immutable) == 4 and len(original_reads) == 3
-        assert len({(row["bytes"], row["sha256"]) for row in original_reads}) == 1
-        assert all(0 < row["bytes"] <= 8388608 and re.fullmatch(r"[0-9a-f]{64}", row["sha256"]) for row in immutable)
-        assert len(obs["liveTargets"]) == 3 and all(row["status"] == 307 for row in obs["liveTargets"])
-        assert obs["liveTargets"][0]["target"] == obs["liveTargets"][1]["target"] == first_path
-        assert obs["liveTargets"][2]["target"] == "/v/" + publications[1]["publicId"] + "/" + publications[1]["versionId"]
-        assert len(obs["probes"]) == 4 and all(row["status"] == 404 for row in obs["probes"])
-        if boundary["documentKind"] == "course":
-            assert obs["reader"] == {"kind": "course", "feedbackCorrect": True, "completionRestoredAfterReload": True, "quizFeedbackReset": True}
-            assert obs["newVersionInitiallyIncomplete"] is True
-        else:
-            assert boundary["documentKind"] == "report" and obs["reader"] == {"kind": "report", "literalMarkupVisible": True, "noInjectedImage": True}
-        observer = boundary["responseObserver"]
-        assert observer["kind"] == "native-fetch-response-clone" and observer["maxResponseBytes"] == 5242880 and observer["pendingJobs"] == 0 and observer["failures"] == []
-        reads = observer["reads"]
-        assert len(reads) == len({row["requestId"] for row in reads}) == 3
-        assert all(row["status"] == 200 and "no-store" in row["cacheControl"] and 0 < row["bytes"] <= 5242880 and re.fullmatch(r"[0-9a-f]{64}", row["sha256"]) for row in reads)
-        assert [row["requestId"] for row in reads if row["path"].endswith("/publications")] == [row["requestId"] for row in publications]
-        assert boundary["boundary"]["counts"] == {key: 0 for key in ["unexpectedRequests", "unexpectedWebSockets", "requestFailures", "httpErrors", "pageErrors", "consoleErrors", "dialogs", "analyticsRequests"]}
-        rows = boundary["boundary"]["navigationCancellations"]
-        assert boundary["boundary"]["navigationCancellationCount"] == len(rows) <= 16
-        for row in rows:
-            assert row["transition"] in ["sign-in", "private-seed", "private-open", "publish-1", "public-reader", "unsaved-edit", "save-2", "publish-2", "final-proof"]
-            assert row["status"] == 200 and row["contentType"].startswith("text/x-component") or row["method"] == "POST" and row["status"] in [303, 307, 308]
-            assert row["path"] == row["target"] if row["method"] == "GET" else row["method"] == "POST" and row["redirect"] == row["target"]
-        assert boundary["cleanup"] == {"contextsCreated": 2, "contextsClosed": 2, "pendingJobs": 0, "failures": []}
+    assert len(cases) == 1 and cases[0][0]["title"] == REPORT_TITLE and cases[0][1]["projectName"] == "narrow-chromium"
+    report["browserBoundaries"] = [validate_browser_case(cases[0][0], cases[0][1], include_get=True)]
+    report["currentBrowserSelection"] = {"passed": 1, "title": REPORT_TITLE, "profile": "narrow-chromium", "threeOthersExecutedThisAttempt": False}
 
 
 try:
@@ -452,6 +546,7 @@ try:
     report["sourceExport"] = {"files": len(export), "bytes": sum(row["bytes"] for row in export.values()), "inputs": export}
     check_export()
     carry_core(tests)
+    carry_browser()
     assert run(["node", "--version"]).strip() == b"v24.21.0"
     lock = (app / "package-lock.json").read_bytes()
     assert len(lock) == 618662 and sha(lock) == lock_sha
@@ -512,7 +607,7 @@ try:
             assert time.monotonic() < ready_end, "Next readiness expired"
             time.sleep(0.2)
     assert work_end - time.monotonic() >= 667
-    run(["node_modules/.bin/playwright", "test", "--config", "playwright.workspace-publications.config.ts"], 660, (0, 1))
+    run(["node_modules/.bin/playwright", "test", "--config", "playwright.workspace-publications.config.ts", "--project=narrow-chromium", "--grep", r"(?:^|\s)" + re.escape(REPORT_TITLE) + "$"], 660, (0, 1))
     check_browser(); guard("after-browser")
     status = 0
 except BaseException as error:
@@ -594,6 +689,6 @@ finally:
     captures += [report[key] for key in ["httpOriginalJson", "clientOriginalJson", "postgresOriginalJson", "browserOriginalJson"] if key in report]
     captures += [report["server"][key] for key in ["stdout", "stderr"] if key in report.get("server", {})]
     report["finishedAt"] = time.time()
-    report["passed"] = status == 0 and report.get("carriedCore", {}).get("validated") is True and len(report["sourceGuards"]) == 5 and all(report.get(key) for key in ["databaseRemoved", "portReleased", "exportUnchanged", "scratchRemoved", "scratchIdentityMatches"]) and all(row["complete"] for row in captures)
+    report["passed"] = status == 0 and report.get("carriedCore", {}).get("validated") is True and report.get("carriedBrowser", {}).get("validated") is True and len(report["sourceGuards"]) == 5 and all(report.get(key) for key in ["databaseRemoved", "portReleased", "exportUnchanged", "scratchRemoved", "scratchIdentityMatches"]) and all(row["complete"] for row in captures)
     print("IV_WORKSPACE_PUBLICATION_RESULT=" + json.dumps(report, separators=(",", ":")), flush=True)
 raise SystemExit(0 if report["passed"] else 1)

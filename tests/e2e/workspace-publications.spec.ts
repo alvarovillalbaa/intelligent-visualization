@@ -8,7 +8,10 @@ const DRAFT_API = "/api/workspaces/core-growth/visualizations"
 const MAX_HTML = 8 * 1024 * 1024
 type Kind = "course" | "report"
 type ResponseClone = { path: string; requestId: string; status: number; cacheControl: string; contentType: string; bytes: number; body: string }
-type ResponseObserver = { requests: number; jobs: Set<Promise<void>>; records: Record<string, ResponseClone>; failures: string[] }
+type GetState = { id: string; workspaceSlug: string; kind: string; draftRevision: number; draftHash: string; current: null | { publicId: string; versionId: string; sourceRevision: number; documentHash: string; artifactHash: string; publicUrl: string; versionUrl: string } }
+type GetRead = { ordinal: number; path: string; startedAt: number; responseAt: number | null; eofAt: number | null; status: number | null; cacheControl: string; contentType: string; eof: boolean; bytes: number; sha256: string | null; state: GetState | null; bodyError: string | null; signal: { present: boolean; initialAborted: boolean | null; abortObservedAt: number | null; abortedAtEOF: boolean | null; finalAborted: boolean | null } }
+type NodeGet = { ordinal: number; path: string; startStage: string; startedAt: number; responseAt: number | null; status: number | null; contentType: string | null; requestfinishedAt: number | null; requestfailedAt: number | null; errorText: string | null }
+type ResponseObserver = { requests: number; jobs: Set<Promise<void>>; records: Record<string, ResponseClone>; failures: string[]; getRequests: number; getJobs: Set<Promise<void>>; getReads: GetRead[]; getFailures: string[]; stopGets: Array<() => void> }
 type Publication = { publicId: string; versionId: string; sourceRevision: number; documentHash: string; artifactHash: string; title: string; publicUrl: string; versionUrl: string }
 
 function bounded(value: unknown, limit = 384) {
@@ -34,9 +37,9 @@ function localUrl(raw: string) {
   return url.pathname
 }
 
-async function installObserver(context: BrowserContext, key: string, apis: string[]) {
-  await context.addInitScript(({ key, origin, apis }) => {
-      const state: ResponseObserver = { requests: 0, jobs: new Set(), records: Object.create(null), failures: [] }
+async function installObserver(context: BrowserContext, key: string, apis: string[], getEndpoint: string, expectedId: string, expectedKind: Kind) {
+  await context.addInitScript(({ key, origin, apis, getEndpoint, expectedId, expectedKind }) => {
+      const state: ResponseObserver = { requests: 0, jobs: new Set(), records: Object.create(null), failures: [], getRequests: 0, getJobs: new Set(), getReads: [], getFailures: [], stopGets: [] }
       Object.defineProperty(window, key, { value: state })
       async function text(copy: Request | Response, maximum: number) {
         if (!copy.body) throw new Error("observer-empty-body")
@@ -66,11 +69,29 @@ async function installObserver(context: BrowserContext, key: string, apis: strin
       const original = window.fetch
       window.fetch = function (this: unknown, ...args: Parameters<typeof window.fetch>) {
         const [input, init] = args
-        let selected = false, requestCopy: Request | null = null
+        let selected = false, requestCopy: Request | null = null, getRead: GetRead | null = null, getSignal: AbortSignal | null = null
         try {
           const url = new URL(input instanceof Request ? input.url : String(input), location.href)
           selected = url.origin === origin && apis.includes(url.pathname) && !url.search && !url.hash && !url.username && !url.password
             && String(init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase() === "POST"
+          const selectedGet = url.origin === origin && url.pathname === getEndpoint && !url.search && !url.hash && !url.username && !url.password
+            && String(init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase() === "GET"
+          if (selectedGet) {
+            state.getRequests++
+            if (state.getReads.length >= 8) state.getFailures.push("observer-get-count-exceeded")
+            else {
+              getSignal = init && Object.hasOwn(init, "signal") ? init.signal ?? null : input instanceof Request ? input.signal : null
+              const captured: GetRead = { ordinal: state.getRequests, path: url.pathname, startedAt: Date.now(), responseAt: null, eofAt: null, status: null, cacheControl: "", contentType: "", eof: false, bytes: 0, sha256: null, state: null, bodyError: null,
+                signal: { present: getSignal !== null, initialAborted: getSignal?.aborted ?? null, abortObservedAt: null, abortedAtEOF: null, finalAborted: null } }
+              getRead = captured; state.getReads.push(captured)
+              const signal = getSignal
+              if (signal) {
+                const observedAbort = () => { captured.signal.abortObservedAt = Date.now() }
+                signal.addEventListener("abort", observedAbort, { once: true })
+                state.stopGets.push(() => { captured.signal.finalAborted = signal.aborted; signal.removeEventListener("abort", observedAbort) })
+              }
+            }
+          }
           if (selected) {
             state.requests++
             if (typeof init?.body === "string") requestCopy = new Request(url, { method: "POST", body: init.body }).clone()
@@ -79,6 +100,33 @@ async function installObserver(context: BrowserContext, key: string, apis: strin
           }
         } catch { state.failures.push("observer-request-clone-failed") }
         const result = Reflect.apply(original, this, args) as Promise<Response>
+        if (getRead) {
+          const captured = getRead, signal = getSignal
+          const job = result.then(async (response) => {
+            captured.responseAt = Date.now(); captured.status = response.status
+            captured.cacheControl = response.headers.get("cache-control") ?? ""; captured.contentType = response.headers.get("content-type") ?? ""
+            const body = await text(response.clone(), 128 * 1024)
+            captured.eof = true; captured.eofAt = Date.now(); captured.bytes = body.bytes; captured.signal.abortedAtEOF = signal?.aborted ?? null
+            captured.sha256 = Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(body.value))), (byte) => byte.toString(16).padStart(2, "0")).join("")
+            const value = JSON.parse(body.value)
+            if (!value || value.id !== expectedId || value.workspaceSlug !== "core-growth" || value.kind !== expectedKind
+              || !Number.isSafeInteger(value.draftRevision) || value.draftRevision < 1 || typeof value.draftHash !== "string" || !/^[0-9a-f]{64}$/.test(value.draftHash)) throw new Error("observer-get-state-invalid")
+            let current: GetState["current"] = null
+            if (value.current !== null) {
+              const publication = value.current
+              if (!publication || typeof publication.publicId !== "string" || !new RegExp("^" + expectedKind + "_[0-9a-f]{32}$").test(publication.publicId)
+                || typeof publication.versionId !== "string" || !/^[0-9a-f-]{36}$/.test(publication.versionId) || !Number.isSafeInteger(publication.sourceRevision) || publication.sourceRevision < 1
+                || typeof publication.documentHash !== "string" || !/^[0-9a-f]{64}$/.test(publication.documentHash) || typeof publication.artifactHash !== "string" || !/^[0-9a-f]{64}$/.test(publication.artifactHash)
+                || publication.publicUrl !== "/v/" + publication.publicId || publication.versionUrl !== publication.publicUrl + "/" + publication.versionId) throw new Error("observer-get-current-invalid")
+              current = { publicId: publication.publicId, versionId: publication.versionId, sourceRevision: publication.sourceRevision, documentHash: publication.documentHash, artifactHash: publication.artifactHash, publicUrl: publication.publicUrl, versionUrl: publication.versionUrl }
+            }
+            captured.state = { id: value.id, workspaceSlug: value.workspaceSlug, kind: value.kind, draftRevision: value.draftRevision, draftHash: value.draftHash, current }
+          }).catch((error: unknown) => {
+            captured.bodyError = error && typeof error === "object" && "name" in error && typeof error.name === "string" ? error.name.slice(0, 64) : "UnknownError"
+            if (state.getFailures.length < 8) state.getFailures.push("observer-publication-get-failed")
+          }).finally(() => state.getJobs.delete(job))
+          state.getJobs.add(job)
+        }
         if (selected) {
           const job = result.then(async (response) => {
             const copy = response.clone()
@@ -93,7 +141,7 @@ async function installObserver(context: BrowserContext, key: string, apis: strin
         }
         return result
       }
-    }, { key, origin: ORIGIN, apis })
+    }, { key, origin: ORIGIN, apis, getEndpoint, expectedId, expectedKind })
 }
 
 async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo) {
@@ -119,6 +167,9 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
   const reads: Array<{ path: string; requestId: string; status: number; cacheControl: string; bytes: number; sha256: string }> = []
   const observerFailures: string[] = []
   let observerPending = 0
+  let getObservations: { requests: number; reads: GetRead[]; pendingJobs: number; failures: string[]; signalsDetached: boolean } = { requests: 0, reads: [], pendingJobs: 0, failures: [], signalsDetached: false }
+  let nodeGetRequests = 0
+  const nodeGetTimeline: NodeGet[] = [], nodeGets = new WeakMap<PlaywrightRequest, NodeGet>()
   const publications: Array<Publication & { requestId: string }> = []
   const immutableReads: Array<{ stage: string; path: string; bytes: number; sha256: string }> = []
   const liveTargets: Array<{ stage: string; path: string; status: number; target: string }> = []
@@ -157,10 +208,14 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
     context.on("page", (opened) => { if (extraPageBudget-- <= 0) problem("unexpectedRequests", "Unexpected extra page"); watchPage(opened) })
     context.on("response", (response) => {
       const headers = response.headers()
+      const get = nodeGets.get(response.request())
+      if (get) { get.responseAt = Date.now(); get.status = response.status(); get.contentType = (headers["content-type"] ?? "").slice(0, 100) }
       received.set(response.request(), { status: response.status(), contentType: (headers["content-type"] ?? "").slice(0, 100), path: pathOf(response.url()), redirect: pathOf(headers["x-action-redirect"] ?? headers.location) })
       if (response.status() >= 400) problem("httpErrors", response.status() + " " + requestLabel(response.request()))
     })
     context.on("requestfailed", (request) => {
+      const get = nodeGets.get(request)
+      if (get) { get.requestfailedAt = Date.now(); get.errorText = bounded(request.failure()?.errorText ?? "unknown", 240) }
       const permission = admitted.get(request), response = received.get(request), url = new URL(request.url())
       const flight = !anon && request.method() === "GET" && url.searchParams.has("_rsc") && request.headers().rsc === "1"
       const stream = response?.status === 200 && response.contentType.startsWith("text/x-component")
@@ -169,6 +224,10 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
         && (permission.action ? stream || [303, 307, 308].includes(response.status) : flight && stream) && cancellations.length < 16) {
         cancellations.push({ transition: permission.transition, method: request.method(), path: url.pathname, target: permission.target, status: response.status, contentType: response.contentType, redirect: response.redirect })
       } else problem("requestFailures", requestLabel(request) + " " + (request.failure()?.errorText ?? "unknown") + " response=" + (response?.status ?? "none"))
+    })
+    context.on("requestfinished", (request) => {
+      const get = nodeGets.get(request)
+      if (get) get.requestfinishedAt = Date.now()
     })
     await context.routeWebSocket("**/*", (route) => {
       const url = new URL(route.url())
@@ -187,7 +246,17 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
         if (!anon) admitted.set(request, { transition: stage, target: authTarget, action: false })
         allowedReads++; await route.continue(); return
       }
-      if (!anon && read && url.pathname === publicationApi && !url.search) { allowedReads++; await route.continue(); return }
+      if (!anon && read && url.pathname === publicationApi && !url.search) {
+        if (request.method() === "GET") {
+          nodeGetRequests++
+          if (nodeGetTimeline.length >= 8) problem("requestFailures", "Publication GET timeline exceeded its bound")
+          else {
+            const observed: NodeGet = { ordinal: nodeGetRequests, path: url.pathname, startStage: stage, startedAt: Date.now(), responseAt: null, status: null, contentType: null, requestfinishedAt: null, requestfailedAt: null, errorText: null }
+            nodeGets.set(request, observed); nodeGetTimeline.push(observed)
+          }
+        }
+        allowedReads++; await route.continue(); return
+      }
       if (!anon && request.method() === "POST" && !url.search && request.headers().origin === ORIGIN
         && /^application\/json(?:;|$)/.test(request.headers()["content-type"] ?? "") && (request.postDataBuffer()?.length ?? 0) <= 2 * 1024 * 1024
         && ((url.pathname === publicationApi && ["publish-1", "publish-2"].includes(stage)) || (url.pathname === DRAFT_API && stage === "save-2"))) {
@@ -283,7 +352,7 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
   }
   try {
     watchPage(page); await guard(auth, false)
-    await installObserver(auth, observerKey, [DRAFT_API, publicationApi])
+    await installObserver(auth, observerKey, [DRAFT_API, publicationApi], publicationApi, id, kind)
     stage = "sign-in"; authTarget = WORKSPACE; postPath = "/auth"
     await page.goto("/auth", { waitUntil: "load" })
     await page.locator("#sign-in-email").fill("morgan@northstarlabs.com"); await page.locator("#sign-in-password").fill("demo1234")
@@ -389,23 +458,31 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
     try {
       const state = await page.locator("body").evaluate(async (_body, key) => {
         const state = (window as unknown as Record<string, ResponseObserver>)[key]
-        if (!state) return { pending: 0, failures: ["observer-state-missing"] }
+        if (!state) return { pending: 0, failures: ["observer-state-missing"], get: { requests: 0, reads: [], pendingJobs: 0, failures: ["observer-get-state-missing"], signalsDetached: false } }
         let timer: ReturnType<typeof setTimeout> | undefined
-        await Promise.race([Promise.allSettled([...state.jobs]), new Promise<void>((resolve) => { timer = setTimeout(resolve, 1000) })]).finally(() => clearTimeout(timer))
-        return { pending: state.jobs.size, failures: state.failures.slice(0, 8) }
+        await Promise.race([Promise.allSettled([...state.jobs, ...state.getJobs]), new Promise<void>((resolve) => { timer = setTimeout(resolve, 1000) })]).finally(() => clearTimeout(timer))
+        for (const stop of state.stopGets) stop()
+        state.stopGets.length = 0
+        return { pending: state.jobs.size, failures: state.failures.slice(0, 8), get: { requests: state.getRequests, reads: state.getReads, pendingJobs: state.getJobs.size, failures: state.getFailures.slice(0, 8), signalsDetached: true } }
       }, observerKey, { timeout: 1500 })
       observerPending = state.pending; observerFailures.push(...state.failures)
+      getObservations = state.get
     } catch { observerFailures.push("observer-final-drain-failed") }
     if (observerPending || observerFailures.length) cleanupFailures.push("Real response observer did not close completely")
+    if (getObservations.pendingJobs || getObservations.failures.length || !getObservations.signalsDetached) cleanupFailures.push("Publication GET observer did not close completely")
     if (anonymous) try { await anonymous.close(); contextsClosed++ } catch (error) { cleanupFailures.push(bounded(error)) }
     try { await auth.close(); contextsClosed++ } catch (error) { cleanupFailures.push(bounded(error)) }
     await Promise.allSettled([...pending]); await new Promise<void>((resolve) => setImmediate(resolve))
+    if (nodeGetRequests !== getObservations.requests || nodeGetTimeline.some((row) => row.requestfinishedAt === null && row.requestfailedAt === null)) cleanupFailures.push("Publication GET observation counts or terminal request events are incomplete")
     for (const row of cancellations) if (primary || stage !== "complete" || !completed.has(row.transition) || observations.originalVersionBytesUnchanged !== true) problem("requestFailures", "Unproven cancellation " + row.method + " " + row.path + " " + row.transition)
     const report = { kind: "iv-workspace-publication-boundary", schemaVersion: 1, title: info.title, profile: info.project.name, documentKind: kind,
       stage, status: !primary && Object.values(counts).every((value) => value === 0) && contextsClosed === 2 && cleanupFailures.length === 0 ? "passed" : "failed",
       primaryError: primary ? bounded(primary instanceof Error ? primary.message : primary, 4096) : null,
       realPublishRequests, realSaveRequests, observations,
       responseObserver: { kind: "native-fetch-response-clone", maxResponseBytes: 5 * 1024 * 1024, reads, pendingJobs: observerPending, failures: observerFailures },
+      publicationGetObserver: { kind: "native-fetch-publication-get-clone", maxBodyBytes: 131072, ...getObservations, nodeRequests: nodeGetRequests, nodeTimeline: nodeGetTimeline,
+        nodePendingRequests: nodeGetTimeline.filter((row) => row.requestfinishedAt === null && row.requestfailedAt === null).length,
+        correlation: "method-path-ordinal-and-time-only", exactFailedRequestBindingClaimed: false, snapshotBeforeContextClose: true },
       boundary: { counts, diagnostics, allowedReads, allowedActions, developmentWebSockets, navigationCancellationCount: cancellations.length, navigationCancellations: cancellations },
       cleanup: { contextsCreated: anonymous ? 2 : 1, contextsClosed, pendingJobs: pending.size, failures: cleanupFailures } }
     const bytes = Buffer.from(JSON.stringify(report))
