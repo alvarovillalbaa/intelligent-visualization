@@ -3,6 +3,7 @@ import path from "path"
 import { NextResponse } from "next/server"
 
 import { readStoredFile } from "@/lib/storage"
+import { WORKSPACE_PUBLICATION_NAMESPACE } from "@/packages/backend-contracts/workspace-publications"
 
 function getContentType(filePath: string) {
   switch (path.extname(filePath).toLowerCase()) {
@@ -41,6 +42,10 @@ export async function GET(
   { params }: { params: Promise<{ segments: string[] }> },
 ) {
   const { segments } = await params
+  if (!Array.isArray(segments) || !segments.length || segments.some((segment) => !segment || segment === "." || segment === ".."
+    || /[\\/\0]/.test(segment) || segment.toLowerCase() === WORKSPACE_PUBLICATION_NAMESPACE)) {
+    return NextResponse.json({ error: "File not found." }, { status: 404, headers: { "Cache-Control": "private, no-store" } })
+  }
   const storageKey = segments.join("/")
   const content = await readStoredFile(storageKey)
 

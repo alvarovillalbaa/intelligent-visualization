@@ -424,6 +424,7 @@ export interface PersistenceProvider {
   health(): Promise<ProviderHealth>
 
   workspaceDrafts: import("./workspace-drafts").WorkspaceDraftRepository
+  workspacePublications: import("./workspace-publications").WorkspacePublicationRepository
 
   users: UserRepository
   sessions: SessionRepository

@@ -4,7 +4,7 @@ import { z } from "zod"
 import { WorkspaceDraftAccessError } from "@/packages/backend-contracts/workspace-drafts"
 
 export const WORKSPACE_DRAFT_BODY_LIMIT = 2 * 1024 * 1024
-class WorkspaceDraftOriginError extends Error {}
+export class WorkspaceDraftOriginError extends Error {}
 export const workspaceDraftInputSchema = z.object({
   id: z.uuid(),
   requestId: z.uuid(),
@@ -25,7 +25,7 @@ export function draftFailure(error: unknown) {
   return draftJson({ code: "DRAFT_UNAVAILABLE", error: "The draft response could not be confirmed. Keep your edits and retry the same save." }, 503)
 }
 
-export async function readWorkspaceDraftInput(request: Request) {
+export function requireWorkspaceDraftOrigin(request: Request) {
   const configured = process.env.NEXT_PUBLIC_APP_URL
   if (!configured) throw new Error("Workspace draft origin is not configured.")
   const app = new URL(configured)
@@ -34,6 +34,10 @@ export async function readWorkspaceDraftInput(request: Request) {
   }
   // NextRequest normalizes loopback hosts. Only the operator's configured origin is trusted.
   if (request.headers.get("origin") !== app.origin) throw new WorkspaceDraftOriginError()
+}
+
+export async function readWorkspaceDraftInput(request: Request) {
+  requireWorkspaceDraftOrigin(request)
   if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get("content-type") ?? "") || !request.body) {
     throw new WorkspaceDraftAccessError("INVALID_INPUT")
   }

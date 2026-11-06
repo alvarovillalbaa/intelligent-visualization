@@ -95,7 +95,7 @@ function decodeCursor(cursor: string, scope: Scope): [string, string] {
   } catch { fail("INVALID_INPUT") }
 }
 
-async function verifyProjection(database: LocalDatabase, scope: Scope): Promise<boolean> {
+async function verifyProjection(database: LocalDatabase, scope: Pick<Scope, "teamId" | "workspaceId"> & { team: Pick<TeamRecord, "id"> }): Promise<boolean> {
   const team = (await database.query(`SELECT brand_json FROM ${LOCAL_SCHEMA}.teams WHERE id = $1 FOR SHARE`, [scope.teamId])).rows[0]
   const workspace = (await database.query(`SELECT team_id FROM ${LOCAL_SCHEMA}.workspaces WHERE id = $1 FOR SHARE`, [scope.workspaceId])).rows[0]
   if (team) {
@@ -106,6 +106,9 @@ async function verifyProjection(database: LocalDatabase, scope: Scope): Promise<
   if (workspace && (!team || workspace.team_id !== scope.teamId)) fail("NOT_FOUND")
   return Boolean(team && workspace)
 }
+
+export { authorize as authorizeWorkspaceDraftAccess, inScope as workspaceDraftInScope, verifyProjection as verifyWorkspaceDraftProjection }
+export type { Scope as WorkspaceDraftScope }
 
 async function mirrorWorkspace(database: LocalDatabase, scope: Scope) {
   const now = new Date().toISOString()
