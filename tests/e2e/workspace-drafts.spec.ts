@@ -105,6 +105,13 @@ async function journey(kind: Kind, page: Page, testInfo: TestInfo) {
     await dialog.getByLabel(kind === "course" ? "Title" : "Report title", { exact: true }).fill(title)
     await dialog.getByRole("button", { name: "Apply changes", exact: true }).click()
     await expect(dialog).toBeHidden()
+    if (stage === "apply-first") {
+      const back = page.getByRole("button", { name: "Back", exact: true })
+      await back.click()
+      await expect(back).toBeHidden()
+      await expect(page.getByRole("button", { name: `Save ${label}`, exact: true })).toBeVisible()
+      await expect(page.getByRole("button", { name: `Save ${label}`, exact: true })).toBeEnabled()
+    }
   }
   async function inspectSaved(title: string) {
     await page.getByRole("button", { name: `Edit ${label}`, exact: true }).click()
@@ -115,6 +122,7 @@ async function journey(kind: Kind, page: Page, testInfo: TestInfo) {
   }
   async function save(buttonName: string, revision: number, title: string) {
     stage = revision === 1 ? "save-first" : "save-revision"; target = savedPath
+    try {
     const [response] = await Promise.all([
       page.waitForResponse((response) => response.url() === ORIGIN + API && response.request().method() === "POST"),
       page.getByRole("button", { name: buttonName, exact: true }).click(),
@@ -134,6 +142,36 @@ async function journey(kind: Kind, page: Page, testInfo: TestInfo) {
     if (savedPath) expect(savedPath).toBe(`${WORKSPACE}/visualizations/${ack.draft.id}`)
     savedPath = `${WORKSPACE}/visualizations/${ack.draft.id}`; pages.add(savedPath)
     completed.add(stage)
+    } catch (error) {
+      const failure: Record<string, unknown> = {
+        stage, revision, originalError: bounded(error instanceof Error ? error.message : error, 2048),
+      }
+      observations.saveFailure = failure
+      try {
+        const visible = await page.locator("body").evaluate((body) => {
+          const shown = (element: Element) => {
+            const style = getComputedStyle(element)
+            return element.getClientRects().length > 0 && style.visibility !== "hidden" && style.display !== "none"
+          }
+          return {
+            alerts: Array.from(body.querySelectorAll('[role="alert"]')).filter(shown).slice(0, 8).map((element) => (element.textContent ?? "").slice(0, 4096)).join("\n"),
+            buttons: Array.from(body.querySelectorAll("button")).filter(shown).filter((button) => /save/i.test(button.textContent ?? "")).slice(0, 4).map((button) => ({ text: (button.textContent ?? "").trim().slice(0, 120), disabled: button.disabled, ariaDisabled: button.getAttribute("aria-disabled") })),
+            statuses: Array.from(body.querySelectorAll('[role="status"]')).filter(shown).slice(0, 4).map((element) => (element.textContent ?? "").trim().slice(0, 240)),
+          }
+        }, undefined, { timeout: 1000 })
+        let alerts = ""
+        for (const character of bounded(visible.alerts, 2048)) {
+          if (Buffer.byteLength(alerts + character, "utf8") > 2048) break
+          alerts += character
+        }
+        failure.alerts = alerts
+        failure.visibleSaveButtons = visible.buttons.map((button) => ({ ...button, text: bounded(button.text, 120) }))
+        failure.statuses = visible.statuses.map((status) => bounded(status, 240))
+      } catch (diagnosticError) {
+        failure.diagnosticError = bounded(diagnosticError, 240)
+      }
+      throw error
+    }
   }
   try {
     await context.routeWebSocket("**/*", (route) => {

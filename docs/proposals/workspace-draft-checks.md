@@ -43,6 +43,13 @@ Known header-qualified streamed-navigation cancellations remain separate evidenc
 missing responses/assets/documents/errors still fail. Temporary workflows are
 QA-only and disabled/retired after use. Failed attempts remain preserved.
 
+Attempt 2 passed all eight HTTP/client and sixteen PostgreSQL cases; the browser
+fixture omitted Back after Composer Apply opened its full-screen preview. Attempt
+3 corrects that user interaction and retains bounded failure diagnostics. It
+validates the immutable original 24 passes/captures and all 256 protected runtime
+inputs, excluding only the changed browser fixture. Those cases do not rerun;
+the four failed browser identities are not carried as acceptance.
+
 This is local saving acceptance, not hosted Supabase/Auth/RLS/storage, publication,
 AI/Eve, physical touch/device, every editor action or full-product proof. Guest
 drafts still require explicit recovery; creating an account does not transfer them.

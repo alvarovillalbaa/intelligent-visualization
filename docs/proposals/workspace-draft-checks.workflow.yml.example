@@ -1,12 +1,12 @@
 # Inactive. Pin immutable reviewed source before creating the one owned QA ref.
-name: Temporary workspace draft checks attempt 2
+name: Temporary workspace draft browser completion attempt 3
 on:
   create:
 permissions:
   contents: read
 jobs:
   workspace-drafts:
-    if: github.repository == 'alvarovillalbaa/intelligent-visualization' && github.event.repository.private == false && github.event.ref_type == 'branch' && github.event.ref == 'qa/workspace-drafts-20261106-2' && github.ref == 'refs/heads/qa/workspace-drafts-20261106-2'
+    if: github.repository == 'alvarovillalbaa/intelligent-visualization' && github.event.repository.private == false && github.event.ref_type == 'branch' && github.event.ref == 'qa/workspace-drafts-20261106-3' && github.ref == 'refs/heads/qa/workspace-drafts-20261106-3'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     services:
@@ -38,5 +38,5 @@ jobs:
         with:
           node-version: 24.21.0
           package-manager-cache: false
-      - name: Focused new workspace draft checks only
+      - name: Validate prior core passes and execute four corrected browser cases
         run: python3 scripts/workspace-draft-checks.py
