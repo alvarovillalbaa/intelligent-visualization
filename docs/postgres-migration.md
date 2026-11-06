@@ -6,8 +6,9 @@ The owner's [All projects brief](https://app.notion.com/p/3b6a1ee8bd06803e99d1cf
 requires PostgreSQL for local persistence and removal of alternative database
 providers. The returned Notion snapshot was edited 15 October 2026. This source
 implements the local database, slide repository and private Course/Report draft
-application service. Hosted Supabase/Auth/RLS/storage, Course/Report publication
-and the full AI/Eve suite remain unfinished.
+application service and explicit saved-revision Course/Report publication.
+Hosted Supabase/Auth/RLS/storage/publication and the full AI/Eve suite remain
+unfinished.
 
 ## New installations
 
@@ -76,14 +77,19 @@ reauthorizes access and returns both its original accepted revision/hash and
 current state. Conflicts and uncertain acknowledgements preserve local edits;
 they do not authorize replacing a newer revision. Applying an edit remains local
 until an explicit save. This reuses existing tables without a new schema migration.
-Course/Report publication, public links and durable object storage are not added;
-existing slide and canonical publication paths remain unchanged. The
+The separate [publication flow](workspace-publication.md) now adds explicit
+saved-revision publication, anonymous live/version readers and verified immutable
+local artifact storage without a new schema migration. Existing slide readers
+remain separate; the raw-file route rejects the reserved canonical namespace.
+The
 [local acceptance record](results/2026/11-06/workspace-drafts-checks.md) verifies
 private Course/Report saving, revision-two edits, reload and fresh-sign-in reopen
 on desktop and narrow browser profiles, including cleanup. Its four browser
 journeys are separate from the sixteen PostgreSQL cases on attempt 2's source and
 eight HTTP/client cases on attempt 4's source; no single 28-case invocation is
-claimed. Hosted Supabase/Auth/RLS/storage, publication and full AI remain pending.
+claimed. The [publication receipt](results/2026/11-06/workspace-publications-checks.md)
+records its distinct forty core and four browser identities across three sources.
+Hosted Supabase/Auth/RLS/storage/publication and full AI remain pending.
 
 Files written during a legacy operation remain outside SQL compensation;
 a failed/uncertain commit can leave an orphan file and must not trigger broad deletion.

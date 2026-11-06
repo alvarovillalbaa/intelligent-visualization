@@ -30,6 +30,17 @@ The client keeps local Apply, explicit Save, accepted revision and unresolved
 intent separately. See [private drafts](private-workspace-drafts.md) and
 [provider architecture](provider-architecture.md).
 
+`WorkspacePublicationRepository` adds named prepare/commit/resolve operations over
+the same database. Each mutation freshly authorizes the legacy actor and binds
+the request/version IDs, saved revision/hash and original live pointer. The
+application service verifies one exclusively created artifact envelope before
+atomically committing the version, pointer and receipt. Retries preserve original
+bytes and acknowledgements; concurrent draft/pointer changes cause conflict.
+Canonical `/v/` readers resolve committed ownership before validating stored HTML,
+manifest, hashes and stored CSP. The legacy raw-file reader rejects the reserved
+publication namespace. See [publication](workspace-publication.md) and its
+[separate acceptance](results/2026/11-06/workspace-publications-checks.md).
+
 ## Source Composer
 
 The composer keeps added text sources and pending input separately, then serializes them into the existing `GenerationInput.rawText` field. `lib/client/composer-source-input.ts` owns lossless serialization and restoration; `lib/client/guest-draft.ts` retains the existing v2 guest-draft key and expiry with optional entry metadata. Legacy multiline text restores as one source. Metadata is omitted before reducing file content under storage quota pressure. See [source intake](source-intake.md) for the user flow and [focused evidence](results/2026/10-27/source-inputs.md) for verification limits.

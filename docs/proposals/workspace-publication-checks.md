@@ -69,6 +69,13 @@ unchanged, and request failures remain fatal. Only narrow Report runs. All 268
 other browser runtime inputs stay exact; method/path/ordinal/time correlation is
 explicitly not claimed as exact JS-to-Playwright request identity.
 
+Attempt 3 passes narrow Report with both status bodies consumed to EOF, both
+observed requests finished and no failed/aborted status read. The
+[accepted receipt](../results/2026/11-06/workspace-publications-checks.md) combines
+that one pass with the three carried browser identities and forty carried core
+cases. The earlier aborted-read causes remain unproven and both earlier overall
+verdicts remain false. Temporary CI is disabled and retired after publication.
+
 Fresh host Storage Guard measured 17.8 GiB free against 34.0 required. No local
 install, build, database, server or browser runs. This verifies the local canonical
 publication slice; hosted Supabase/Auth/RLS/storage, original assets, physical

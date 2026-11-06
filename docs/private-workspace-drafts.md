@@ -3,8 +3,9 @@
 Last updated: 2026-11-06
 
 Authenticated workspaces can save Course and Report documents using the local
-PostgreSQL provider. Slides keep their existing save flow. These private drafts
-do not have public links or publishing controls.
+PostgreSQL provider. Slides keep their existing save flow. Saving a working draft
+does not publish it. The saved page separately offers
+[explicit public snapshots](workspace-publication.md).
 
 ## Save and reopen
 
@@ -41,8 +42,8 @@ closed; request and forwarded headers do not supply a fallback address.
 
 Guest drafts retain their existing four-hour browser storage behavior. Signing
 up does not automatically transfer them to a workspace. Original uploaded files,
-hosted Supabase/Auth/storage, public publication and the full AI/Eve integration
-are separate work. The [accepted local checks](results/2026/11-06/workspace-drafts-checks.md)
+hosted Supabase/Auth/storage/publication and the full AI/Eve integration
+remain separate work. The [accepted local checks](results/2026/11-06/workspace-drafts-checks.md)
 cover private saving, reopening and revision two on desktop/narrow profiles.
 See the [focused scope](proposals/workspace-draft-checks.md) and
 [limitations](limitations.md) for the remaining boundary.
