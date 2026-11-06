@@ -25,8 +25,9 @@ They are not yet an authenticated public publishing service.
 
 ## Prerequisite and proposed flow
 
-The local storage immutability repair is the immediate prerequisite and is being
-handled separately. Publication must not accept partial or overwriteable objects
+The local storage exclusive-creation prerequisite is
+[accepted separately](../results/2026/11-06/immutable-storage-checks.md).
+Publication must not accept partial or overwriteable objects
 as immutable artifacts. Its focused evidence must establish exclusive creation;
 the publication service must separately reconcile the bytes and commit state of
 a same-intent retry before relying on it.

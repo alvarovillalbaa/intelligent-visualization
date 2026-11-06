@@ -47,3 +47,9 @@ cleanup pass. It fulfills only generation and observes real save bodies through
 an explicit bounded native-fetch response clone. Five failed attempts remain.
 There is no single 28-case invocation or current broad suite/build claim. Hosted
 Auth/storage/publication, physical devices and full-product coverage remain open.
+
+The separate [six immutable-storage cases](results/2026/11-06/immutable-storage-checks.md)
+pass on real owned temporary filesystem objects, with scoped static and process/
+fixture/scratch closure. They execute no database, browser or closed suite. Their
+nine source-export inputs and Linux-only limits are recorded independently of
+the earlier private-draft and migration sources.
