@@ -2,6 +2,9 @@
 
 Last updated: 2026-11-06
 
+Status: six focused cases and owned cleanup accepted; see
+[the canonical receipt](../results/2026/11-06/immutable-storage-checks.md).
+
 Private Course/Report saving is accepted separately at `9088cb7a`. The next
 publication prerequisite is narrower: `LocalStorageAdapter.put` currently checks
 existence and then performs an overwrite-capable write. Concurrent callers can

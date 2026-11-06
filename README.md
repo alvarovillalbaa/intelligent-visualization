@@ -19,7 +19,7 @@ Implemented in the current migration slice:
 - Canonical visualization document model for courses, slides, and reports.
 - Explicit local PostgreSQL provider in the isolated `intelligent_visualization_local` schema.
 - Durable, transactional legacy slide operations alongside canonical visualization tables.
-- Local filesystem storage under `.data/storage`.
+- Local filesystem storage under `.data/storage`, with [exclusive immutable writes and detached byte snapshots](docs/results/2026/11-06/immutable-storage-checks.md).
 - Provider-neutral persistence and storage contracts.
 - Standalone HTML artifact compiler with manifests and hashes.
 - Explicit local setup, doctor and private database export/import tools. Reset never deletes data automatically.
