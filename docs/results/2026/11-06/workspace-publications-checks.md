@@ -52,8 +52,9 @@ publishes and one actual revision save: eight publication POSTs and four saves i
 total. Live redirects follow the committed version; local unsaved Apply blocks
 publishing; saving alone leaves public bytes unchanged. Three reads of the first
 version remain byte-identical after publishing revision two. Anonymous contexts
-read actual HTML. Course quiz feedback and version-scoped lesson completion
-survive reload; Report markup stays literal. No generation or persistence/artifact
+read actual HTML. Course quiz feedback works, and version-scoped lesson completion
+survives reload; quiz feedback resets on reload. Report markup stays literal.
+No generation or persistence/artifact
 response is fulfilled.
 
 All accepted cases have zero unexpected request, HTTP/page/console error,
