@@ -1,5 +1,7 @@
 # Testing
 
+Last updated: 2026-11-06
+
 Current executable tests:
 
 - Domain schema and migration tests.
@@ -36,3 +38,12 @@ later lifecycle-only closure. All four failed overall attempts remain preserved;
 no single 37-case run or current broad suite/build is claimed.
 Historical 474-case and Course browser results keep their original sources and
 are not relabelled as current migration acceptance.
+
+The [private Course/Report receipt](results/2026/11-06/workspace-drafts-checks.md)
+accepts sixteen PostgreSQL, eight HTTP/client and four actual desktop/narrow
+journeys across three sources. The final browser execution carries verified
+earlier passes without rerunning them; all four current journeys and owned
+cleanup pass. It fulfills only generation and observes real save bodies through
+an explicit bounded native-fetch response clone. Five failed attempts remain.
+There is no single 28-case invocation or current broad suite/build claim. Hosted
+Auth/storage/publication, physical devices and full-product coverage remain open.

@@ -77,8 +77,13 @@ current state. Conflicts and uncertain acknowledgements preserve local edits;
 they do not authorize replacing a newer revision. Applying an edit remains local
 until an explicit save. This reuses existing tables without a new schema migration.
 Course/Report publication, public links and durable object storage are not added;
-existing slide and canonical publication paths remain unchanged. Current-source
-browser acceptance is still pending in [the focused checks](proposals/workspace-draft-checks.md).
+existing slide and canonical publication paths remain unchanged. The
+[local acceptance record](results/2026/11-06/workspace-drafts-checks.md) verifies
+private Course/Report saving, revision-two edits, reload and fresh-sign-in reopen
+on desktop and narrow browser profiles, including cleanup. Its four browser
+journeys are separate from the sixteen PostgreSQL cases on attempt 2's source and
+eight HTTP/client cases on attempt 4's source; no single 28-case invocation is
+claimed. Hosted Supabase/Auth/RLS/storage, publication and full AI remain pending.
 
 Files written during a legacy operation remain outside SQL compensation;
 a failed/uncertain commit can leave an orphan file and must not trigger broad deletion.

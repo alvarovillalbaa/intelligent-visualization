@@ -42,5 +42,7 @@ closed; request and forwarded headers do not supply a fallback address.
 Guest drafts retain their existing four-hour browser storage behavior. Signing
 up does not automatically transfer them to a workspace. Original uploaded files,
 hosted Supabase/Auth/storage, public publication and the full AI/Eve integration
-are separate work. See the [focused check scope](proposals/workspace-draft-checks.md)
-and [limitations](limitations.md) for the current acceptance boundary.
+are separate work. The [accepted local checks](results/2026/11-06/workspace-drafts-checks.md)
+cover private saving, reopening and revision two on desktop/narrow profiles.
+See the [focused scope](proposals/workspace-draft-checks.md) and
+[limitations](limitations.md) for the remaining boundary.

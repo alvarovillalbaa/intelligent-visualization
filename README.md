@@ -37,6 +37,13 @@ browser identities at their separately recorded sources. Current scoped static,
 setup/doctor and owned shutdown checks passed without rerunning accepted cases.
 The candidate remains on a work branch until hosted configuration is ready.
 
+The separate [private draft checks](docs/results/2026/11-06/workspace-drafts-checks.md)
+accept sixteen real PostgreSQL cases, eight HTTP/client cases and four actual
+desktop/narrow Course/Report journeys at their recorded sources. Save, reopen,
+revision-two editing, reload and a new sign-in session pass. Earlier accepted
+cases are carried by exact input/capture checks; no single 28-case run is claimed.
+Hosted persistence/publication remains unfinished.
+
 The historical [Report CSV checks](docs/results/2026/11-04/report-csv-import-checks.md)
 passed all 176 focused cases on 4 November 2026. The separate
 [normal quality CI](docs/results/2026/11-04/report-csv-import-normal-ci.md)

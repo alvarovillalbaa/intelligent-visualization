@@ -19,9 +19,13 @@ The client retains uncertain save intents and local edits, and requires reopenin
 when current and acknowledged revisions diverge. Apply changes the local editor;
 Save Course/Report or Save revision persists explicitly.
 
-The implementation exists, but current-source browser acceptance is still pending
-in [the focused checks](workspace-draft-checks.md). Failed runs remain historical
-evidence. This change leaves publication paths unchanged and provides no new public
+The [local acceptance record](../results/2026/11-06/workspace-drafts-checks.md)
+now verifies private Course and Report saving, revision-two edits, reload and
+fresh-sign-in reopen on desktop and narrow profiles, with verified cleanup.
+Those four browser journeys are accepted separately from the sixteen PostgreSQL
+cases on attempt 2's source and eight HTTP/client cases on attempt 4's source;
+there was no single 28-case invocation. Failed runs remain historical evidence.
+This change leaves publication paths unchanged and provides no new public
 Course/Report link. Future publication must compile the committed revision, retain
 durable bytes and commit the version/pointer together; uncertain acknowledgements
 must be reconciled before retry or cleanup.

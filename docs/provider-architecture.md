@@ -53,10 +53,13 @@ forwarded headers and loopback aliases are not alternate trust sources. Missing
 or invalid configuration fails closed. Apply updates local editor state; explicit
 Save persists it. This integration does not publish artifacts or add public links.
 
-Implementation is present; current-source browser acceptance remains pending in
-[the focused checks](proposals/workspace-draft-checks.md). Hosted Supabase/Auth/RLS,
-object storage, publication and the full AI/Eve flow remain separate gates. No
-deployment is included.
+Local private Course/Report browser acceptance now covers desktop and narrow
+profiles saving, editing revision two, reloading and reopening after fresh sign-in,
+with verified cleanup. The [acceptance record](results/2026/11-06/workspace-drafts-checks.md)
+keeps those four journeys separate from the sixteen PostgreSQL cases on attempt 2's
+source and eight HTTP/client cases on attempt 4's source; these were not one
+28-case invocation. Hosted Supabase/Auth/RLS, object storage, publication and the
+full AI/Eve flow remain separate gates. No deployment is included.
 
 Storage selection remains independent. `auto` selects local filesystem for local
 persistence and the reserved Supabase storage boundary for Supabase. Explicit
