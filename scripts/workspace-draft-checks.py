@@ -16,10 +16,11 @@ import stat
 import subprocess
 import tempfile
 import time
+import traceback
 
 repo = Path.cwd()
 source = os.environ["SOURCE_COMMIT"]
-branch = "qa/workspace-drafts-20261106-5"
+branch = "qa/workspace-drafts-20261106-6"
 app_url = "postgresql://iv_ci:authored-ci-only@127.0.0.1:54431/intelligent_visualization_ci"
 admin_url = "postgresql://iv_ci:authored-ci-only@127.0.0.1:54431/postgres"
 lock_sha = "b18dd278e6eded698e269d2e8400b0359083a8ba34de4721227a70b5e27c0d59"
@@ -101,11 +102,21 @@ def guard(label):
 
 
 guard("before")
+
+
+def process_stat(entry):
+    _prefix, separator, tail = (entry / "stat").read_text().rpartition(") ")
+    fields = tail.split()
+    if not separator or len(fields) < 20 or not fields[2].isdigit() or not fields[19].isdigit():
+        raise ValueError("Process kernel identity could not be parsed")
+    return fields
+
+
 baseline = {}
 for entry in Path("/proc").iterdir():
     if not entry.name.isdigit(): continue
     try:
-        if entry.stat().st_uid == os.getuid(): baseline[entry.name] = (entry / "stat").read_text().rsplit(") ", 1)[1].split()[19]
+        if entry.stat().st_uid == os.getuid(): baseline[entry.name] = process_stat(entry)[19]
     except (FileNotFoundError, ProcessLookupError): pass
     except PermissionError: raise RuntimeError("Process baseline identity unavailable")
 root = Path(tempfile.mkdtemp(prefix="ivw-", dir="/tmp"))
@@ -159,7 +170,7 @@ def owned_processes():
         if not entry.name.isdigit(): continue
         try:
             if entry.stat().st_uid != os.getuid(): continue
-            fields = (entry / "stat").read_text().rsplit(") ", 1)[1].split()
+            fields = process_stat(entry)
             if baseline.get(entry.name) == fields[19] or fields[0] == "Z": continue
             cwd = os.readlink(entry / "cwd")
             argv = [value for value in (entry / "cmdline").read_bytes().split(b"\0") if value]
@@ -169,11 +180,13 @@ def owned_processes():
             matched = pgid in groups or cwd == str(root) or cwd.startswith(str(root) + "/") or any(prefix + b"/" in item for item in argv)
             matched = matched or any(item.startswith(key + b"=" + prefix + b"/") for item in environment for key in [b"TMPDIR", b"XDG_CONFIG_HOME", b"PLAYWRIGHT_BROWSERS_PATH"])
             if matched:
-                row = {"pid": int(entry.name), "startTime": fields[19], "pgid": pgid, "state": fields[0], "executable": Path(os.fsdecode(argv[0] or b"unknown").split()[0]).name,
+                argv0 = os.fsdecode(next(iter(argv), b""))
+                executable = Path(next(iter(argv0.split()), "unavailable")).name
+                row = {"pid": int(entry.name), "startTime": fields[19], "pgid": pgid, "state": fields[0], "executable": executable,
                     "cwd": cwd, "telemetry": len(argv) == 5 and argv[1:] == [os.fsencode(str(app / "node_modules/next/dist/telemetry/detached-flush.js")), b"dev", os.fsencode(str(app)), os.fsencode(f"_events_{server.pid}.json")] if server else False}
                 owned.append(row); observed_processes[(row["pid"], row["startTime"])] = row
         except (FileNotFoundError, ProcessLookupError): pass
-        except (PermissionError, OSError): uncertain.append(int(entry.name))
+        except (PermissionError, OSError, ValueError): uncertain.append(int(entry.name))
     return owned, uncertain
 
 
@@ -539,6 +552,8 @@ try:
     status = 0
 except BaseException as error:
     report["error"] = type(error).__name__ + ": " + str(error)
+    report["errorLocation"] = [{"file": Path(frame.filename).name[:256], "line": frame.lineno, "function": frame.name[:128]}
+        for frame in traceback.extract_tb(error.__traceback__)[-8:]]
 finally:
     cleanup_end = time.monotonic() + 90
     for phase in ["unit", "postgres", "browser"]:

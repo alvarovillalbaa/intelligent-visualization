@@ -72,6 +72,13 @@ carrying only sixteen PostgreSQL and eight HTTP passes. Of 257 runtime inputs,
 252 match attempt 2 and 255 match attempt 4; the explicitly declared differences
 are checked separately. None of the prior failed browser cases is accepted.
 
+Attempt 5 stopped with a process-monitor indexing error while the browser command
+was active. Its final cleanup passed, but neither the browser command receipt nor
+its JSON report was retained; no browser case is accepted from it. Attempt 6
+hardens transient process command-line observation and adds bounded controller
+traceback evidence. Product, browser and carried unit/PostgreSQL inputs stay
+unchanged; the same four unfinished browser identities remain the runtime scope.
+
 This is local saving acceptance, not hosted Supabase/Auth/RLS/storage, publication,
 AI/Eve, physical touch/device, every editor action or full-product proof. Guest
 drafts still require explicit recovery; creating an account does not transfer them.
