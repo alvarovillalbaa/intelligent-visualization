@@ -8,6 +8,7 @@ import { CourseDownload } from "@/components/visualizations/course-download"
 import { ReportDownload } from "@/components/visualizations/report-download"
 import { CoursePreview } from "@/components/visualizations/renderers/course-preview"
 import { ReportPreview } from "@/components/visualizations/renderers/report-preview"
+import { WorkspacePublisher } from "@/components/visualizations/workspace-publisher"
 import { saveWorkspaceDraft, WorkspaceDraftRequestError } from "@/lib/client/workspace-drafts"
 import { canonicalSerialize } from "@/packages/domain/canonical"
 import type { SaveWorkspaceDraftInput, WorkspaceDraft, WorkspaceDraftDocument } from "@/packages/backend-contracts/workspace-drafts"
@@ -21,19 +22,21 @@ export function SavedDraftEditor({ initial, canEdit }: { initial: WorkspaceDraft
   const [unresolved, setUnresolved] = useState(false)
   const [conflict, setConflict] = useState(false)
   const [reloadRequested, setReloadRequested] = useState(false)
+  const [publicationRecovery, setPublicationRecovery] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const current = useRef(initial.document), baseline = useRef(initial)
   const attempt = useRef<SaveWorkspaceDraftInput | null>(null)
   const saving = useRef<AbortController | null>(null)
   const mounted = useRef(true), dirtyRef = useRef(false), leaveConfirmed = useRef(false), editGeneration = useRef(0)
   const errorRef = useRef<HTMLParagraphElement>(null)
+  const publicationRecoveryRef = useRef(false)
   const dirty = canonicalSerialize(document) !== canonicalSerialize(saved.document)
   const kindLabel = document.kind === "course" ? "Course" : "Report"
 
   useEffect(() => {
     mounted.current = true
     function beforeUnload(event: BeforeUnloadEvent) {
-      if (!leaveConfirmed.current && (dirtyRef.current || saving.current || attempt.current)) {
+      if (!leaveConfirmed.current && (dirtyRef.current || saving.current || attempt.current || publicationRecoveryRef.current)) {
         event.preventDefault()
         event.returnValue = ""
       }
@@ -57,7 +60,7 @@ export function SavedDraftEditor({ initial, canEdit }: { initial: WorkspaceDraft
   }
 
   async function save() {
-    if (!canEdit || saving.current || conflict) return
+    if (!canEdit || saving.current || conflict || publicationRecoveryRef.current) return
     const input = attempt.current ?? { id: initial.id, requestId: crypto.randomUUID(), expectedRevision: baseline.current.draftRevision,
       document: structuredClone(current.current) }
     attempt.current = input
@@ -97,23 +100,23 @@ export function SavedDraftEditor({ initial, canEdit }: { initial: WorkspaceDraft
 
   function reload() {
     if (pending) return
-    if (dirty || unresolved || conflict) setReloadRequested(true)
+    if (dirty || unresolved || conflict || publicationRecoveryRef.current) setReloadRequested(true)
     else window.location.reload()
   }
 
   return <section className="mx-auto grid w-full min-w-0 max-w-5xl gap-6" aria-label={`Saved ${kindLabel}`}>
     <header className="grid min-w-0 gap-3">
       <a href={`/app/workspaces/${encodeURIComponent(initial.workspaceSlug)}`} className="w-fit text-sm font-medium text-primary underline">Back to workspace</a>
-      <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">Private {kindLabel} draft</p>
+      <p className="text-xs uppercase tracking-[0.12em] text-muted-foreground">{kindLabel} working draft</p>
       <h1 className="break-words text-3xl font-semibold tracking-tight">{document.title}</h1>
       <p className="break-words text-muted-foreground">{document.summary}</p>
       <p role="status" aria-live="polite" className="text-sm">{pending ? "Saving revision…" : `Saved revision ${saved.draftRevision}.`}</p>
       {dirty ? <p className="text-sm text-muted-foreground">Changes in this tab have not been saved to the workspace.</p> : null}
-      <p className="text-xs text-muted-foreground">This draft is private. Publishing is not available yet. HTML downloads include the edits shown in this tab.</p>
+      <p className="text-xs text-muted-foreground">Your working draft and any published snapshot are separate. HTML downloads include the edits shown in this tab.</p>
     </header>
     <div className="flex flex-wrap gap-2">
       {canEdit ? <Button type="button" variant="outline" className="min-h-11" onClick={() => setEditing({ key: ++editGeneration.current, document: structuredClone(current.current) })}>Edit {kindLabel}</Button> : null}
-      {canEdit ? <Button type="button" className="min-h-11" disabled={pending || conflict || (!dirty && !unresolved)} onClick={() => { void save() }}>
+      {canEdit ? <Button type="button" className="min-h-11" disabled={pending || conflict || publicationRecovery || (!dirty && !unresolved)} onClick={() => { void save() }}>
         {pending ? "Saving revision…" : unresolved ? "Retry same save" : "Save revision"}
       </Button> : <p className="self-center text-sm text-muted-foreground">Your workspace role has read-only access.</p>}
       <Button type="button" variant="outline" className="min-h-11" onClick={() => setPreview((value) => !value)}>{preview ? "Hide preview" : "Preview"}</Button>
@@ -121,12 +124,14 @@ export function SavedDraftEditor({ initial, canEdit }: { initial: WorkspaceDraft
     </div>
     {error ? <p ref={errorRef} tabIndex={-1} role="alert" className="break-words rounded-xl bg-destructive/10 p-4 text-sm text-destructive outline-none">{error}</p> : null}
     {reloadRequested ? <div className="grid gap-3 rounded-xl border border-border bg-white p-4" role="alert">
-      <p>Reload the saved draft and discard the local edits and unresolved save shown in this tab?</p>
+      <p>Reload the saved draft and discard the local edits and unresolved save or publication shown in this tab? An unconfirmed publication may already be public.</p>
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" className="min-h-11" onClick={() => setReloadRequested(false)}>Keep editing</Button>
         <Button type="button" className="min-h-11" onClick={() => { leaveConfirmed.current = true; window.location.reload() }}>Discard and reload</Button>
       </div>
     </div> : null}
+    <WorkspacePublisher draft={saved} canEdit={canEdit} blocked={dirty || pending || unresolved || conflict || editing !== null}
+      onRecoveryChange={(recovering) => { publicationRecoveryRef.current = recovering; setPublicationRecovery(recovering) }} />
     {document.kind === "course" ? <CourseDownload document={document} /> : <ReportDownload document={document} />}
     {preview ? <div className="min-w-0 overflow-hidden rounded-xl bg-white p-3 sm:p-6">
       {document.kind === "course" ? <CoursePreview document={document} /> : <ReportPreview document={document} />}
