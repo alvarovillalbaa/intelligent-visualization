@@ -1,7 +1,7 @@
 import { z } from "zod"
 
 import type { WorkspaceDraftKind } from "@/packages/backend-contracts/workspace-drafts"
-import type { PublishWorkspaceDraftInput, WorkspacePublicationResult, WorkspacePublicationState } from "@/packages/backend-contracts/workspace-publications"
+import type { PublishWorkspaceDraftInput, UnpublishWorkspaceDraftInput, WorkspacePublicationResult, WorkspacePublicationState, WorkspaceUnpublicationResult } from "@/packages/backend-contracts/workspace-publications"
 import { canonicalSerialize } from "@/packages/domain/canonical"
 
 const uuid = z.uuid().refine((value) => value === value.toLowerCase())
@@ -22,6 +22,12 @@ const resultSchema = z.object({
 }).strict()
 const inputSchema = z.object({ id: uuid, requestId: uuid, versionId: uuid,
   expectedRevision: z.number().int().min(1).max(2_147_483_646), expectedDraftHash: hash }).strict()
+const unpublishInputSchema = z.object({ id: uuid, requestId: uuid, expectedCurrentVersionId: uuid }).strict()
+const unpublishResultSchema = z.object({
+  status: z.enum(["unpublished", "conflict"]), state: stateSchema,
+  receipt: z.object({ requestId: uuid, expectedCurrentVersionId: uuid, status: z.enum(["unpublished", "conflict"]),
+    revokedAt: z.iso.datetime({ offset: true }).nullable() }).strict(),
+}).strict()
 
 export class WorkspacePublicationRequestError extends Error {
   constructor(message: string, public readonly uncertain: boolean) {
@@ -73,8 +79,8 @@ async function readJson(response: Response, signal: AbortSignal) {
   }
 }
 
-async function request(url: string, body: string | undefined, signal?: AbortSignal) {
-  if (signal?.aborted) throw new WorkspacePublicationRequestError("The publication request was cancelled before sending.", false)
+async function request(url: string, body: string | undefined, signal?: AbortSignal, operation: "publish" | "unpublish" = "publish") {
+  if (signal?.aborted) throw new WorkspacePublicationRequestError(operation === "unpublish" ? "The unpublish request was cancelled before sending." : "The publication request was cancelled before sending.", false)
   const controller = new AbortController(), abort = () => controller.abort()
   signal?.addEventListener("abort", abort, { once: true })
   const timer = setTimeout(abort, 30_000)
@@ -83,7 +89,9 @@ async function request(url: string, body: string | undefined, signal?: AbortSign
       ...(body === undefined ? {} : { headers: { "Content-Type": "application/json" }, body }), signal: controller.signal })
     if ([400, 401, 403, 404].includes(response.status)) {
       void response.body?.cancel().catch(() => {})
-      throw new WorkspacePublicationRequestError(response.status === 401 ? "Sign in again to check or publish this saved draft."
+      throw new WorkspacePublicationRequestError(operation === "unpublish" ? response.status === 401 ? "Sign in again before unpublishing."
+        : response.status === 403 ? "Your current session or workspace role cannot unpublish this content." : "This unpublish request was refused. Reload publication status before continuing."
+        : response.status === 401 ? "Sign in again to check or publish this saved draft."
         : response.status === 403 ? "Your current session or workspace role cannot perform this publication request."
           : "This publication request was refused. Reload the saved draft before continuing.", false)
     }
@@ -96,7 +104,8 @@ async function request(url: string, body: string | undefined, signal?: AbortSign
     return { value: await readJson(response, controller.signal), status: response.status }
   } catch (cause) {
     if (cause instanceof WorkspacePublicationRequestError) throw cause
-    throw new WorkspacePublicationRequestError(body === undefined ? "Publication status could not be loaded. A version may already be public."
+    throw new WorkspacePublicationRequestError(operation === "unpublish" ? "Unpublish could not be confirmed. Keep this tab open and retry the same unpublish."
+      : body === undefined ? "Publication status could not be loaded. A version may already be public."
       : "Publication could not be confirmed. Keep this tab open and retry the same publication.", body !== undefined)
   } finally {
     clearTimeout(timer)
@@ -136,6 +145,26 @@ export async function publishWorkspaceDraft(workspaceSlug: string, input: Publis
     || result.status === "published" && (receipt.status !== "published" || result.state.draftRevision !== captured.expectedRevision
       || result.state.draftHash !== captured.expectedDraftHash || canonicalSerialize(result.state.current) !== canonicalSerialize(original))) {
     throw new WorkspacePublicationRequestError("The publication acknowledgement does not match this saved revision. Retry the same publication.", true)
+  }
+  return result
+}
+
+export async function unpublishWorkspaceDraft(workspaceSlug: string, input: UnpublishWorkspaceDraftInput, kind: WorkspaceDraftKind, signal?: AbortSignal): Promise<WorkspaceUnpublicationResult> {
+  const checked = unpublishInputSchema.safeParse(input)
+  if (!checked.success) throw new WorkspacePublicationRequestError("The current publication could not be validated for unpublishing.", false)
+  const captured = checked.data
+  const url = path(workspaceSlug, captured.id, kind) + "/unpublish"
+  const wire = { requestId: captured.requestId, expectedCurrentVersionId: captured.expectedCurrentVersionId }
+  const { value, status } = await request(url, JSON.stringify(wire), signal, "unpublish")
+  const parsed = unpublishResultSchema.safeParse(value)
+  if (!parsed.success) throw new WorkspacePublicationRequestError("The unpublish acknowledgement could not be verified. Retry the same unpublish.", true)
+  const result = parsed.data, receipt = result.receipt
+  if (!validState(result.state, workspaceSlug, captured.id, kind) || receipt.requestId !== captured.requestId
+    || receipt.expectedCurrentVersionId !== captured.expectedCurrentVersionId
+    || (receipt.status === "unpublished" ? receipt.revokedAt === null || result.state.current?.versionId === captured.expectedCurrentVersionId : receipt.revokedAt !== null)
+    || result.status !== (status === 409 ? "conflict" : "unpublished")
+    || result.status === "unpublished" && (receipt.status !== "unpublished" || result.state.current !== null)) {
+    throw new WorkspacePublicationRequestError("The unpublish acknowledgement does not match this request. Retry the same unpublish.", true)
   }
   return result
 }

@@ -124,13 +124,14 @@ export function SavedDraftEditor({ initial, canEdit }: { initial: WorkspaceDraft
     </div>
     {error ? <p ref={errorRef} tabIndex={-1} role="alert" className="break-words rounded-xl bg-destructive/10 p-4 text-sm text-destructive outline-none">{error}</p> : null}
     {reloadRequested ? <div className="grid gap-3 rounded-xl border border-border bg-white p-4" role="alert">
-      <p>Reload the saved draft and discard the local edits and unresolved save or publication shown in this tab? An unconfirmed publication may already be public.</p>
+      <p>Reload the saved draft and discard the local edits and unresolved save, publication or unpublish shown in this tab? An unconfirmed publish or unpublish may already have changed public access.</p>
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" className="min-h-11" onClick={() => setReloadRequested(false)}>Keep editing</Button>
         <Button type="button" className="min-h-11" onClick={() => { leaveConfirmed.current = true; window.location.reload() }}>Discard and reload</Button>
       </div>
     </div> : null}
     <WorkspacePublisher draft={saved} canEdit={canEdit} blocked={dirty || pending || unresolved || conflict || editing !== null}
+      mutationBlocked={pending || unresolved || conflict}
       onRecoveryChange={(recovering) => { publicationRecoveryRef.current = recovering; setPublicationRecovery(recovering) }} />
     {document.kind === "course" ? <CourseDownload document={document} /> : <ReportDownload document={document} />}
     {preview ? <div className="min-w-0 overflow-hidden rounded-xl bg-white p-3 sm:p-6">
