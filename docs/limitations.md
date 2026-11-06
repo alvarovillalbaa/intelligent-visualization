@@ -18,7 +18,7 @@ in [the migration receipt](results/2026/11-06/postgres-checks.md). Current produ
 database/storage configuration is reviewed. The JSONB legacy bridge serializes
 slide operations. Private Course/Report saving now explicitly maps legacy
 team/workspace/actor namespaces without merging accounts. Its focused
-save/reopen acceptance is tracked separately from the migration in the
-[draft check scope](proposals/workspace-draft-checks.md). Database exports do not
+save/reopen acceptance is recorded separately from the migration in the
+[draft receipt](results/2026/11-06/workspace-drafts-checks.md). Database exports do not
 include media/artifact objects. Private saving does not establish publication,
 hosted access/storage or automatic guest-draft transfer.
