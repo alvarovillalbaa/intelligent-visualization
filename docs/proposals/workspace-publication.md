@@ -2,8 +2,8 @@
 
 Last updated: 2026-11-06
 
-Status: proposed next slice; publication is not implemented or accepted by the
-private-draft packet. Alvaro's standing "I approve everything / Keep going / Do
+Status: local implementation prepared; its focused acceptance is pending and is
+separate from the private-draft packet. Alvaro's standing "I approve everything / Keep going / Do
 all the work" covers necessary focused implementation and verification. This
 proposal does not request another approval or authorize paid services.
 
@@ -11,9 +11,10 @@ proposal does not request another approval or authorize paid services.
 
 [Private draft saving and reopening](../results/2026/11-06/workspace-drafts-checks.md)
 are separate from publication. The [saved editor](../../components/visualizations/saved-draft-editor.tsx)
-correctly states that its draft is private, publishing is unavailable, and HTML
-downloads contain the local edits shown in that tab. Preserve this stance until
-an actual publication acknowledgement exists.
+keeps the working document separate from a published snapshot. Its new publication
+panel requires explicit saved-revision confirmation and an actual acknowledgement.
+HTML downloads still contain the local edits shown in that tab; downloading is
+separate from publishing.
 
 [Slides publishing](../../app/actions/decks.ts) uses the
 [legacy repository](../../lib/legacy-operations.ts), `.slides-storage` and the
@@ -21,7 +22,9 @@ existing `/d/`, `/embed/` and `/published/` readers. Preserve those flows.
 Canonical [version contracts](../../packages/backend-contracts/provider.ts) and
 [PostgreSQL publish commands](../../packages/provider-local/adapter.ts) already
 exist, as does the [Course/Report artifact compiler](../../lib/artifacts/compiler.ts).
-They are not yet an authenticated public publishing service.
+The new named prepare/commit service adds fresh workspace authorization and
+payload-bound recovery over those tables; the raw canonical commands alone are
+not an application authorization boundary.
 
 ## Prerequisite and proposed flow
 
@@ -56,13 +59,15 @@ failure boundaries. Uncommitted artifacts must remain inaccessible publicly.
 
 ## Canonical reader and artifact constraints
 
-Add separate canonical public-link and immutable-version readers. Resolve a
+The candidate adds separate `/v/{publicId}` live and immutable-version readers. Resolve a
 published record and its owned published version before loading its artifact;
 drafts, previews and unrelated versions are not public. Use the canonical
 [storage adapter](../../lib/storage/factory.ts), whose local root is
 `LOCAL_STORAGE_DIR` or `.data/storage`. Existing legacy readers use a different
 root; do not point new artifacts at their URLs or bypass publication state through
-the unauthenticated legacy `/files/` route.
+the unauthenticated legacy `/files/` route. That raw reader now refuses decoded
+traversal and the reserved canonical publication namespace, while retaining
+ordinary legacy paths.
 
 Keep two existing hash contracts explicit: compiler `artifactHash` hashes the
 canonical JSON serialization of the HTML string, while `StoredObject.contentHash`
