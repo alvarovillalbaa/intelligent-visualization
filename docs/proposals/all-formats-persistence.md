@@ -9,19 +9,36 @@ account or user data is migrated or deleted by source changes.
 
 The current PostgreSQL candidate preserves Slides records and URLs through a
 transactional legacy repository, alongside canonical visualization tables.
-The next candidate implements private Course/Report save/list/reopen and revisions
-through an authenticated service. Stable target/request identities, verified live
-session/workspace roles, revision checks and payload-bound atomic receipts preserve
-edits through retries/conflicts. [Focused checks](workspace-draft-checks.md) remain
-pending until their actual run. Publication must compile the committed
-revision, retain durable bytes and commit the version/pointer together; uncertain
-acknowledgements must be reconciled before retry or cleanup.
+It also implements private Course/Report save/list/reopen and
+revisions through `lib/workspace-drafts.ts` and `provider.workspaceDrafts` on local
+PostgreSQL. Stable target/request UUIDs, fresh session/member roles, revision
+checks and payload-bound atomic receipts preserve edits through retries/conflicts.
+Revision zero creates a draft. Later saves use compare-and-swap; replaying a
+receipt returns its original accepted revision/hash together with current state.
+The client retains uncertain save intents and local edits, and requires reopening
+when current and acknowledged revisions diverge. Apply changes the local editor;
+Save Course/Report or Save revision persists explicitly.
+
+The implementation exists, but current-source browser acceptance is still pending
+in [the focused checks](workspace-draft-checks.md). Failed runs remain historical
+evidence. This change leaves publication paths unchanged and provides no new public
+Course/Report link. Future publication must compile the committed revision, retain
+durable bytes and commit the version/pointer together; uncertain acknowledgements
+must be reconciled before retry or cleanup.
 
 Canonical and legacy identities are mapped with explicit legacy team/workspace/
 actor namespaces, never merged by email. Authentication stays in the locked legacy
-state; only team/workspace projections are created for canonical foreign keys.
+state; the adapter keeps authorization, canonical mutation and receipt on the same
+database connection and transaction while holding the legacy row lock. Viewers
+may read and admins/editors may save. Only team/workspace projections are created
+for canonical foreign keys. Reads verify their ownership marker and team binding
+without provisioning missing mappings; reserved identity collisions fail closed.
 Saves require the browser Origin to match the explicitly configured
 `NEXT_PUBLIC_APP_URL`; no request-host or forwarded-header fallback grants access.
+Missing/invalid origin configuration fails closed. Private API responses use
+`Cache-Control: private, no-store` and `Vary: Cookie`; summary lists do not contain
+the document body, passwords or session data.
+
 Rich slide source/editor/rendering must survive. Existing public URLs, private
 access checks and artifact/event bindings need actual acceptance for every kind.
 The canonical Slides compiler's placeholders cannot silently replace rich legacy
@@ -32,7 +49,9 @@ The existing production environment metadata request was rejected with 403;
 unchanged credentials are not retried or bypassed. Free capacity, database
 isolation, grants, storage and host configuration remain separate gates. No
 resource-sharing approval is inferred from another app's consolidation. No paid
-plan, account, trial or provider mutation is proposed here.
+plan, account, trial or provider mutation is proposed here. Hosted Supabase/Auth,
+RLS, object storage, publication and the full AI/Eve flow remain pending. No
+deployment is included; main and production remain held for reviewed configuration.
 
 See [the PostgreSQL migration](../postgres-migration.md),
 [provider architecture](../provider-architecture.md) and

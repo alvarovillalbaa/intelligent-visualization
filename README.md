@@ -1,5 +1,7 @@
 # Intelligent Visualization
 
+Last updated: 2026-11-06
+
 Intelligent Visualization is a Next.js + TypeScript application for creating interactive visual documents.
 
 The platform supports exactly three primary visualization types:
@@ -27,6 +29,7 @@ Implemented in the current migration slice:
 - [Report CSV import](docs/report-csv-import.md) reviews local text cells before adding a table and an original-data fingerprint to the draft.
 - [Report HTML export](docs/report-export.md) for a standalone copy of a committed Report draft.
 - [Course HTML export](docs/course-export.md) preserves the committed learner content in a standalone Course copy.
+- [Private workspace drafts](docs/private-workspace-drafts.md) let authenticated users explicitly save, reopen and revise Course/Report documents on local PostgreSQL.
 
 The current [PostgreSQL migration checks](docs/results/2026/11-06/postgres-checks.md)
 accept seven configuration, 28 real PostgreSQL and two actual desktop/narrow

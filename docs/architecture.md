@@ -1,5 +1,7 @@
 # Architecture
 
+Last updated: 2026-11-06
+
 Intelligent Visualization is a Next.js App Router application with a provider-neutral backend contract.
 
 Current migration shape:
@@ -17,6 +19,16 @@ instance closure, then commits before returning. Canonical visualization tables
 share the database namespace; they retain their separate domain model. Production
 requests do not initialize demo state or fall back to process memory. Setup seeds
 explicitly, only when absent. The in-memory demo store is an isolated test fixture.
+
+Private Course/Report saves use `WorkspaceDraftRepository` through server
+application services. The cookie-derived actor is reauthorized against the
+locked legacy session/membership state; canonical team/workspace/actor IDs use
+explicit legacy namespaces without merging accounts. The same connection holds
+that lock through the draft, payload-bound receipt and legacy-state commit.
+Lists and private pages read current scoped records without provisioning mirrors.
+The client keeps local Apply, explicit Save, accepted revision and unresolved
+intent separately. See [private drafts](private-workspace-drafts.md) and
+[provider architecture](provider-architecture.md).
 
 ## Source Composer
 
