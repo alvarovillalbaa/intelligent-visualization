@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-06T10:21:17Z",
+  "repository": "alvarovillalbaa/intelligent-visualization",
+  "candidateBranch": "work/postgres-provider-20261106",
+  "sourceCommit": "da9512765a5f96b1cef0c93b3a040479364e3620",
+  "retiredQaCommit": "6fa2f815b5a9032363c92e3362aebb9f90957240",
+  "sharedTree": "114af48f5e1242bc6250c33f28bb8f106e52c173",
+  "trackedLeaves": 505,
+  "trackedBytes": 8543921,
+  "clean": true,
+  "temporaryWorkflowFiles": [],
+  "permanentWorkflow": ".github/workflows/ci.yml",
+  "disabledTemporaryWorkspaceWorkflowIds": [
+    409142688,
+    409145947,
+    409158437,
+    409167377,
+    409182697,
+    409187744
+  ],
+  "pullRequest": {
+    "url": "https://github.com/alvarovillalbaa/intelligent-visualization/pull/1",
+    "title": "Require PostgreSQL and save private Course and Report revisions",
+    "draft": true,
+    "merged": false,
+    "head": "da9512765a5f96b1cef0c93b3a040479364e3620",
+    "base": "a5fa01331281ac8d38eb135a1dcc381d6adb4ecc"
+  },
+  "acceptance": {
+    "receipt": "workspace-drafts-checks.json",
+    "bytes": 230168,
+    "sha256": "ee74cb9ab7b9a8b8f2f11ebab2093b20941084ceae8f450d3e3d60d05c9ef4e6",
+    "postgres": {
+      "passed": 16,
+      "source": "feb450d17a8aa3c7022c4785e6b96b80067e3e0d",
+      "run": 42194821248,
+      "job": 127815319828,
+      "executedInFinalRun": false,
+      "protectedRuntimeInputs": 252
+    },
+    "http": {
+      "passed": 8,
+      "source": "c60dea6dec75ffa0a97956afd47ed93723878818",
+      "run": 42197974301,
+      "job": 127825914552,
+      "executedInFinalRun": false,
+      "protectedRuntimeInputs": 255
+    },
+    "browser": {
+      "passed": 4,
+      "source": "3a9729fb1df58dd66023936ae195ea793b325bcc",
+      "run": 42201021726,
+      "job": 127836045558,
+      "activation": "2d267e357df056d9d4b136e49dbe9b4fd2a48cd2",
+      "retries": 0,
+      "actualSavePosts": 8,
+      "observation": "Bounded real native-fetch Response.clone; only generation fulfilled",
+      "qualifiedNavigationCancellations": [
+        6,
+        7,
+        7,
+        6
+      ]
+    },
+    "executionsAreSeparate": true,
+    "priorFailedOverallReceiptsRemainFalse": 5,
+    "currentOriginalCapturesVerified": 27,
+    "carriedOriginalCapturesVerified": 63,
+    "runtimeInputs": 257,
+    "runtimeBytes": 2043333,
+    "allRuntimeInputsMatch": true,
+    "sourceGuards": 5,
+    "cleanupVerified": true,
+    "retainedLintWarnings": 1,
+    "laterChangedDocuments": [
+      "README.md",
+      "docs/limitations.md",
+      "docs/postgres-migration.md",
+      "docs/private-workspace-drafts.md",
+      "docs/proposals/all-formats-persistence.md",
+      "docs/provider-architecture.md",
+      "docs/testing.md"
+    ]
+  },
+  "production": {
+    "deployment": "dpl_EWQArRytPB9nV2TopnkaxsS1j3Vy",
+    "state": "READY",
+    "source": "a5fa01331281ac8d38eb135a1dcc381d6adb4ecc",
+    "canonicalHost": "intelligent-visualization.vercel.app",
+    "observedAt": "2026-11-06T10:21:17Z",
+    "evidence": "Deployment metadata; no new hosted HTTP/browser/provider acceptance"
+  },
+  "limits": [
+    "Candidate is draft, unmerged and held off production",
+    "Hosted database/storage/Auth/Supabase/RLS, public Course/Report publication, original file storage and full AI/Eve remain unfinished",
+    "Narrow browser uses mouse/keyboard; qualified cancellations are not complete-body network proof",
+    "Attempt 5 has no browser-command receipt or browser JSON; its overall verdict remains false",
+    "No local installation/build/server/browser/database, paid plan, model call or production data",
+    "This record refers to the preceding source; adding it does not alter the 257 runtime inputs"
+  ]
+}
