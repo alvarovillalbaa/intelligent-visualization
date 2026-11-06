@@ -27,6 +27,7 @@ import type {
 import type { VisualizationRecord, VisualizationVersion } from "@/packages/domain/entities"
 import { createPostgresDatabase, getLocalDatabase, initializeLocalDatabase, type LocalDatabase } from "./database"
 import { LOCAL_SCHEMA } from "./schema"
+import { createWorkspaceDraftRepository } from "./workspace-drafts"
 
 type LocalRow = Record<string, unknown>
 type LocalStatement = { sql: string; args: readonly unknown[] }
@@ -49,6 +50,12 @@ export class LocalPersistenceProvider implements PersistenceProvider {
   }
 
   private readonly database: LocalDatabase
+
+  workspaceDrafts: import("@/packages/backend-contracts/workspace-drafts").WorkspaceDraftRepository = {
+    list: (...args) => createWorkspaceDraftRepository(this.database, this).list(...args),
+    get: (...args) => createWorkspaceDraftRepository(this.database, this).get(...args),
+    save: (...args) => createWorkspaceDraftRepository(this.database, this).save(...args),
+  }
 
   constructor(options: LocalPersistenceOptions = {}) {
     this.database = options.connectionString !== undefined ? createPostgresDatabase(options.connectionString) : getLocalDatabase()

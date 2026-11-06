@@ -14,5 +14,6 @@ The PostgreSQL provider and transactional legacy repository replace the previous
 database paths in this candidate. Their focused acceptance must pass before
 publication. Current production remains on its earlier source until a hosted
 database/storage configuration is reviewed. The JSONB legacy bridge serializes
-slide operations; it does not connect canonical Course/Report saving or merge
-the two identity models. Database exports do not include media/artifact objects.
+slide operations. The next Course/Report saving candidate explicitly maps legacy
+team/workspace/actor namespaces without merging accounts; its focused runtime
+acceptance is pending. Database exports do not include media/artifact objects.

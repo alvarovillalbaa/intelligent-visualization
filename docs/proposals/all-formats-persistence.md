@@ -1,5 +1,7 @@
 # All-format persistence and publication
 
+Last updated: 2026-11-06
+
 The owner's All projects direction supersedes the earlier alternative-provider
 proposal. Local persistence now targets PostgreSQL exclusively; hosted database
 and object storage target Supabase/Vercel. No existing external deployment,
@@ -7,13 +9,17 @@ account or user data is migrated or deleted by source changes.
 
 The current PostgreSQL candidate preserves Slides records and URLs through a
 transactional legacy repository, alongside canonical visualization tables.
-This is not yet the missing Course/Report saving service. Each result still needs
-a stable save identity, verified server session/workspace role, expected-revision
-checks and an atomic idempotent receipt. Publication must compile the committed
+The next candidate implements private Course/Report save/list/reopen and revisions
+through an authenticated service. Stable target/request identities, verified live
+session/workspace roles, revision checks and payload-bound atomic receipts preserve
+edits through retries/conflicts. [Focused checks](workspace-draft-checks.md) remain
+pending until their actual run. Publication must compile the committed
 revision, retain durable bytes and commit the version/pointer together; uncertain
 acknowledgements must be reconciled before retry or cleanup.
 
-Canonical and legacy identities must be mapped explicitly, never merged by email.
+Canonical and legacy identities are mapped with explicit legacy team/workspace/
+actor namespaces, never merged by email. Authentication stays in the locked legacy
+state; only team/workspace projections are created for canonical foreign keys.
 Rich slide source/editor/rendering must survive. Existing public URLs, private
 access checks and artifact/event bindings need actual acceptance for every kind.
 The canonical Slides compiler's placeholders cannot silently replace rich legacy

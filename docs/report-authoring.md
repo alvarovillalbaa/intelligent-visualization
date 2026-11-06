@@ -50,9 +50,12 @@ hosted saving or publication.
 
 Guest edits use the existing four-hour browser retention when storage is
 available. A failed replacement keeps the prior stored bytes and current edited
-batch in memory; the preview displays the storage notice. Workspace edits remain
-in this tab. The [all-format persistence proposal](proposals/all-formats-persistence.md)
-keeps its existing authorization and provider gates.
+batch in memory; the preview displays the storage notice. Workspace Apply remains
+local until **Save Report** explicitly saves it in the PostgreSQL candidate.
+**Open saved Report** reopens the private draft, and **Save revision** persists
+later applied edits. Retry intents and local edits survive uncertain/conflicting
+acknowledgements. See [the saving contract and checks](proposals/workspace-draft-checks.md);
+publication and hosted-provider acceptance remain separate.
 
 ## Validation and limits
 

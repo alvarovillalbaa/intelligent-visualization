@@ -4,6 +4,7 @@ import { deckSourceSchema, generationInputSchema } from "@/lib/ai/schema"
 import type { GeneratedDraft } from "@/lib/client/guest-draft"
 import type { GenerationInput } from "@/lib/types"
 import type { VisualizationKind } from "@/packages/domain/entities"
+import type { SaveWorkspaceDraftInput, WorkspaceDraftDocument } from "@/packages/backend-contracts/workspace-drafts"
 import { visualizationDocumentSchema } from "@/packages/domain/schemas"
 
 export type GenerationResult = {
@@ -14,6 +15,14 @@ export type GenerationResult = {
   error: string | null
   saveStatus: "idle" | "saving" | "saved" | "uncertain" | "failed"
   savedDeckId?: string
+  workspaceSaveStatus?: "idle" | "saving" | "saved" | "uncertain" | "failed" | "conflict"
+  workspaceDraftId?: string
+  workspaceSaveIntent?: SaveWorkspaceDraftInput
+  workspaceSaveError?: string | null
+  savedVisualizationId?: string
+  savedVisualizationRevision?: number
+  savedVisualizationHash?: string
+  workspaceSavedSnapshot?: WorkspaceDraftDocument
 }
 
 export type GenerationBatch = {
@@ -69,6 +78,17 @@ const resultSchema = z.object({
   error: z.string().nullable(),
   saveStatus: z.enum(["idle", "saving", "saved", "uncertain", "failed"]),
   savedDeckId: idSchema.optional(),
+  workspaceSaveStatus: z.enum(["idle", "saving", "saved", "uncertain", "failed", "conflict"]).optional(),
+  workspaceDraftId: z.string().uuid().optional(),
+  workspaceSaveIntent: z.object({
+    id: z.string().uuid(), requestId: z.string().uuid(), expectedRevision: z.number().int().min(0).max(2_147_483_646),
+    document: visualizationDocumentSchema,
+  }).optional(),
+  workspaceSaveError: z.string().nullable().optional(),
+  savedVisualizationId: z.string().uuid().optional(),
+  savedVisualizationRevision: z.number().int().positive().max(2_147_483_647).optional(),
+  savedVisualizationHash: z.string().regex(/^[a-f0-9]{64}$/).optional(),
+  workspaceSavedSnapshot: visualizationDocumentSchema.optional(),
 })
 
 const batchSchema = z.object({
@@ -80,6 +100,30 @@ const batchSchema = z.object({
 
 function validDraft(draft: GeneratedDraft): boolean {
   return draft.kind === draft.document.kind && (draft.kind === "slides" || draft.deckSource == null)
+}
+
+export function workspaceDraftMatchesSaved(result: GenerationResult): boolean {
+  return Boolean(result.draft && result.workspaceSavedSnapshot
+    && JSON.stringify(result.draft.document) === JSON.stringify(result.workspaceSavedSnapshot))
+}
+
+function validWorkspaceSave(result: GenerationResult): boolean {
+  const fields = [result.workspaceSaveStatus, result.workspaceDraftId, result.workspaceSaveIntent, result.workspaceSaveError,
+    result.savedVisualizationId, result.savedVisualizationRevision, result.savedVisualizationHash, result.workspaceSavedSnapshot]
+  if (result.kind === "slides") return fields.every((value) => value === undefined)
+  if (result.workspaceSaveIntent && (result.workspaceSaveIntent.document.kind !== result.kind
+    || result.workspaceSaveIntent.id !== result.workspaceDraftId
+    || result.workspaceSaveIntent.expectedRevision !== (result.savedVisualizationRevision ?? 0))) return false
+  if (result.workspaceSavedSnapshot && result.workspaceSavedSnapshot.kind !== result.kind) return false
+  if (result.savedVisualizationId && result.savedVisualizationId !== result.workspaceDraftId) return false
+  if (result.savedVisualizationId && (!result.savedVisualizationRevision || !result.savedVisualizationHash)) return false
+  if ((result.savedVisualizationRevision !== undefined || result.savedVisualizationHash !== undefined || result.workspaceSavedSnapshot)
+    && !result.savedVisualizationId) return false
+  if ((result.workspaceSaveStatus === "saving" || result.workspaceSaveStatus === "uncertain") && !result.workspaceSaveIntent) return false
+  if (result.workspaceSaveStatus === "conflict" && (!result.savedVisualizationId || result.workspaceSaveIntent)) return false
+  if (result.workspaceSaveStatus === "saved" && (!result.savedVisualizationId || !result.savedVisualizationRevision
+    || !result.savedVisualizationHash || !workspaceDraftMatchesSaved(result))) return false
+  return true
 }
 
 export function restoreGeneratedDraft(value: unknown): GeneratedDraft | null {
@@ -118,7 +162,7 @@ export function updateGenerationResult(
   if (!current) return batch
   const next = { ...current, ...structuredClone(patch), id: current.id, kind: current.kind }
   const parsed = resultSchema.safeParse(next)
-  if (!parsed.success || (next.draft && (!validDraft(next.draft) || next.draft.kind !== current.kind)) || (next.status === "completed" && !next.draft) || (next.saveStatus === "saved" && !next.savedDeckId)) {
+  if (!parsed.success || !validWorkspaceSave(next) || (next.draft && (!validDraft(next.draft) || next.draft.kind !== current.kind)) || (next.status === "completed" && !next.draft) || (next.saveStatus === "saved" && !next.savedDeckId)) {
     throw new Error("Invalid generation result update.")
   }
   return { ...batch, results: batch.results.map((result) => result.id === id ? parsed.data as GenerationResult : result) }
@@ -132,7 +176,7 @@ export function restoreGenerationBatch(value: unknown): GenerationBatch | null {
     const kinds = batch.results.map((result) => result.kind)
     if (new Set(kinds).size !== kinds.length) return null
     for (const result of batch.results) {
-      if (result.id !== `${batch.id}:${result.kind}` || (result.draft && (!validDraft(result.draft) || result.draft.kind !== result.kind)) || (result.status === "completed" && !result.draft) || (result.saveStatus === "saved" && !result.savedDeckId)) return null
+      if (!validWorkspaceSave(result) || result.id !== `${batch.id}:${result.kind}` || (result.draft && (!validDraft(result.draft) || result.draft.kind !== result.kind)) || (result.status === "completed" && !result.draft) || (result.saveStatus === "saved" && !result.savedDeckId)) return null
     }
     return structuredClone({
       ...batch,
@@ -141,6 +185,7 @@ export function restoreGenerationBatch(value: unknown): GenerationBatch | null {
         return result ? [{ ...result,
           status: result.status === "queued" || result.status === "running" ? "interrupted" as const : result.status,
           saveStatus: result.saveStatus === "saving" ? "uncertain" as const : result.saveStatus,
+          ...(result.workspaceSaveStatus === "saving" ? { workspaceSaveStatus: "uncertain" as const } : {}),
         }] : []
       }),
     })
