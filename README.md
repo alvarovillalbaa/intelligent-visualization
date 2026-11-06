@@ -30,6 +30,7 @@ Implemented in the current migration slice:
 - [Report HTML export](docs/report-export.md) for a standalone copy of a committed Report draft.
 - [Course HTML export](docs/course-export.md) preserves the committed learner content in a standalone Course copy.
 - [Private workspace drafts](docs/private-workspace-drafts.md) let authenticated users explicitly save, reopen and revise Course/Report documents on local PostgreSQL.
+- [Course/Report publication](docs/workspace-publication.md) explicitly publishes a saved revision to anonymous live and immutable-version links, keeping later draft edits separate.
 
 The current [PostgreSQL migration checks](docs/results/2026/11-06/postgres-checks.md)
 accept seven configuration, 28 real PostgreSQL and two actual desktop/narrow
@@ -43,6 +44,13 @@ desktop/narrow Course/Report journeys at their recorded sources. Save, reopen,
 revision-two editing, reload and a new sign-in session pass. Earlier accepted
 cases are carried by exact input/capture checks; no single 28-case run is claimed.
 Hosted persistence/publication remains unfinished.
+
+The [local publication receipt](docs/results/2026/11-06/workspace-publications-checks.md)
+accepts forty HTTP/client/PostgreSQL cases and four actual desktop/narrow
+Course/Report journeys across three recorded sources. Real publication, anonymous
+reads, revision-two publication and unchanged earlier version bytes pass. Earlier
+passes are carried by exact input/capture checks; both failed overall attempts
+remain. Unpublish/delete controls and hosted publication are still unfinished.
 
 The historical [Report CSV checks](docs/results/2026/11-04/report-csv-import-checks.md)
 passed all 176 focused cases on 4 November 2026. The separate

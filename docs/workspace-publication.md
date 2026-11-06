@@ -3,8 +3,9 @@
 Last updated: 2026-11-06
 
 The local candidate adds explicit public snapshots for saved Course and Report
-drafts. Its [focused checks](proposals/workspace-publication-checks.md) record
-the current acceptance status. Slides retain their existing publishing flow.
+drafts. Its [focused receipt](results/2026/11-06/workspace-publications-checks.md)
+accepts forty core cases and four desktop/narrow browser journeys across three
+recorded sources. Slides retain their existing publishing flow.
 
 ## Publish a saved revision
 
@@ -17,7 +18,7 @@ with its public link. Unapplied or unsaved edits are not included.
 published snapshot. **Open immutable published version** opens that particular
 version. Later edits and saves do not update either snapshot automatically.
 Publish another saved revision explicitly to update the live link; the earlier
-version's URL and content remain separate.
+version's URL remains public and its content stays unchanged.
 
 Workspace viewers can inspect publication status but cannot publish. Unpublishing
 and deletion controls are not included in this slice. Public

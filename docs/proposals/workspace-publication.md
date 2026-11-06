@@ -2,8 +2,9 @@
 
 Last updated: 2026-11-06
 
-Status: local implementation prepared; its focused acceptance is pending and is
-separate from the private-draft packet. Alvaro's standing "I approve everything / Keep going / Do
+Status: local implementation and [focused acceptance](../results/2026/11-06/workspace-publications-checks.md)
+are recorded separately from the private-draft packet. Hosted activation and
+unpublish/delete controls remain unfinished. Alvaro's standing "I approve everything / Keep going / Do
 all the work" covers necessary focused implementation and verification. This
 proposal does not request another approval or authorize paid services.
 
@@ -76,14 +77,13 @@ not interchangeable. Bind the document snapshot, renderer, manifest and artifact
 to the acknowledged version rather than regenerating an immutable URL from a
 later draft or renderer.
 
-Public-mode compiler output currently sends analytics to the legacy
-[/api/events endpoint](../../app/api/events/route.ts), which does not accept the
-Course completion/quiz event types or provide canonical analytics. Gate that
-unsupported traffic explicitly while preserving public learner behavior, or
-implement its own bounded contract. Do not silently substitute preview mode:
-preview changes Course progress persistence and runtime semantics. Passwords,
-embeds, reviews, experiments and analytics are not proven for Course/Report merely
-because Slides supports them.
+The existing default public compiler mode sends analytics to the legacy
+[/api/events endpoint](../../app/api/events/route.ts), which does not provide
+canonical Course completion/quiz analytics. The new canonical publication mode
+explicitly disables that traffic while retaining version-scoped Course completion
+and quiz feedback. It uses its own versioned renderer rather than preview mode;
+existing default and preview branches retain their behavior. Passwords, embeds,
+reviews, experiments and analytics remain outside this Course/Report slice.
 
 ## Verification and delivery limits
 

@@ -51,18 +51,30 @@ Save bodies are bounded JSON with strict request fields. Their raw Origin must
 match the explicitly configured root HTTP(S) `NEXT_PUBLIC_APP_URL`; request URLs,
 forwarded headers and loopback aliases are not alternate trust sources. Missing
 or invalid configuration fails closed. Apply updates local editor state; explicit
-Save persists it. This integration does not publish artifacts or add public links.
+Save persists it. Saving alone does not publish artifacts or add public links.
 
 Local private Course/Report browser acceptance now covers desktop and narrow
 profiles saving, editing revision two, reloading and reopening after fresh sign-in,
 with verified cleanup. The [acceptance record](results/2026/11-06/workspace-drafts-checks.md)
 keeps those four journeys separate from the sixteen PostgreSQL cases on attempt 2's
 source and eight HTTP/client cases on attempt 4's source; these were not one
-28-case invocation. Hosted Supabase/Auth/RLS, object storage, publication and the
+28-case invocation. Hosted Supabase/Auth/RLS, hosted object storage/publication and the
 full AI/Eve flow remain separate gates. No deployment is included.
+
+Explicit Course/Report publication now uses `provider.workspacePublications` and
+`lib/workspace-publications.ts`. Prepare and commit each reauthorize under the
+legacy lock. Existing receipt rows bind globally reserved request/version UUIDs,
+actor, workspace, draft revision/hash and original live pointer; a stale draft or
+pointer conflicts. Version, live pointer and final receipt commit atomically.
+The separate storage step retains a single exclusive envelope with the original
+HTML/manifest/binding/hash/CSP; recovery validates that object without recompiling.
+Only committed owned versions resolve publicly. Uncertain put/commit outcomes
+never cause automatic object deletion. See [the local flow](workspace-publication.md)
+and [its focused receipt](results/2026/11-06/workspace-publications-checks.md).
 
 Storage selection remains independent. `auto` selects local filesystem for local
 persistence and the reserved Supabase storage boundary for Supabase. Explicit
 `vercel-blob` and `supabase` storage are recognized but unimplemented and fail
-closed. Local PostgreSQL does not establish hosted storage/access or durable
-artifact publication. See [the migration](postgres-migration.md).
+closed. The local filesystem implements exclusive immutable creation, and the
+local publication service verifies durable readback. This does not establish
+hosted storage/access or a production cutover. See [the migration](postgres-migration.md).

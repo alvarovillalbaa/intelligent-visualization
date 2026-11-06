@@ -6,7 +6,7 @@ This migration is not complete.
 
 - Existing product routes still use legacy deck terminology.
 - Supabase provider is not implemented.
-- Report browser-draft grid authoring and standalone HTML export are implemented; browser/download/print acceptance and hosted saving/publication remain unverified or unfinished.
+- Report browser-draft grid authoring, standalone HTML export and local saved-revision publication are implemented; standalone download/print acceptance and hosted saving/publication remain unverified or unfinished.
 - Course browser-draft authoring and its separately recorded download/file checks are implemented; hosted Course saving/publication and learner analytics remain unfinished.
 - AI SDK deprecated object APIs still exist in `lib/ai/generate-deck.ts`.
 - Eve, Workflows, Sandbox QA, and Queues are not implemented.
@@ -22,3 +22,12 @@ save/reopen acceptance is recorded separately from the migration in the
 [draft receipt](results/2026/11-06/workspace-drafts-checks.md). Database exports do not
 include media/artifact objects. Private saving does not establish publication,
 hosted access/storage or automatic guest-draft transfer.
+
+Explicit local Course/Report publication now has separate
+[focused acceptance](results/2026/11-06/workspace-publications-checks.md): live and
+immutable anonymous readers, two saved revisions and preserved earlier bytes.
+Unpublish/delete controls, public passwords, Course/Report embeds, canonical
+analytics and original-asset delivery remain unfinished. Course completion is
+browser-local per published version; quiz answers are not persisted. Publication
+uncertainty retains its object and intent rather than deleting potentially
+referenced data. Backups need database and object storage separately.
