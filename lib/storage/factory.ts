@@ -7,12 +7,12 @@ export function resolveStorageKind(
   storageProvider = process.env.STORAGE_PROVIDER ?? "auto",
 ): StorageKind {
   if (storageProvider !== "auto") {
-    return storageProvider as StorageKind
+    if (storageProvider === "local" || storageProvider === "vercel-blob" || storageProvider === "supabase") return storageProvider
+    throw new Error("Invalid STORAGE_PROVIDER.")
   }
 
-  if (persistenceProvider === "convex") return "convex"
   if (persistenceProvider === "supabase") return "supabase"
-  if (persistenceProvider === "cloudflare") return "cloudflare-r2"
+  if (persistenceProvider !== "local") throw new Error("Invalid PERSISTENCE_PROVIDER.")
   return "local"
 }
 

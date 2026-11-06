@@ -8,18 +8,19 @@ The platform supports exactly three primary visualization types:
 - Slide decks
 - Reports
 
-Every visualization is designed to publish as a standalone, responsive HTML artifact. The existing slide-deck product is being migrated in place; legacy slide routes and Convex data remain part of the compatibility path.
+Every visualization is designed to publish as a standalone, responsive HTML artifact. Existing slide routes retain their record shapes and behavior through a PostgreSQL repository.
 
 ## Current Status
 
 Implemented in the current migration slice:
 
 - Canonical visualization document model for courses, slides, and reports.
-- Durable zero-hosted local provider using SQLite under `.data/`.
+- Explicit local PostgreSQL provider in the isolated `intelligent_visualization_local` schema.
+- Durable, transactional legacy slide operations alongside canonical visualization tables.
 - Local filesystem storage under `.data/storage`.
 - Provider-neutral persistence and storage contracts.
 - Standalone HTML artifact compiler with manifests and hashes.
-- Local setup, doctor, reset, export, verify, and import scripts.
+- Explicit local setup, doctor and private database export/import tools. Reset never deletes data automatically.
 - First Vitest suites for domain, artifact, storage, and local provider behavior.
 - [Course authoring](docs/course-authoring.md) for generated browser drafts, with typed content/practice fields, isolated preview and guarded Apply.
 - [Report authoring](docs/report-authoring.md) for responsive browser-draft layouts, typed blocks, locks and local undo/redo.
@@ -44,9 +45,7 @@ boundary. Both failures remain preserved; no single four-pass run is claimed.
 Still in progress:
 
 - Full replacement of deck-facing UI/routes with visualization terminology.
-- Convex provider-contract adapter and in-place Convex deck migration.
 - Supabase provider.
-- Cloudflare Worker + D1 provider.
 - Report browser/download/print acceptance and hosted saving/publication.
 - Hosted Course saving/publication and learner analytics; browser draft authoring is implemented.
 - AI SDK structured-output migration.
@@ -60,12 +59,19 @@ Local mode does not require hosted services.
 
 ```bash
 npm install
+cp .env.example .env.local
+docker compose up -d postgres
 npm run setup:local
 npm run doctor
 npm run dev
 ```
 
-Open `http://localhost:3000`.
+Open `http://localhost:3000`. CLI commands read `.env.local` then `.env`, preserving
+already configured environment values. `LOCAL_DATABASE_URL` must identify a
+loopback PostgreSQL database; the app never selects a file or hosted fallback.
+See [the PostgreSQL migration](docs/postgres-migration.md) before upgrading an
+existing installation. Existing database and storage files are not deleted or
+automatically imported.
 
 Seeded demo credentials:
 
@@ -84,11 +90,12 @@ REALTIME_PROVIDER=auto
 Allowed persistence providers:
 
 - `local`
-- `convex`
 - `supabase`
-- `cloudflare`
 
-Only the local provider is executable in this migration slice. Other provider boundaries exist but fail closed until their adapters and contract tests are implemented.
+Only local PostgreSQL is implemented. The reserved Supabase boundary fails closed
+until its adapter and contract checks are implemented. Vercel Blob/Supabase storage
+and the remaining AI/Eve suite are separate unfinished work. This candidate is
+kept off production until the hosting database and storage are configured.
 
 ## Commands
 
@@ -112,12 +119,12 @@ npm run data:import -- --provider local --input .data/exports/export-001
 
 - `packages/domain/`: canonical visualization entities, schemas, migrations, IDs, serialization, and starter documents.
 - `packages/backend-contracts/`: provider-neutral persistence contract and atomic domain commands.
-- `packages/provider-local/`: SQLite provider implementation.
+- `packages/provider-local/`: PostgreSQL provider, transaction/connection ownership and portable database format.
 - `packages/storage/`: provider-neutral storage contract and local storage adapter.
 - `lib/artifacts/`: deterministic standalone HTML compiler.
 - `lib/persistence/` and `lib/storage/`: lazy provider factories.
-- `workers/persistence/`: Cloudflare Worker gateway skeleton for future D1 support.
-- `convex/`: legacy Convex backend that will be migrated behind `packages/provider-convex`.
+- `lib/legacy-operations.ts`: existing slide behavior instantiated for a loaded transaction state.
+- `lib/repository.ts`: server repository backed by a locked PostgreSQL JSONB legacy record.
 
 ## Documentation
 

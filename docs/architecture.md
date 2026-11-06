@@ -11,7 +11,12 @@ Current migration shape:
 - `packages/storage` owns storage contracts and local storage.
 - `lib/artifacts` compiles typed documents into standalone HTML.
 
-Legacy slide UI and Convex repository code still exist until the service refactor is complete.
+Legacy slide UI remains compatible. Its repository loads a dedicated PostgreSQL
+JSONB state row under a transaction lock, runs the existing operations in an
+instance closure, then commits before returning. Canonical visualization tables
+share the database namespace; they retain their separate domain model. Production
+requests do not initialize demo state or fall back to process memory. Setup seeds
+explicitly, only when absent. The in-memory demo store is an isolated test fixture.
 
 ## Source Composer
 

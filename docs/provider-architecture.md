@@ -1,23 +1,24 @@
-# Provider Architecture
+# Provider architecture
 
-Provider selection is deployment-level through `PERSISTENCE_PROVIDER`.
+`PERSISTENCE_PROVIDER=local` selects standard PostgreSQL using the explicit
+loopback `LOCAL_DATABASE_URL`. Only local PostgreSQL is implemented; the reserved
+`supabase` boundary fails closed pending an adapter and shared contract checks.
+Other database provider selectors, SDKs and deployment stubs are removed.
 
-Allowed values:
+`packages/backend-contracts/provider.ts` owns canonical persistence commands.
+Provider SDKs belong inside provider packages or migration tools/tests. Queries
+are parameterized and qualified under `intelligent_visualization_local`; commands
+use transactions, idempotency/resource locks and expected-revision checks.
 
-- `local`
-- `convex`
-- `supabase`
-- `cloudflare`
+The legacy slide repository uses the same PostgreSQL connection/schema boundary
+with an independently shaped JSONB state row. Loaded operations are scoped to
+one locked transaction. Existing slide routes and permissions stay compatible;
+there is no request-time demo initialization or process-memory fallback. The demo
+store remains only as an explicit fixture. Canonical all-format identity/service
+integration is still separate work.
 
-The product domain uses `packages/backend-contracts/provider.ts`. UI, application services, AI tools, and workflows must not import Convex, Supabase, D1, R2, PostgreSQL, or SQLite SDKs directly.
-
-Storage selection is independent through `STORAGE_PROVIDER`. `auto` resolves to local filesystem for local persistence, Convex storage for Convex, Supabase Storage for Supabase, and R2 for Cloudflare.
-
-## Current Status
-
-- Local provider: executable SQLite implementation exists.
-- Convex provider: package boundary exists; legacy app still uses `lib/repository.ts` and Convex directly.
-- Supabase provider: package boundary exists; adapter not implemented.
-- Cloudflare provider: package and Worker skeleton exist; signed RPC and D1 schema parity not implemented.
-
-Unsupported providers fail closed rather than silently falling back.
+Storage selection remains independent. `auto` selects local filesystem for local
+persistence and the reserved Supabase storage boundary for Supabase. Explicit
+`vercel-blob` and `supabase` storage are recognized but unimplemented and fail
+closed. Local PostgreSQL does not establish hosted storage/access or durable
+artifact publication. See [the migration](postgres-migration.md).

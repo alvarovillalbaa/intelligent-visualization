@@ -12,6 +12,11 @@ Current implementation:
 Planned adapters:
 
 - Vercel Blob
-- Convex File Storage
 - Supabase Storage
-- Cloudflare R2
+
+Database migration does not move files. Canonical objects remain under
+`LOCAL_STORAGE_DIR`; legacy slide files remain under `.slides-storage`.
+Portable database exports do not copy these objects. Preserve both directories
+when backing up or moving an installation. Hosted storage support and its access
+checks remain unfinished; no automatic fallback or live-provider acceptance is
+inferred from local PostgreSQL checks.

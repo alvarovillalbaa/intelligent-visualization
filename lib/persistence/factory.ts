@@ -3,7 +3,7 @@ import type { PersistenceKind, PersistenceProvider } from "@/packages/backend-co
 let cachedProvider: PersistenceProvider | null = null
 
 export function resolvePersistenceKind(value = process.env.PERSISTENCE_PROVIDER ?? "local"): PersistenceKind {
-  if (value === "local" || value === "convex" || value === "supabase" || value === "cloudflare") {
+  if (value === "local" || value === "supabase") {
     return value
   }
   throw new Error(`Invalid PERSISTENCE_PROVIDER "${value}".`)

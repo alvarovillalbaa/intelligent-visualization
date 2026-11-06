@@ -3,14 +3,16 @@
 This migration is not complete.
 
 - Existing product routes still use legacy deck terminology.
-- `lib/repository.ts` still imports Convex directly.
-- Convex provider-contract adapter is not implemented.
 - Supabase provider is not implemented.
-- Cloudflare Worker + D1 provider is only a skeleton.
 - Report browser-draft grid authoring and standalone HTML export are implemented; browser/download/print acceptance and hosted saving/publication remain unverified or unfinished.
 - Course browser-draft authoring is implemented; hosted Course saving/publication and browser interaction acceptance remain unverified.
 - AI SDK deprecated object APIs still exist in `lib/ai/generate-deck.ts`.
 - Eve, Workflows, Sandbox QA, and Queues are not implemented.
 - Playwright and GitHub Actions are not fully wired.
 
-The local SQLite provider, local storage adapter, artifact compiler, setup script, and first tests are executable.
+The PostgreSQL provider and transactional legacy repository replace the previous
+database paths in this candidate. Their focused acceptance must pass before
+publication. Current production remains on its earlier source until a hosted
+database/storage configuration is reviewed. The JSONB legacy bridge serializes
+slide operations; it does not connect canonical Course/Report saving or merge
+the two identity models. Database exports do not include media/artifact objects.

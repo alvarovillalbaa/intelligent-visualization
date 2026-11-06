@@ -15,4 +15,6 @@ Provider switching is explicit:
 
 Current executable tooling supports local export, verify, and import.
 
-Convex, Supabase, and Cloudflare import/export adapters remain to be implemented.
+The current database provider is local PostgreSQL. Supabase remains a reserved,
+unimplemented boundary. Existing files or external deployments are not modified
+by the source migration. See [the upgrade and data boundaries](postgres-migration.md).

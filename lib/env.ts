@@ -1,11 +1,3 @@
-export function hasConvexEnv() {
-  return Boolean(process.env.NEXT_PUBLIC_CONVEX_URL)
-}
-
-export function hasConvexAdminEnv() {
-  return Boolean(process.env.NEXT_PUBLIC_CONVEX_URL && process.env.CONVEX_ADMIN_KEY)
-}
-
 export function hasFirecrawlEnv() {
   return Boolean(process.env.FIRECRAWL_API_KEY)
 }
