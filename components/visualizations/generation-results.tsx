@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Loader2Icon } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { visualizationKindLabel } from "@/components/visualizations/options"
 import { workspaceDraftMatchesSaved, type GenerationBatch } from "@/lib/client/generation-batch"
 import type { GeneratedDraft } from "@/lib/client/guest-draft"
@@ -98,9 +98,9 @@ export function GenerationResults({
                   </Button>
                 ) : null}
                 {workspaceSlug && (result.savedVisualizationId || result.workspaceDraftId && result.workspaceSaveStatus === "uncertain") ? (
-                  <Button nativeButton={false} render={<Link href={`/app/workspaces/${workspaceSlug}/visualizations/${result.savedVisualizationId ?? result.workspaceDraftId}`}
-                    target={result.workspaceSaveStatus === "uncertain" || result.workspaceSaveStatus === "conflict" ? "_blank" : undefined} rel="noopener noreferrer" />}
-                    variant="secondary" className="min-h-11">{result.workspaceSaveStatus === "uncertain" ? `Check ${visualizationKindLabel(result.kind)} save (new tab)` : `Open saved ${visualizationKindLabel(result.kind)}${result.workspaceSaveStatus === "conflict" ? " (new tab)" : ""}`}</Button>
+                  <Link href={`/app/workspaces/${workspaceSlug}/visualizations/${result.savedVisualizationId ?? result.workspaceDraftId}`}
+                    target={result.workspaceSaveStatus === "uncertain" || result.workspaceSaveStatus === "conflict" ? "_blank" : undefined} rel="noopener noreferrer"
+                    className={buttonVariants({ variant: "secondary", className: "min-h-11" })}>{result.workspaceSaveStatus === "uncertain" ? `Check ${visualizationKindLabel(result.kind)} save (new tab)` : `Open saved ${visualizationKindLabel(result.kind)}${result.workspaceSaveStatus === "conflict" ? " (new tab)" : ""}`}</Link>
                 ) : null}
                 {workspaceSlug && result.savedDeckId ? (
                   <Button nativeButton={false} render={<Link href={`/app/workspaces/${workspaceSlug}/decks/${result.savedDeckId}`} />} variant="secondary" className="min-h-11">Open saved Slides</Button>
