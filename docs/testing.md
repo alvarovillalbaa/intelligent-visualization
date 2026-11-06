@@ -30,5 +30,9 @@ PostgreSQL test service; each fixture creates and marks its own database, closes
 its pools and refuses a drop if its marker changes or connections remain. No
 existing database is reset. The prepared scope is
 [the PostgreSQL acceptance proposal](proposals/postgres-provider-checks.md).
+The [accepted migration receipt](results/2026/11-06/postgres-checks.md) separates
+35 actual configuration/PostgreSQL passes, two actual browser passes and the
+later lifecycle-only closure. All four failed overall attempts remain preserved;
+no single 37-case run or current broad suite/build is claimed.
 Historical 474-case and Course browser results keep their original sources and
 are not relabelled as current migration acceptance.

@@ -28,7 +28,13 @@ Implemented in the current migration slice:
 - [Report HTML export](docs/report-export.md) for a standalone copy of a committed Report draft.
 - [Course HTML export](docs/course-export.md) preserves the committed learner content in a standalone Course copy.
 
-The [Report CSV checks](docs/results/2026/11-04/report-csv-import-checks.md)
+The current [PostgreSQL migration checks](docs/results/2026/11-06/postgres-checks.md)
+accept seven configuration, 28 real PostgreSQL and two actual desktop/narrow
+browser identities at their separately recorded sources. Current scoped static,
+setup/doctor and owned shutdown checks passed without rerunning accepted cases.
+The candidate remains on a work branch until hosted configuration is ready.
+
+The historical [Report CSV checks](docs/results/2026/11-04/report-csv-import-checks.md)
 passed all 176 focused cases on 4 November 2026. The separate
 [normal quality CI](docs/results/2026/11-04/report-csv-import-normal-ci.md)
 passed 474 tests, three local-provider checks, typecheck, export verification
