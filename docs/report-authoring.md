@@ -1,5 +1,7 @@
 # Report Authoring
 
+Last updated: 2026-11-06
+
 Choose **Edit Report** on a completed generated Report. Changes stay in an
 isolated draft until **Apply changes**; **Preview draft** shows the unapplied
 content. Cancel, Escape and backdrop dismissal offer Keep editing or Discard

@@ -1,5 +1,7 @@
 # Course Authoring
 
+Last updated: 2026-11-06
+
 Courses are continuous-scroll learning artifacts, not tall slide decks.
 
 ## Edit a generated Course

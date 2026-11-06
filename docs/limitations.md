@@ -1,5 +1,7 @@
 # Limitations
 
+Last updated: 2026-11-06
+
 This migration is not complete.
 
 - Existing product routes still use legacy deck terminology.
