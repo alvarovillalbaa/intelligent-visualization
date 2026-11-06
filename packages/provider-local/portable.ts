@@ -135,7 +135,7 @@ export async function readPortableBackup(inputDirectory: string): Promise<{ mani
     || PORTABLE_TABLES.some((table) => table !== "legacy_repository_state" && !Object.hasOwn(counts, table))) throw new Error("Unexpected portable entity set.")
   const expectedPaths = selected.map((table) => `entities/${table}.ndjson`).sort()
   if (Object.keys(checksums).sort().join(",") !== expectedPaths.join(",")) throw new Error("Unexpected portable checksum paths.")
-  const entities = Object.fromEntries(PORTABLE_TABLES.map((table) => [table, []])) as Entities
+  const entities = Object.fromEntries(PORTABLE_TABLES.map((table) => [table, [] as Row[]])) as Entities
   let totalBytes = 0
   for (const table of selected) {
     const relative = `entities/${table}.ndjson`, expected = checksums[relative], bytes = await readFile(path.join(input, relative))

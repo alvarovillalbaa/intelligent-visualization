@@ -19,7 +19,7 @@ repo = Path.cwd()
 source = os.environ["SOURCE_COMMIT"]
 admin_url = "postgresql://iv_ci:authored-ci-only@127.0.0.1:54431/postgres"
 app_url = "postgresql://iv_ci:authored-ci-only@127.0.0.1:54431/intelligent_visualization_ci"
-branch = "qa/postgres-provider-20261106-1"
+branch = "qa/postgres-provider-20261106-2"
 assert re.fullmatch(r"[0-9a-f]{40}", source)
 assert subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip() == source
 assert not subprocess.check_output(["git", "status", "--porcelain"])
