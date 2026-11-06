@@ -17,13 +17,17 @@ import subprocess
 import tempfile
 import time
 import traceback
+from urllib.parse import urlsplit
 
 repo = Path.cwd()
 source = os.environ["SOURCE_COMMIT"]
-branch = "qa/workspace-publications-20261106-1"
+branch = "qa/workspace-publications-20261106-2"
 app_url = "postgresql://iv_ci:authored-ci-only@127.0.0.1:54431/intelligent_visualization_ci"
 admin_url = "postgresql://iv_ci:authored-ci-only@127.0.0.1:54431/postgres"
 lock_sha = "b18dd278e6eded698e269d2e8400b0359083a8ba34de4721227a70b5e27c0d59"
+carry_path = "docs/results/2026/11-06/workspace-publications-attempt-1.json"
+carry_sha = "7964d501e29a06143646d23c8e697b738b5d04d741ac55cff44e77a8d0ab7833"
+carry_source = "3f1eee91e7e7372d011267d1f0d2f5c5d6ce209f"
 assert re.fullmatch(r"[0-9a-f]{40}", source)
 assert os.environ.get("CI") == os.environ.get("IV_PUBLICATION_PUBLIC_REPOSITORY") == "true"
 assert os.environ.get("GITHUB_REPOSITORY") == "alvarovillalbaa/intelligent-visualization"
@@ -79,7 +83,7 @@ def vector():
 
 before = vector()
 report = {"schemaVersion": 1, "sourceCommit": source, "startedAt": time.time(), "commands": [], "sourceFiles": before, "sourceGuards": [],
-    "scope": "New 14 HTTP/stage, 6 client and 20 PostgreSQL identities plus 4 real authenticated-seed/anonymous-publication browser cases. No old checks/generation/model/provider/build. Browser real save/publish bodies use a bounded native-fetch Response.clone observer forwarding original fetch unchanged."}
+    "scope": "Carry exactly 40 HTTP/client/PostgreSQL identities from immutable attempt 1; execute 4 current publication browser identities plus static/setup/doctor checks. The old narrow Course pass is historical only after publisher lifecycle changes. No core reruns/generation/model/provider/build. Browser real save/publish bodies use a bounded native-fetch Response.clone observer forwarding original fetch unchanged."}
 
 def guard(label):
     current = vector()
@@ -287,6 +291,81 @@ def vitest(phase, file, count):
     assert len(rows) == count and sorted(row["fullName"] for row in rows) == expected and all(row["status"] == "passed" for row in rows)
 
 
+def carry_core(tests):
+    raw = (repo / carry_path).read_bytes()
+    assert len(raw) == 284832 and sha(raw) == carry_sha, "Original publication receipt changed"
+    old = json.loads(raw)
+    assert old["schemaVersion"] == 1 and old["sourceCommit"] == carry_source and old["passed"] is False and old["error"] == "AssertionError: "
+    assert len(old["sourceFiles"]) == 535 and sum(row["bytes"] for row in old["sourceFiles"].values()) == 8908461
+    vector_sha = sha(json.dumps(old["sourceFiles"], sort_keys=True, separators=(",", ":")).encode())
+    assert vector_sha == "fd4edf756b0b26675fcac93b5fe4e0aca68dede0ea24d3d578fc66199dcbd64d"
+    assert [row["label"] for row in old["sourceGuards"]] == ["before", "after-install", "after-focused-checks", "after-cleanup"]
+    assert all(row == {"label": row["label"], "files": 535, "bytes": 8908461, "matches": True, "vectorSha256": vector_sha} for row in old["sourceGuards"])
+    for key in ["databaseRemoved", "portReleased", "exportUnchanged", "scratchIdentityMatches", "scratchRemoved"]: assert old[key] is True
+    assert old["processCleanup"]["remaining"] == old["processCleanup"]["uncertain"] == [] and old["processCleanup"]["originalGroupsAbsent"] is True
+    assert old["residualBeforeEscalation"] == [] and old.get("cleanupSignals", []) == []
+    assert old["databaseCleanup"] == {"operation": "drop", "marker": "iv-workspace-publications:" + carry_source, "fixturesAbsent": True, "fixtureDatabases": [], "databaseRemoved": True}
+    assert old["fixtureAuditAfterTests"]["fixturesAbsent"] is True and old["fixtureAuditAfterTests"]["fixtureDatabases"] == []
+    assert old["server"]["exitCode"] == 0 and old["server"]["intentionalStop"] is True and old["server"]["originalProcessGroupAbsent"] is True
+    captures = 0
+    def verify(item):
+        nonlocal captures
+        data = gzip.decompress(base64.b64decode(item["gzipBase64"], validate=True))
+        assert item["complete"] is True and len(data) == item["bytes"] <= MAX and sha(data) == item["sha256"]
+        captures += 1
+        return data
+    assert len(old["commands"]) == 15
+    for index, command in enumerate(old["commands"]):
+        assert command["exitCode"] == (1 if index == 13 else 0)
+        assert command["exitObservedAndReaped"] is True and command["pipesEOF"] == [True, True] and command["originalProcessGroupAbsent"] is True
+        assert not any(command[key] for key in ["timedOut", "termSent", "killSent", "forcedDrain"])
+        for label in ["stdout", "stderr"]: verify(command[label])
+    for label in ["stdout", "stderr"]: verify(old["server"][label])
+    phases = {}
+    for index, (phase, (file, count)) in enumerate(tests.items(), 5):
+        content = (app / file).read_text()
+        assert not re.search(r"\b(?:it|test|describe)\.(?:only|skip|todo)\b", content)
+        suites = re.findall(r'describe(?:\.sequential)?\("([^"]+)"', content)
+        titles = re.findall(r'\bit\("([^"]+)"', content)
+        assert len(suites) == 1 and len(titles) == len(set(titles)) == count
+        names = sorted(suites[0] + " " + title for title in titles)
+        assert names == sorted(old["expectedIdentities"][phase])
+        command = old["commands"][index]
+        assert command["argv"][:6] == ["node_modules/.bin/vitest", "run", "--config", "vitest.workspace-publications.config.ts", file, "--reporter=json"]
+        assert len(command["argv"]) == 7 and command["argv"][6].endswith("/" + phase + ".json")
+        value = json.loads(verify(old[phase + "OriginalJson"]))
+        assert value == old[phase] and value["success"] is True and value["numTotalTests"] == value["numPassedTests"] == count
+        assert all(value[key] == 0 for key in ["numFailedTests", "numPendingTests", "numTodoTests", "numFailedTestSuites", "numPendingTestSuites"])
+        rows = [row for suite in value["testResults"] for row in suite["assertionResults"]]
+        assert len(rows) == count and sorted(row["fullName"] for row in rows) == names and all(row["status"] == "passed" for row in rows)
+        phases[phase] = {"passed": count, "identities": names, "originalJsonBytes": old[phase + "OriginalJson"]["bytes"], "originalJsonSha256": old[phase + "OriginalJson"]["sha256"], "executedThisAttempt": False}
+    browser = json.loads(verify(old["browserOriginalJson"]))
+    assert browser == old["browser"] and not browser["errors"] and browser["stats"]["expected"] == 1 and browser["stats"]["unexpected"] == 3
+    assert browser["stats"]["flaky"] == browser["stats"]["skipped"] == 0 and captures == 36
+    assert old["commands"][13]["argv"] == ["node_modules/.bin/playwright", "test", "--config", "playwright.workspace-publications.config.ts"]
+    def walk(suites):
+        return [spec for suite in suites for spec in suite.get("specs", [])] + [spec for suite in suites for spec in walk(suite.get("suites", []))]
+    outcomes = []
+    for spec in walk(browser["suites"]):
+        for case in spec["tests"]:
+            assert case["expectedStatus"] == "passed" and len(case["results"]) == 1 and case["results"][0]["retry"] == 0
+            outcomes.append({"title": spec["title"], "profile": case["projectName"], "status": case["results"][0]["status"]})
+    assert len(outcomes) == 4 and [row for row in outcomes if row["status"] == "passed"] == [{"title": "a Course publishes saved revisions to an anonymous live link while prior version bytes stay immutable", "profile": "narrow-chromium", "status": "passed"}]
+    assert sum(row["status"] == "failed" for row in outcomes) == 3
+    prior = old["sourceExport"]["inputs"]
+    allowed = {"components/visualizations/workspace-publisher.tsx"}
+    assert len(prior) == 269 and set(prior) == set(export) and allowed <= prior.keys()
+    for name, row in prior.items():
+        assert row == old["sourceFiles"][name]
+        if name not in allowed: assert export[name] == row, "Previously checked publication runtime input changed: " + name
+    assert old["frozenLock"] == {"bytes": 618662, "sha256": lock_sha}
+    assert sha((app / "package-lock.json").read_bytes()) == lock_sha
+    report["carriedCore"] = {"validated": True, "sourceCommit": carry_source, "receipt": carry_path, "receiptBytes": len(raw), "receiptSha256": carry_sha,
+        "originalCapturesVerified": captures, "phases": phases, "passed": 40, "executedThisAttempt": False, "unchangedRuntimeInputs": 268,
+        "allowedChangedRuntimeInputs": {name: {"before": prior[name], "current": export[name]} for name in sorted(allowed)},
+        "priorBrowser": {"passed": 1, "failed": 3, "acceptedForCurrentSource": False, "outcomes": outcomes, "originalJsonBytes": old["browserOriginalJson"]["bytes"], "originalJsonSha256": old["browserOriginalJson"]["sha256"]}}
+
+
 def check_browser():
     value = read_report("browser")
     assert report["commands"][-1]["exitCode"] == 0 and not value["errors"]
@@ -372,6 +451,7 @@ try:
     assert configs | test_files <= export.keys()
     report["sourceExport"] = {"files": len(export), "bytes": sum(row["bytes"] for row in export.values()), "inputs": export}
     check_export()
+    carry_core(tests)
     assert run(["node", "--version"]).strip() == b"v24.21.0"
     lock = (app / "package-lock.json").read_bytes()
     assert len(lock) == 618662 and sha(lock) == lock_sha
@@ -389,9 +469,8 @@ try:
     (app / "tsconfig.workspace-publications-checks.json").write_text(json.dumps({"extends": "./tsconfig.json", "include": scoped,
         "exclude": ["node_modules", "components/ai-elements"], "compilerOptions": {"incremental": False, "plugins": []}}))
     run(["node_modules/.bin/tsc", "--noEmit", "-p", "tsconfig.workspace-publications-checks.json"], 60)
-    for phase, (file, count) in tests.items(): vitest(phase, file, count)
-    report["fixtureAuditAfterTests"] = database_guard("audit")
-    assert report["fixtureAuditAfterTests"]["fixturesAbsent"]
+    report["fixtureAuditBeforeSetup"] = database_guard("audit")
+    assert report["fixtureAuditBeforeSetup"]["fixturesAbsent"]
     guard("after-focused-checks")
     run(["npm", "run", "setup:local"], 60); run(["npm", "run", "doctor"], 30)
     run(["node_modules/.bin/playwright", "install", "--only-shell", "chromium"], 150)
@@ -412,7 +491,7 @@ try:
     groups.append(server.pid)
     ready_end = min(time.monotonic() + 90, work_end - 667)
     report["readiness"] = []
-    for pathname, expected in [("/auth", 200), ("/app", 307), ("/", 200), ("/v/course_" + "0" * 32, 404)]:
+    for pathname, expected in [("/auth", 200), ("/app", 307), ("/app/workspaces/core-growth", 307), ("/", 200), ("/v/course_" + "0" * 32, 404)]:
         while True:
             assert server.poll() is None and interruption is None
             assert all((root / ("server." + label)).stat().st_size <= MAX for label in ["stdout", "stderr"])
@@ -420,7 +499,14 @@ try:
             try:
                 connection.request("GET", pathname); response = connection.getresponse(); data = response.read(MAX + 1)
                 if response.status == expected and len(data) <= MAX:
-                    report["readiness"].append({"path": pathname, "status": response.status, "bytes": len(data), "sha256": sha(data)}); break
+                    row = {"path": pathname, "status": response.status, "bytes": len(data), "sha256": sha(data)}
+                    if pathname == "/app/workspaces/core-growth":
+                        location = response.getheader("location", "")
+                        redirect = urlsplit(location)
+                        row["redirectPath"] = redirect.path
+                        assert redirect.path == "/auth" and not redirect.query and not redirect.fragment
+                        assert not redirect.username and not redirect.password and redirect.netloc in ["", "127.0.0.1:3100"]
+                    report["readiness"].append(row); break
             except OSError: pass
             finally: connection.close()
             assert time.monotonic() < ready_end, "Next readiness expired"
@@ -508,6 +594,6 @@ finally:
     captures += [report[key] for key in ["httpOriginalJson", "clientOriginalJson", "postgresOriginalJson", "browserOriginalJson"] if key in report]
     captures += [report["server"][key] for key in ["stdout", "stderr"] if key in report.get("server", {})]
     report["finishedAt"] = time.time()
-    report["passed"] = status == 0 and all(report.get(phase, {}).get("numPassedTests") == count for phase, count in [("http", 14), ("client", 6), ("postgres", 20)]) and len(report["sourceGuards"]) == 5 and all(report.get(key) for key in ["databaseRemoved", "portReleased", "exportUnchanged", "scratchRemoved", "scratchIdentityMatches"]) and all(row["complete"] for row in captures)
+    report["passed"] = status == 0 and report.get("carriedCore", {}).get("validated") is True and len(report["sourceGuards"]) == 5 and all(report.get(key) for key in ["databaseRemoved", "portReleased", "exportUnchanged", "scratchRemoved", "scratchIdentityMatches"]) and all(row["complete"] for row in captures)
     print("IV_WORKSPACE_PUBLICATION_RESULT=" + json.dumps(report, separators=(",", ":")), flush=True)
 raise SystemExit(0 if report["passed"] else 1)

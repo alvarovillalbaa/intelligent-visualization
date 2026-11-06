@@ -49,6 +49,16 @@ navigation cancellations remain separate observations after completed transition
 Unknown errors/resources fail; failed attempts remain. No closed suite is rerun.
 Temporary CI is QA-only and disabled/retired afterward; permanent CI is retained.
 
+Attempt 1 passed all forty core cases and narrow Course, while desktop sign-in
+and two Report request-failure boundaries remained incomplete. Its failed overall
+receipt is preserved. The publisher now releases completed reads before exposing
+UI state and aborts only pending work. Attempt 2 carries the original forty
+passes with all 36 original captures and 268 protected runtime inputs; only the
+shared publisher changes. The old browser pass is historical, so all four browser
+identities require current-source acceptance. An anonymous bounded workspace
+readiness probe requires the existing redirect to `/auth`; browser assertions,
+timeouts and cancellation rules stay unchanged. No application auth fix is claimed.
+
 Fresh host Storage Guard measured 17.8 GiB free against 34.0 required. No local
 install, build, database, server or browser runs. This verifies the local canonical
 publication slice; hosted Supabase/Auth/RLS/storage, original assets, physical
