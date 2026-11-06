@@ -19,7 +19,11 @@ repo = Path.cwd()
 source = os.environ["SOURCE_COMMIT"]
 admin_url = "postgresql://iv_ci:authored-ci-only@127.0.0.1:54431/postgres"
 app_url = "postgresql://iv_ci:authored-ci-only@127.0.0.1:54431/intelligent_visualization_ci"
-branch = "qa/postgres-provider-20261106-2"
+branch = "qa/postgres-provider-20261106-3"
+carry_source = "a5a702ea20108d3ed376fab9a181b838dd5897e0"
+carry_path = "docs/results/2026/11-06/postgres-attempt-2.json"
+carry_sha256 = "500b26672802fe0b82c25436d14cae7a6e329e905f2f2a87c41c7b7a8ad34384"
+lock_sha256 = "b18dd278e6eded698e269d2e8400b0359083a8ba34de4721227a70b5e27c0d59"
 assert re.fullmatch(r"[0-9a-f]{40}", source)
 assert subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip() == source
 assert not subprocess.check_output(["git", "status", "--porcelain"])
@@ -55,7 +59,7 @@ root_identity = (root.stat().st_dev, root.stat().st_ino, root.stat().st_uid)
 app = root / "app"
 app.mkdir()
 report = {"sourceCommit": source, "startedAt": time.time(), "commands": [], "sourceVector": before,
-          "scope": "7 unit, 28 real disposable PostgreSQL and 2 actual local app browser identities; no hosted provider, model or production proof"}
+          "scope": "Carry validated 7 unit and 28 PostgreSQL identities from attempt 2; run current static/setup/doctor and 2 actual browser identities; no hosted provider, model or production proof"}
 groups, selected, export_expected = [], [], {}
 server = server_out = server_err = None
 database_marked, status = False, 1
@@ -175,17 +179,69 @@ try {
     return json.loads(run(["node", "--input-type=module", "-e", code, operation, source], 30))
 
 
-def check_vitest(path, count, names):
-    raw = path.read_bytes()
-    report[path.stem + "OriginalJson"] = stream(raw)
-    data = json.loads(raw)
-    report[path.stem] = data
-    assert report["commands"][-1]["exitCode"] == 0, path.stem + " CLI failed"
+def check_vitest(data, count, names):
     assert data["success"] and data["numTotalTests"] == data["numPassedTests"] == count
     assert data["numFailedTests"] == data["numPendingTests"] == data["numFailedTestSuites"] == 0
+    assert data["numTodoTests"] == data["numPendingTestSuites"] == 0
     rows = [case for suite in data["testResults"] for case in suite["assertionResults"]]
     assert len(rows) == count and sorted(row["fullName"] for row in rows) == sorted(names)
     assert all(row["status"] == "passed" for row in rows)
+
+
+def verify_capture(capture):
+    data = base64.b64decode(capture["base64"], validate=True)
+    assert capture["complete"] is True and len(data) == capture["bytes"] <= 4_000_000
+    assert digest(data) == capture["sha256"], "Carried original capture hash mismatch"
+    return data
+
+
+def carry_core(tests, expected):
+    raw = (repo / carry_path).read_bytes()
+    assert digest(raw) == carry_sha256, "Carried receipt hash mismatch"
+    carry = json.loads(raw)
+    assert carry["sourceCommit"] == carry_source and carry["passed"] is False
+    assert all(carry[key] is True for key in ["sourceUnchanged", "nativeStatusClean", "exportUnchanged", "databaseRemoved",
+        "scratchIdentityMatches", "streamClosureVerified", "scratchRemoved", "portReleased"])
+    assert carry["liveOwnedBeforeScratchRemoval"] == carry["uncertainNewProcesses"] == []
+    assert carry["databaseCleanup"]["databaseRemoved"] and carry["databaseCleanup"]["fixturesAbsent"]
+    assert carry["databaseCleanup"]["marker"] == "iv-postgres-acceptance:" + carry_source
+    assert carry["fixtureAuditAfterTests"]["fixturesAbsent"] and carry["fixtureAuditAfterTests"]["fixtureDatabases"] == []
+    assert carry["server"]["intentionalStop"] and not carry["server"]["killSent"] and carry["server"]["remainingOwned"] == []
+    assert all(item["signal"] == "TERM" for item in carry.get("signals", []))
+    commands = carry["commands"]
+    assert len(commands) == 14
+    for index, command in enumerate(commands):
+        assert not command["timedOut"] and command["exitCode"] == (1 if index == 12 else 0)
+        for label in ["stdout", "stderr"]: verify_capture(command[label])
+    for label in ["stdout", "stderr"]: verify_capture(carry["server"][label])
+    verify_capture(carry["browserOriginalJson"])
+    phases = {}
+    for phase, files, count, index, config in [("unit", list(tests)[:1], 7, 6, "vitest.postgres-unit.config.ts"),
+        ("postgres", list(tests)[1:], 28, 7, "vitest.postgres.config.ts")]:
+        command = commands[index]
+        assert command["argv"][:5] == ["node_modules/.bin/vitest", "run", "--config", config, "--reporter=json"]
+        assert len(command["argv"]) == 7 and command["argv"][5] == "--outputFile" and command["argv"][6].endswith("/" + phase + ".json")
+        original = carry[phase + "OriginalJson"]
+        data = json.loads(verify_capture(original))
+        assert data == carry[phase], "Carried parsed test report differs from its original JSON"
+        identities = [title for name in files for title in expected[name]]
+        check_vitest(data, count, identities)
+        phases[phase] = {"passed": count, "identities": identities, "originalJson": original, "result": data, "executedThisAttempt": False}
+    assert carry["expectedIdentities"] == expected
+    allowed = {"tests/e2e/postgres-app.spec.ts", "playwright.postgres.config.ts"}
+    assert set(export_expected) == set(carry["testedExport"]), "Carried runtime input set changed"
+    for name, previous in carry["testedExport"].items():
+        if name not in allowed: assert export_expected[name] == previous, "Carried runtime input changed: " + name
+    frozen = gzip.decompress(base64.b64decode(carry["generatedLock"]["gzipBase64"], validate=True))
+    assert len(frozen) == carry["generatedLock"]["bytes"] == 618662
+    assert digest(frozen) == carry["generatedLock"]["sha256"] == lock_sha256
+    assert (app / "package-lock.json").read_bytes() == frozen, "Frozen carried lock changed"
+    assert carry["generatedLockChecks"] == {"sha256": lock_sha256, "actualAlternativeDatabaseNodesAbsent": True}
+    report["carriedCore"] = {"validated": True, "sourceCommit": carry_source, "receipt": carry_path, "receiptSha256": carry_sha256,
+        "phases": phases, "originalCapturesVerified": 33, "unchangedRuntimeInputs": len(export_expected) - len(allowed),
+        "lockSha256": lock_sha256, "lockBytes": len(frozen), "priorFullAcceptance": False, "priorBrowserAcceptance": False,
+        "allowedBrowserInputs": [{"path": name, "before": carry["testedExport"][name], "after": export_expected[name]} for name in sorted(allowed)]}
+    return carry
 
 
 try:
@@ -213,20 +269,15 @@ try:
         assert len(suites) == 1 and len(titles) == len(set(titles)) == count
         expected[name] = [suites[0] + " " + title for title in titles]
     report["expectedIdentities"] = expected
+    carry = carry_core(tests, expected)
     assert run(["node", "--version"]).strip() == b"v24.21.0"
-    old_lock = json.loads((app / "package-lock.json").read_bytes())
+    capture_lock()
+    assert report["generatedLock"]["sha256"] == lock_sha256
+    report["lockMode"] = "frozen-from-validated-attempt-2"
+    new_lock = json.loads((app / "package-lock.json").read_bytes())
     package = json.loads((app / "package.json").read_bytes())
     additions = {"dependencies": {"pg": "8.23.1"}, "devDependencies": {"@types/pg": "8.23.1", "@playwright/test": "1.57.0"}}
-    removed = {"@libsql/client", "convex", "drizzle-orm"}
-    for section in ["dependencies", "devDependencies"]:
-        wanted = {key: value for key, value in old_lock["packages"][""][section].items() if key not in removed}
-        wanted.update(additions.get(section, {}))
-        assert package[section] == wanted, "Unapproved direct dependency change"
-    del export_expected["package-lock.json"]
-    try: run(["npm", "install", "--package-lock-only", "--ignore-scripts", "--no-audit", "--no-fund"], 240)
-    finally: capture_lock()
-    new_lock = json.loads((app / "package-lock.json").read_bytes())
-    assert new_lock["lockfileVersion"] == old_lock["lockfileVersion"] == 3
+    assert new_lock["lockfileVersion"] == 3
     unchanged = []
     for section in ["dependencies", "devDependencies"]:
         assert new_lock["packages"][""][section] == package[section]
@@ -234,13 +285,12 @@ try:
             version = new_lock["packages"]["node_modules/" + name]["version"]
             if name in additions.get(section, {}): assert version == additions[section][name]
             else:
-                assert version == old_lock["packages"]["node_modules/" + name]["version"], "Direct resolution drift: " + name
                 unchanged.append({"section": section, "package": name, "version": version})
+    assert unchanged == carry["directResolutionsPreserved"]
     nodes = [name.rsplit("node_modules/", 1)[-1] for name in new_lock["packages"] if "node_modules/" in name]
     assert not any(name.startswith("@libsql/") or name in {"libsql", "convex", "drizzle-orm", "drizzle-kit", "@neondatabase/serverless", "better-sqlite3", "sqlite3", "@cloudflare/d1"} for name in nodes)
     report["directResolutionsPreserved"] = unchanged
     report["generatedLockChecks"] = {"sha256": report["generatedLock"]["sha256"], "actualAlternativeDatabaseNodesAbsent": True}
-    export_expected["package-lock.json"] = report["generatedLock"]["sha256"]
     report["testedExport"] = dict(export_expected)
     run(["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"], 300)
     report["databaseOwnership"] = database_guard("mark")
@@ -256,12 +306,8 @@ try:
     (app / "tsconfig.postgres-checks.json").write_text(json.dumps({"extends": "./tsconfig.json", "include": scoped,
         "exclude": ["node_modules", "components/ai-elements"], "compilerOptions": {"incremental": False, "plugins": []}}))
     run(["node_modules/.bin/tsc", "--noEmit", "-p", "tsconfig.postgres-checks.json"])
-    for phase, files, count, config in [("unit", list(tests)[:1], 7, "vitest.postgres-unit.config.ts"), ("postgres", list(tests)[1:], 28, "vitest.postgres.config.ts")]:
-        result = root / (phase + ".json")
-        run(["node_modules/.bin/vitest", "run", "--config", config, "--reporter=json", "--outputFile", str(result)], 180, accepted=(0, 1))
-        check_vitest(result, count, [title for name in files for title in expected[name]])
-    report["fixtureAuditAfterTests"] = database_guard("audit")
-    assert report["fixtureAuditAfterTests"]["fixturesAbsent"], "Disposable test databases remain; no unknown database is dropped"
+    report["fixtureAuditBeforeSetup"] = database_guard("audit")
+    assert report["fixtureAuditBeforeSetup"]["fixturesAbsent"], "Disposable test databases remain; no unknown database is dropped"
     run(["npm", "run", "setup:local"], 120)
     run(["npm", "run", "doctor"], 60)
     run(["node_modules/.bin/playwright", "install", "chromium", "--only-shell"], 180)
@@ -314,7 +360,7 @@ try:
         assert boundary["cleanup"] == {"contextsCreated": 1, "contextsClosed": 1, "pendingJobs": 0, "failures": []}
     status = 0
 except Exception as error:
-    report["error"] = str(error)
+    report["error"] = type(error).__name__ + ": " + str(error)
 finally:
     work_deadline = time.monotonic() + 100
     capture_lock()
@@ -377,6 +423,6 @@ finally:
     captures = [item[label] for item in report["commands"] for label in ["stdout", "stderr"]]
     if "server" in report: captures.extend(report["server"][label] for label in ["stdout", "stderr"])
     captures.extend(report[key] for key in ["unitOriginalJson", "postgresOriginalJson", "browserOriginalJson"] if key in report)
-    report["passed"] = status == 0 and all(report.get(key) for key in ["sourceUnchanged", "nativeStatusClean", "exportUnchanged", "scratchRemoved", "databaseRemoved", "streamClosureVerified"]) and all(item["complete"] for item in captures)
+    report["passed"] = status == 0 and report.get("carriedCore", {}).get("validated") is True and all(report.get(key) for key in ["sourceUnchanged", "nativeStatusClean", "exportUnchanged", "scratchRemoved", "databaseRemoved", "streamClosureVerified"]) and all(item["complete"] for item in captures)
     print("IV_POSTGRES_RESULT=" + json.dumps(report, separators=(",", ":")), flush=True)
 raise SystemExit(0 if report["passed"] else 1)

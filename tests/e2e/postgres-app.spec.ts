@@ -52,7 +52,7 @@ test(TITLE, async ({ page, context }, testInfo) => {
   const cleanupFailures: string[] = []
   function problem(kind: keyof typeof counts, detail: unknown) {
     counts[kind]++
-    if (diagnostics.length < 12) diagnostics.push({ kind, stage, detail: bounded(detail) })
+    if (diagnostics.length < 40) diagnostics.push({ kind, stage, detail: bounded(detail) })
   }
   function requestLabel(request: Request) {
     try {
@@ -95,6 +95,7 @@ test(TITLE, async ({ page, context }, testInfo) => {
     await page.getByRole("button", { name: "Sign in", exact: true }).click()
     await expect(page).toHaveURL(`${ORIGIN}${SEED_WORKSPACE}`)
     await expect(page.getByRole("heading", { level: 1, name: "Core Growth", exact: true })).toBeVisible()
+    await page.waitForLoadState("load")
     postPath = null
   }
 
@@ -138,7 +139,7 @@ test(TITLE, async ({ page, context }, testInfo) => {
     })
 
     stage = "sign-in"
-    await page.goto("/auth", { waitUntil: "domcontentloaded" })
+    await page.goto("/auth", { waitUntil: "load" })
     await expect(page.getByRole("heading", { level: 1, name: "Your account", exact: true })).toBeVisible()
     await layout("auth")
     await signIn()
@@ -148,7 +149,7 @@ test(TITLE, async ({ page, context }, testInfo) => {
     expect(cookie?.httpOnly).toBe(true)
     expect(cookie?.sameSite).toBe("Lax")
     stage = "session-reload"
-    await page.reload({ waitUntil: "domcontentloaded" })
+    await page.reload({ waitUntil: "load" })
     await expect(page.getByRole("heading", { level: 1, name: "Core Growth", exact: true })).toBeVisible()
     await expect(page.getByRole("button", { name: "Sign out", exact: true })).toBeVisible()
     observations.sessionReload = true
@@ -163,15 +164,16 @@ test(TITLE, async ({ page, context }, testInfo) => {
     await expect(page).toHaveURL(`${ORIGIN}${editorPath}`)
     await expect(page.getByRole("heading", { level: 1, name: "Slides operating system", exact: true })).toBeVisible()
     await expect(page.getByRole("button", { name: "Save checkpoint", exact: true })).toBeEnabled()
+    await page.waitForLoadState("load")
     observations.seedEditor = true
-    await page.reload({ waitUntil: "domcontentloaded" })
+    await page.reload({ waitUntil: "load" })
     await expect(page.getByRole("heading", { level: 1, name: "Slides operating system", exact: true })).toBeVisible()
     await expect(page.getByRole("button", { name: "Save checkpoint", exact: true })).toBeEnabled()
     await layout("editor")
     observations.editorReload = true
 
     stage = "create-workspace"
-    await page.goto(SEED_WORKSPACE, { waitUntil: "domcontentloaded" })
+    await page.goto(SEED_WORKSPACE, { waitUntil: "load" })
     await page.getByText("Workspace settings", { exact: true }).click()
     await page.getByPlaceholder("Launch campaigns", { exact: true }).fill(workspaceName)
     const description = `Authored durable PostgreSQL workspace for ${profile}.`
@@ -180,10 +182,11 @@ test(TITLE, async ({ page, context }, testInfo) => {
     await page.getByRole("button", { name: "Create workspace", exact: true }).click()
     await expect(page).toHaveURL(`${ORIGIN}${workspacePath}`)
     await expect(page.getByRole("heading", { level: 1, name: workspaceName, exact: true })).toBeVisible()
+    await page.waitForLoadState("load")
     postPath = null
     observations.workspaceCreated = true
     stage = "workspace-reload"
-    await page.reload({ waitUntil: "domcontentloaded" })
+    await page.reload({ waitUntil: "load" })
     await expect(page.getByRole("heading", { level: 1, name: workspaceName, exact: true })).toBeVisible()
     await expect(page.getByText(description, { exact: true })).toBeVisible()
     await expect(page.getByText("Nothing here yet — create your first draft above.", { exact: true })).toBeVisible()
@@ -194,17 +197,18 @@ test(TITLE, async ({ page, context }, testInfo) => {
     postPath = workspacePath
     await page.getByRole("button", { name: "Sign out", exact: true }).click()
     await expect(page).toHaveURL(`${ORIGIN}/`)
+    await page.waitForLoadState("load")
     postPath = null
     expect((await context.cookies(ORIGIN)).some((item) => item.name === "slides_session")).toBe(false)
     observations.signedOut = true
     stage = "protected-route"
-    await page.goto(workspacePath, { waitUntil: "domcontentloaded" })
+    await page.goto(workspacePath, { waitUntil: "load" })
     await expect(page).toHaveURL(`${ORIGIN}/auth`)
     await expect(page.getByRole("heading", { level: 1, name: "Your account", exact: true })).toBeVisible()
     observations.protectedRedirect = true
     stage = "sign-in-again"
     await signIn()
-    await page.goto(workspacePath, { waitUntil: "domcontentloaded" })
+    await page.goto(workspacePath, { waitUntil: "load" })
     await expect(page.getByRole("heading", { level: 1, name: workspaceName, exact: true })).toBeVisible()
     await expect(page.getByText(description, { exact: true })).toBeVisible()
     observations.workspaceAfterNewSession = true
