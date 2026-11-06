@@ -3,8 +3,10 @@
 Prepared 6 November 2026 under Alvaro's standing approval. This packet implements
 the [revocation contract](workspace-unpublication.md) after the separately accepted
 [publication slice](../results/2026/11-06/workspace-publications-checks.md). The
-source contains 39 new core cases and four browser identities; execution and
-acceptance are pending.
+source contains 39 new core cases and four browser identities. The
+[first execution](../results/2026/11-07/workspace-unpublications-attempt-1.md)
+passes all 39 core cases but fails all four strict browser boundaries. Browser
+acceptance remains pending.
 
 ## Behavior and protected state
 
@@ -54,10 +56,23 @@ requests, open/history pages and copied/downloaded content cannot be recalled.
   files are observed separately to verify unchanged retained bytes. No generation,
   publication, revocation, database or artifact response is fulfilled.
 
-Exact authored identities, counts and duplicate-free source extraction must be
-frozen in the controller before activation. This first execution runs only these
-new cases; it neither reruns closed publication journeys nor carries their old
-passes as new execution. Any failed attempt retains its original verdict/streams.
+Exact authored identities, counts and duplicate-free source extraction are
+frozen in the controller before activation. The first execution runs only these
+new cases; it does not rerun closed publication journeys. Its false verdict and
+all original streams remain retained.
+
+The next execution carries the 39 core passes after validating the complete
+362,748-byte original receipt, all 38 original captures, exact raw JSON identities
+and protected source inputs. All 270 exported inputs must match except the
+observational browser fixture; no application code changes. Four browser
+identities still need strict current-source acceptance. The fixture waits for
+publication-status readiness before forcing a private reload and adds bounded
+GET clone EOF/hash/native-signal observations with actual Playwright request
+timelines across reload: at most sixteen GETs, 128 KiB per observed body and a
+48 KiB diagnostic attachment. The original Promise/Response/arguments remain forwarded;
+no failure classification or timeout is relaxed. Ordinal/time correlation is not
+an exact cross-runtime request identity. Earlier abort causes remain unproven,
+and no product fix is claimed merely from a subsequent pass.
 
 ## Runner and ownership
 

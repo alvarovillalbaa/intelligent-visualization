@@ -1,10 +1,11 @@
 # Unpublish a Course or Report
 
-Last updated: 2026-11-06
+Last updated: 2026-11-07
 
 The local candidate adds Unpublish for saved Course and Report documents.
-[Focused checks](proposals/workspace-unpublication-checks.md) are authored;
-execution and acceptance are pending. Hosted activation is still separate.
+[Focused checks](proposals/workspace-unpublication-checks.md) pass all 39 core
+cases. Strict browser acceptance is still pending after the first execution's
+status-read failures. Hosted activation remains separate.
 
 ## Stop public access
 

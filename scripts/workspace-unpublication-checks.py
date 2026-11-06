@@ -21,10 +21,13 @@ from urllib.parse import urlsplit
 
 repo = Path.cwd()
 source = os.environ["SOURCE_COMMIT"]
-branch = "qa/workspace-unpublications-20261106-1"
+branch = "qa/workspace-unpublications-20261107-2"
 app_url = "postgresql://iv_ci:authored-ci-only@127.0.0.1:54431/intelligent_visualization_ci"
 admin_url = "postgresql://iv_ci:authored-ci-only@127.0.0.1:54431/postgres"
 lock_sha = "b18dd278e6eded698e269d2e8400b0359083a8ba34de4721227a70b5e27c0d59"
+carry_path = "docs/results/2026/11-07/workspace-unpublications-attempt-1.json"
+carry_sha = "f1e3ff1832a9969249c8a057429ff80cebc86abbde5d637ef0cca324e8fddb41"
+carry_source = "3c0045290aebea045ebadff098b3c9b5c4769391"
 TITLES = ["a Course revokes live and old public URLs without losing private edits or retained artifacts", "a Report revokes live and old public URLs without losing private edits or retained artifacts"]
 assert re.fullmatch(r"[0-9a-f]{40}", source)
 assert os.environ.get("CI") == os.environ.get("IV_UNPUBLICATION_PUBLIC_REPOSITORY") == "true"
@@ -81,7 +84,7 @@ def vector():
 
 before = vector()
 report = {"schemaVersion": 1, "sourceCommit": source, "startedAt": time.time(), "commands": [], "sourceFiles": before, "sourceGuards": [],
-    "scope": "New unpublication HTTP/client/PostgreSQL tests and four new Course/Report desktop/narrow browser identities. Actual local auth/API/compiler/storage; no old acceptance reruns or carries, generation, AI, hosted/provider/production calls or build. Fresh anonymous GET/HEAD/conditional refusal, preserved private edits and owned-object byte hashes, later republish without old-version resurrection."}
+    "scope": "Four Course/Report desktop/narrow browser identities with strict publication GET diagnostics and readiness. Carry 39 accepted HTTP/client/PostgreSQL cases from the immutable failed first receipt without executing them again; none of its four failed browser journeys is accepted. Actual local auth/API/compiler/storage; no generation, AI, hosted/provider/production calls or build. Fresh anonymous refusal, preserved private edits and artifact bytes, later republish without old-version resurrection."}
 
 
 def guard(label):
@@ -272,22 +275,147 @@ def read_report(phase):
     report[phase] = value
     return value
 
-def vitest(phase, file, count):
-    content = (app / file).read_text()
-    assert not re.search(r"\b(?:it|test|describe)\.(?:only|skip|todo)\b", content)
-    suites = re.findall(r'describe(?:\.sequential)?\("([^"]+)"', content)
-    titles = re.findall(r'\bit\("([^"]+)"', content)
-    assert len(suites) == 1 and len(titles) == len(set(titles)) == count
-    expected = sorted(suites[0] + " " + title for title in titles)
-    report.setdefault("expectedIdentities", {})[phase] = expected
-    run(["node_modules/.bin/vitest", "run", "--config", "vitest.workspace-unpublications.config.ts", file,
-        "--reporter=json", "--outputFile=" + str(root / (phase + ".json"))], 90, (0, 1))
-    value = read_report(phase)
-    assert report["commands"][-1]["exitCode"] == 0
-    assert value["success"] and value["numTotalTests"] == value["numPassedTests"] == count
-    assert all(value[key] == 0 for key in ["numFailedTests", "numPendingTests", "numTodoTests", "numFailedTestSuites", "numPendingTestSuites"])
-    rows = [row for suite in value["testResults"] for row in suite["assertionResults"]]
-    assert len(rows) == count and sorted(row["fullName"] for row in rows) == expected and all(row["status"] == "passed" for row in rows)
+def carry_core(tests):
+    raw = (repo / carry_path).read_bytes()
+    assert len(raw) == 362748 and sha(raw) == carry_sha, "Original failed unpublication receipt changed"
+    old = json.loads(raw)
+    assert old["schemaVersion"] == 1 and old["sourceCommit"] == carry_source and old["passed"] is False and old["error"] == "AssertionError: "
+    assert len(old["sourceFiles"]) == 555 and sum(row["bytes"] for row in old["sourceFiles"].values()) == 9913386
+    vector_sha = sha(json.dumps(old["sourceFiles"], sort_keys=True, separators=(",", ":")).encode())
+    assert vector_sha == "225f494632d43262df963beab874c0b7d8746e0ed601606ae91212e8dbfbb73d"
+    assert [row["label"] for row in old["sourceGuards"]] == ["before", "after-install", "after-focused-checks", "after-cleanup"]
+    assert all(row == {"label": row["label"], "files": 555, "bytes": 9913386, "matches": True, "vectorSha256": vector_sha} for row in old["sourceGuards"])
+    for key in ["databaseRemoved", "portReleased", "exportUnchanged", "scratchIdentityMatches", "scratchRemoved"]: assert old[key] is True
+    assert old["processCleanup"]["remaining"] == old["processCleanup"]["uncertain"] == [] and old["processCleanup"]["originalGroupsAbsent"] is True
+    assert old["residualBeforeEscalation"] == [] and old.get("cleanupSignals", []) == []
+    marker = "iv-workspace-unpublications:" + carry_source
+    assert old["databaseCleanup"] == {"operation": "drop", "marker": marker, "fixturesAbsent": True, "fixtureDatabases": [], "databaseRemoved": True}
+    for phase in ["fixtureAuditAfterTests", "fixtureAuditBeforeSetup"]:
+        assert old[phase] == {"operation": "audit", "marker": marker, "fixturesAbsent": True, "fixtureDatabases": [], "databaseRemoved": False}
+    assert old["server"]["exitCode"] == 0 and old["server"]["intentionalStop"] is True and old["server"]["originalProcessGroupAbsent"] is True
+    captures, decoded_bytes = 0, 0
+    def verify(item):
+        nonlocal captures, decoded_bytes
+        packed = base64.b64decode(item["gzipBase64"], validate=True)
+        assert base64.b64encode(packed).decode() == item["gzipBase64"]
+        data = gzip.decompress(packed)
+        assert item["complete"] is True and len(data) == item["bytes"] <= MAX and sha(data) == item["sha256"]
+        captures += 1; decoded_bytes += len(data)
+        return data
+    assert len(old["commands"]) == 16
+    for index, command in enumerate(old["commands"]):
+        assert command["exitCode"] == (1 if index == 14 else 0)
+        assert command["exitObservedAndReaped"] is True and command["pipesEOF"] == [True, True] and command["originalProcessGroupAbsent"] is True
+        assert not any(command[key] for key in ["timedOut", "termSent", "killSent", "forcedDrain"]) and not command.get("overflow") and not command.get("interrupted")
+        for label in ["stdout", "stderr"]: verify(command[label])
+    for label in ["stdout", "stderr"]: verify(old["server"][label])
+    phases, all_names = {}, []
+    for index, (phase, (file, count)) in enumerate(tests.items(), 5):
+        content = (app / file).read_text()
+        assert not re.search(r"\b(?:it|test|describe)\.(?:only|skip|todo)\b", content)
+        suites = re.findall(r'describe(?:\.sequential)?\("([^"]+)"', content)
+        titles = re.findall(r'\bit\("([^"]+)"', content)
+        assert len(suites) == 1 and len(titles) == len(set(titles)) == count
+        names = sorted(suites[0] + " " + title for title in titles)
+        assert names == sorted(old["expectedIdentities"][phase])
+        command = old["commands"][index]
+        assert command["argv"][:6] == ["node_modules/.bin/vitest", "run", "--config", "vitest.workspace-unpublications.config.ts", file, "--reporter=json"]
+        assert len(command["argv"]) == 7 and command["argv"][6].endswith("/" + phase + ".json") and command["exitCode"] == 0
+        value = json.loads(verify(old[phase + "OriginalJson"]))
+        assert value == old[phase] and value["success"] is True and value["numTotalTests"] == value["numPassedTests"] == count
+        assert all(value[key] == 0 for key in ["numFailedTests", "numPendingTests", "numTodoTests", "numFailedTestSuites", "numPendingTestSuites"])
+        rows = [row for suite in value["testResults"] for row in suite["assertionResults"]]
+        assert len(rows) == count and sorted(row["fullName"] for row in rows) == names and all(row["status"] == "passed" and not row.get("failureMessages") for row in rows)
+        all_names.extend(names)
+        phases[phase] = {"passed": count, "identities": names, "originalJsonBytes": old[phase + "OriginalJson"]["bytes"], "originalJsonSha256": old[phase + "OriginalJson"]["sha256"], "executedThisAttempt": False}
+    assert len(all_names) == len(set(all_names)) == 39
+    browser = json.loads(verify(old["browserOriginalJson"]))
+    assert captures == 38 and decoded_bytes == 162715 and browser == old["browser"] and browser["errors"] == []
+    assert browser["stats"]["expected"] == 0 and browser["stats"]["unexpected"] == 4 and browser["stats"]["flaky"] == browser["stats"]["skipped"] == 0
+    assert old["commands"][14]["argv"] == ["node_modules/.bin/playwright", "test", "--config", "playwright.workspace-unpublications.config.ts"]
+    def walk(suites):
+        return [spec for suite in suites for spec in suite.get("specs", [])] + [spec for suite in suites for spec in walk(suite.get("suites", []))]
+    outcomes = []
+    for spec in walk(browser["suites"]):
+        for case in spec["tests"]:
+            assert case["expectedStatus"] == "passed" and case["status"] == "unexpected" and len(case["results"]) == 1
+            result = case["results"][0]
+            assert result["status"] == "failed" and result["retry"] == 0
+            attachments = [row for row in result["attachments"] if row["name"] == "iv-workspace-unpublication-boundary"]
+            assert len(attachments) == 1 and attachments[0]["contentType"] == "application/json"
+            boundary = json.loads(base64.b64decode(attachments[0]["body"], validate=True))
+            assert boundary["status"] == "failed" and boundary["stage"] == "complete" and boundary["primaryError"] is None
+            counts = boundary["boundary"]["counts"]
+            assert all(value == 0 for key, value in counts.items() if key != "requestFailures")
+            assert boundary["cleanup"] == {"contextsCreated": 2, "contextsClosed": 2, "pendingJobs": 0, "failures": []}
+            outcomes.append({"title": spec["title"], "profile": case["projectName"], "status": result["status"], "requestFailures": counts["requestFailures"], "accepted": False})
+    assert [(row["title"], row["profile"]) for row in outcomes] == [(title, profile) for profile in ["desktop-chromium", "narrow-chromium"] for title in TITLES]
+    assert [row["requestFailures"] for row in outcomes] == [1, 2, 1, 2]
+    prior = old["sourceExport"]["inputs"]
+    allowed = {"tests/e2e/workspace-unpublications.spec.ts"}
+    assert old["sourceExport"]["files"] == len(prior) == len(export) == 270 and set(prior) == set(export)
+    assert old["sourceExport"]["bytes"] == sum(row["bytes"] for row in prior.values()) == 2162851
+    for name, row in prior.items():
+        assert row == old["sourceFiles"][name]
+        if name not in allowed: assert export[name] == row, "Previously checked unpublication runtime input changed: " + name
+    assert old["frozenLock"] == {"bytes": 618662, "sha256": lock_sha}
+    report["carriedCore"] = {"validated": True, "sourceCommit": carry_source, "receipt": carry_path, "receiptBytes": len(raw), "receiptSha256": carry_sha,
+        "originalCapturesVerified": captures, "originalDecodedBytes": decoded_bytes, "phases": phases, "passed": 39, "executedThisAttempt": False,
+        "unchangedRuntimeInputs": 269, "allowedChangedRuntimeInputs": {name: {"before": prior[name], "current": export[name]} for name in sorted(allowed)},
+        "priorBrowser": {"passed": 0, "failed": 4, "acceptedForCurrentSource": False, "outcomes": outcomes, "originalJsonBytes": old["browserOriginalJson"]["bytes"], "originalJsonSha256": old["browserOriginalJson"]["sha256"]}}
+
+
+def validate_publication_get(boundary, api):
+    diagnostic = boundary["publicationGetObserver"]
+    assert diagnostic["kind"] == "native-fetch-publication-get-clone" and diagnostic["maxBodyBytes"] == 131072 and diagnostic["maxRequests"] == 16
+    assert diagnostic["correlation"] == "method-path-document-ordinal-and-time-only" and diagnostic["exactRequestBindingClaimed"] is False
+    assert diagnostic["snapshotBeforeContextClose"] is True and diagnostic["pendingJobs"] == 0 and diagnostic["failures"] == [] and diagnostic["nodePendingRequests"] == 0
+    documents = diagnostic["documents"]
+    assert len(documents) == 2 and [row["ordinal"] for row in documents] == [1, 2]
+    assert len({row["documentId"] for row in documents}) == 2
+    reads = []
+    for document in documents:
+        assert set(document) == {"ordinal", "documentId", "snapshotStage", "snapshotAt", "requests", "reads", "pendingJobs", "failures", "signalsDetached", "signalObservationEndsAtSnapshot"}
+        assert re.fullmatch(r"[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}", document["documentId"])
+        assert document["snapshotStage"] == ("save-3" if document["ordinal"] == 1 else "complete")
+        assert type(document["snapshotAt"]) is int and document["snapshotAt"] > 0
+        assert document["pendingJobs"] == 0 and document["failures"] == [] and document["signalsDetached"] is True and document["signalObservationEndsAtSnapshot"] is True
+        assert 1 <= document["requests"] == len(document["reads"]) <= 16
+        assert [row["ordinal"] for row in document["reads"]] == list(range(1, document["requests"] + 1))
+        for row in document["reads"]:
+            assert set(row) == {"ordinal", "path", "startedAt", "responseAt", "eofAt", "status", "cacheControl", "contentType", "eof", "bytes", "sha256", "state", "bodyError", "signal"}
+            assert row["path"] == api and row["status"] == 200 and "no-store" in row["cacheControl"] and row["contentType"].startswith("application/json")
+            assert row["eof"] is True and row["bodyError"] is None and type(row["bytes"]) is int and 0 < row["bytes"] <= 131072
+            assert re.fullmatch(r"[0-9a-f]{64}", row["sha256"])
+            assert all(type(row[key]) is int and row[key] > 0 for key in ["startedAt", "responseAt", "eofAt"])
+            assert row["startedAt"] <= row["responseAt"] <= row["eofAt"] <= document["snapshotAt"]
+            signal_state = row["signal"]
+            assert set(signal_state) == {"present", "initialAborted", "abortObservedAt", "abortedAtEOF", "finalAborted"} and signal_state["present"] is True
+            for key in ["initialAborted", "abortedAtEOF", "finalAborted"]:
+                assert type(signal_state[key]) is bool
+            abort_at = signal_state["abortObservedAt"]
+            assert abort_at is None or signal_state["present"] and type(abort_at) is int and row["startedAt"] <= abort_at <= document["snapshotAt"]
+            state = row["state"]
+            assert set(state) == {"id", "workspaceSlug", "kind", "draftRevision", "draftHash", "current"}
+            assert state["id"] == boundary["observations"]["seed"]["id"] and state["workspaceSlug"] == "core-growth" and state["kind"] == boundary["documentKind"]
+            assert type(state["draftRevision"]) is int and 1 <= state["draftRevision"] <= 3 and re.fullmatch(r"[0-9a-f]{64}", state["draftHash"])
+            if state["current"] is not None:
+                current = state["current"]
+                assert set(current) == {"publicId", "versionId", "sourceRevision", "documentHash", "artifactHash", "publicUrl", "versionUrl"}
+                matched = [publication for publication in boundary["observations"]["publications"] if publication["versionId"] == current["versionId"]]
+                assert len(matched) == 1 and all(current[key] == matched[0][key] for key in current)
+                assert current["sourceRevision"] <= state["draftRevision"]
+            reads.append(row)
+    assert 2 <= diagnostic["requests"] == len(reads) <= 16
+    assert diagnostic["nodeRequests"] == len(diagnostic["nodeTimeline"]) == len(reads)
+    assert [row["ordinal"] for row in diagnostic["nodeTimeline"]] == list(range(1, len(reads) + 1))
+    stages = {"private-open", "publish-1", "prerequisite-versions", "save-2", "publish-2", "unsaved-edit", "unpublish", "refresh-unpublished", "revoked-proof", "keep-working-edits", "save-3", "private-reload", "publish-3", "republished-proof"}
+    for row in diagnostic["nodeTimeline"]:
+        assert set(row) == {"ordinal", "path", "startStage", "startedAt", "responseAt", "status", "contentType", "requestfinishedAt", "requestfailedAt", "errorText"}
+        assert row["path"] == api and row["startStage"] in stages and row["status"] == 200 and row["contentType"].startswith("application/json")
+        assert row["requestfailedAt"] is None and row["errorText"] is None
+        assert all(type(row[key]) is int and row[key] > 0 for key in ["startedAt", "responseAt", "requestfinishedAt"])
+        assert row["startedAt"] <= row["responseAt"] <= row["requestfinishedAt"]
 
 
 def validate_browser_case(spec, case):
@@ -298,7 +426,7 @@ def validate_browser_case(spec, case):
     attachment = result["attachments"][0]
     assert attachment["name"] == "iv-workspace-unpublication-boundary" and attachment["contentType"] == "application/json"
     raw = base64.b64decode(attachment["body"], validate=True)
-    assert len(raw) <= 24576
+    assert len(raw) <= 49152
     boundary = json.loads(raw)
     assert boundary["kind"] == "iv-workspace-unpublication-boundary" and boundary["schemaVersion"] == 1
     assert boundary["profile"] == case["projectName"] and boundary["title"] == spec["title"]
@@ -308,7 +436,7 @@ def validate_browser_case(spec, case):
     obs = boundary["observations"]
     assert obs["seed"]["actualAuthenticatedRequest"] is True and obs["seed"]["revision"] == 1
     assert all(obs[key] is True for key in ["unsavedEditBeforeUnpublish", "workingEditsRetained", "refreshedUnpublished", "allOldUrlsRefused",
-        "actualArtifactObjectsRetained", "openCopyRemainsVisibleAfterRevocation", "reloadRecoveryKeptEdits", "privateSaveReloadRetained", "anonymousCookiesAbsent", "oldVersionsStayRevoked", "revocationLimitExplained"])
+        "actualArtifactObjectsRetained", "openCopyRemainsVisibleAfterRevocation", "reloadRecoveryKeptEdits", "privateSaveReloadRetained", "anonymousCookiesAbsent", "oldVersionsStayRevoked", "revocationLimitExplained", "statusReadyBeforeReload"])
     publications = obs["publications"]
     assert len(publications) == 3 and [row["sourceRevision"] for row in publications] == [1, 2, 3]
     assert len({row["publicId"] for row in publications}) == 1
@@ -350,6 +478,7 @@ def validate_browser_case(spec, case):
     reads = observer["reads"]
     assert len(reads) == len({row["requestId"] for row in reads}) == 6
     api = "/api/workspaces/core-growth/visualizations/" + obs["seed"]["id"] + "/publications"
+    validate_publication_get(boundary, api)
     assert [row["requestId"] for row in reads if row["path"] == api] == [row["requestId"] for row in publications]
     assert [row["requestId"] for row in reads if row["path"] == api + "/unpublish"] == [unpublish["requestId"]]
     assert len([row for row in reads if row["path"] == "/api/workspaces/core-growth/visualizations"]) == 2
@@ -413,9 +542,7 @@ try:
     (app / "tsconfig.workspace-unpublications-checks.json").write_text(json.dumps({"extends": "./tsconfig.json", "include": scoped,
         "exclude": ["node_modules", "components/ai-elements"], "compilerOptions": {"incremental": False, "plugins": []}}))
     run(["node_modules/.bin/tsc", "--noEmit", "-p", "tsconfig.workspace-unpublications-checks.json"], 60)
-    for phase, (file, count) in tests.items(): vitest(phase, file, count)
-    report["fixtureAuditAfterTests"] = database_guard("audit")
-    assert report["fixtureAuditAfterTests"]["fixturesAbsent"]
+    carry_core(tests)
     report["fixtureAuditBeforeSetup"] = database_guard("audit")
     assert report["fixtureAuditBeforeSetup"]["fixturesAbsent"]
     guard("after-focused-checks")
@@ -541,6 +668,6 @@ finally:
     captures += [report[key] for key in ["httpOriginalJson", "clientOriginalJson", "postgresOriginalJson", "browserOriginalJson"] if key in report]
     captures += [report["server"][key] for key in ["stdout", "stderr"] if key in report.get("server", {})]
     report["finishedAt"] = time.time()
-    report["passed"] = status == 0 and len(report["sourceGuards"]) == 5 and all(report.get(key) for key in ["databaseRemoved", "portReleased", "exportUnchanged", "scratchRemoved", "scratchIdentityMatches"]) and all(row["complete"] for row in captures)
+    report["passed"] = status == 0 and report.get("carriedCore", {}).get("validated") is True and len(report["sourceGuards"]) == 5 and all(report.get(key) for key in ["databaseRemoved", "portReleased", "exportUnchanged", "scratchRemoved", "scratchIdentityMatches"]) and all(row["complete"] for row in captures)
     print("IV_WORKSPACE_UNPUBLICATION_RESULT=" + json.dumps(report, separators=(",", ":")), flush=True)
 raise SystemExit(0 if report["passed"] else 1)

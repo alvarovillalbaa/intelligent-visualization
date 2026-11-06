@@ -3,7 +3,7 @@
 Prepared 6 November 2026 after the accepted publication candidate
 `ae8de49746320295b2ff965f865d63862d9d69ff`. The current local candidate now
 implements this scope; its [43 focused checks](workspace-unpublication-checks.md)
-are authored with execution/acceptance pending. Standing approval covers necessary
+record 39 core passes with strict browser acceptance pending. Standing approval covers necessary
 source/access-policy changes and bounded checks; no new approval is requested.
 Hosted configuration, paid services and production data are outside this slice.
 
