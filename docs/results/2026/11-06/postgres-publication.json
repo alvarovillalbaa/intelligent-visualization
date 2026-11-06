@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-06T08:45:03Z",
+  "repository": "alvarovillalbaa/intelligent-visualization",
+  "candidateBranch": "work/postgres-provider-20261106",
+  "sourceCommit": "f528e3065a4ce9fa983548aae3e80309feefac0b",
+  "retiredQaCommit": "04db4a55a1e18aae9de3b39526dccbb06fccf501",
+  "sharedTree": "0bca74f676fc5b027dba1c34dc8c462a68f65ae2",
+  "trackedLeaves": 473,
+  "trackedBytes": 6888079,
+  "clean": true,
+  "temporaryWorkflowFiles": [],
+  "permanentWorkflow": ".github/workflows/ci.yml",
+  "disabledTemporaryWorkflowIds": [
+    409081972,
+    409084631,
+    409093308,
+    409100547,
+    409106829
+  ],
+  "pullRequest": {
+    "url": "https://github.com/alvarovillalbaa/intelligent-visualization/pull/1",
+    "draft": true,
+    "merged": false,
+    "head": "f528e3065a4ce9fa983548aae3e80309feefac0b",
+    "base": "a5fa01331281ac8d38eb135a1dcc381d6adb4ecc"
+  },
+  "acceptance": {
+    "receipt": "postgres-checks.json",
+    "bytes": 403534,
+    "sha256": "9411839035d088613715d706d79f8084b7dfc0d9323ac8442ed7ae988fd9cb90",
+    "runtimeInputs": 251,
+    "runtimeBytes": 1999671,
+    "allRuntimeInputsMatch": true,
+    "configurationCases": 7,
+    "postgresCases": 28,
+    "browserCases": 2,
+    "executionsAreSeparate": true,
+    "overallPriorAttempt4RemainsFalse": true
+  },
+  "production": {
+    "deployment": "dpl_EWQArRytPB9nV2TopnkaxsS1j3Vy",
+    "state": "READY",
+    "source": "a5fa01331281ac8d38eb135a1dcc381d6adb4ecc",
+    "canonicalHost": "intelligent-visualization.vercel.app",
+    "observedAt": "2026-11-06T08:16:09Z",
+    "evidence": "Deployment metadata; no new hosted HTTP/browser/provider acceptance"
+  },
+  "limits": [
+    "Candidate is unmerged and held off production",
+    "Hosted database/storage/Auth/Supabase/RLS and identity migration remain unfinished",
+    "Course/Report hosted saving/publication and full AI/Eve remain unfinished",
+    "No local install/build/server/browser/database",
+    "This publication record refers to the preceding source; adding this file does not alter the 251 runtime inputs"
+  ]
+}
