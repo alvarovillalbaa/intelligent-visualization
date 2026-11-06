@@ -59,6 +59,18 @@ absence of fixture databases; and removes scratch only after identity and proces
 closure checks. Any uncertain cleanup fails acceptance. No unknown database is
 dropped by its name. The temporary workflow is QA-only and retired after use.
 
+Attempt 3 preserved complete UI assertions but failed on aborted streamed RSC and
+action responses. Attempt 4 records each exact admitted Request's transition and
+received headers. Only `net::ERR_ABORTED` for an observed 200 `text/x-component`
+RSC read at the exact target, or the admitted action with its exact same-origin
+redirect target, can be classified separately after that transition's UI checks
+and the final durable reload/new-session checks pass. Auth explicitly targets
+`/app`, whose route resolves the seeded workspace. Missing responses, assets,
+documents, unknown transitions, wrong targets/types and other errors still fail.
+Classified cancellations remain bounded original evidence; no complete-body
+network-success claim is made. See [Playwright request events](https://playwright.dev/docs/api/class-request)
+and the pinned [Next action reducer](https://github.com/vercel/next.js/blob/v16.1.6/packages/next/src/client/components/router-reducer/reducers/server-action-reducer.ts).
+
 Local acceptance does not prove hosted Supabase/RLS/storage, account migration,
 canonical Course/Report saving, live AI/Eve, physical devices or full-product
 completion. Database backups do not include stored objects. See

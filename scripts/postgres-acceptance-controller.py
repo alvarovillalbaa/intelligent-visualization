@@ -19,7 +19,7 @@ repo = Path.cwd()
 source = os.environ["SOURCE_COMMIT"]
 admin_url = "postgresql://iv_ci:authored-ci-only@127.0.0.1:54431/postgres"
 app_url = "postgresql://iv_ci:authored-ci-only@127.0.0.1:54431/intelligent_visualization_ci"
-branch = "qa/postgres-provider-20261106-3"
+branch = "qa/postgres-provider-20261106-4"
 carry_source = "a5a702ea20108d3ed376fab9a181b838dd5897e0"
 carry_path = "docs/results/2026/11-06/postgres-attempt-2.json"
 carry_sha256 = "500b26672802fe0b82c25436d14cae7a6e329e905f2f2a87c41c7b7a8ad34384"
@@ -356,6 +356,15 @@ try:
         report["browserBoundaries"].append(boundary)
         assert boundary["kind"] == "iv-postgres-app-boundary" and boundary["title"] == title and boundary["profile"] == case["projectName"]
         assert boundary["status"] == "passed" and boundary["stage"] == "complete" and not boundary["primaryError"]
+        cancelled = boundary["boundary"]["navigationCancellations"]
+        assert boundary["boundary"]["navigationCancellationCount"] == len(cancelled) <= 16
+        for item in cancelled:
+            assert item["transition"] in ["sign-in", "sign-in-again", "session-reload", "seeded-editor", "create-workspace", "workspace-reload", "sign-out", "protected-route"]
+            if item["method"] == "GET":
+                assert item["status"] == 200 and item["contentType"].startswith("text/x-component") and item["path"] == item["target"]
+            else:
+                assert item["method"] == "POST" and item["redirectPath"] == item["target"]
+                assert (item["status"] == 200 and item["contentType"].startswith("text/x-component")) or item["status"] in [303, 307, 308]
         assert all(value == 0 for value in boundary["boundary"]["counts"].values()) and boundary["boundary"]["allowedActions"] >= 4
         assert boundary["cleanup"] == {"contextsCreated": 1, "contextsClosed": 1, "pendingJobs": 0, "failures": []}
     status = 0
