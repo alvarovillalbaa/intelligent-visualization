@@ -16,7 +16,7 @@ check before writing. Snapshot Buffer/Uint8Array input before the first await.
 Do not delete or replace an existing object after a refusal or uncertain write.
 
 Alvaro's standing "I approve everything / Keep going / Do all the work" covers
-this necessary source repair and its bounded focused CI. Six authored T2 cases
+this necessary source repair and its bounded focused CI. Six authored T3 cases
 use real owned temporary filesystem objects for concurrent immutable writes,
 existing-object preservation, detached byte inputs and mutable-write compatibility.
 No closed unit/provider/browser packet reruns or broad build is proposed.

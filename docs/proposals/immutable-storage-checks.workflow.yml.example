@@ -1,0 +1,27 @@
+# Inactive. Root pins immutable reviewed source before creating the owned QA ref.
+name: Temporary six-case immutable local-storage checks
+on:
+  create:
+permissions:
+  contents: read
+jobs:
+  immutable-storage:
+    if: github.repository == 'alvarovillalbaa/intelligent-visualization' && github.event.repository.private == false && github.event.ref_type == 'branch' && github.event.ref == 'qa/immutable-storage-20261106-1' && github.ref == 'refs/heads/qa/immutable-storage-20261106-1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      SOURCE_COMMIT: APPROVED_SOURCE_COMMIT
+      IV_IMMUTABLE_PUBLIC_REPOSITORY: ${{ github.event.repository.private == false }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ env.SOURCE_COMMIT }}
+          persist-credentials: false
+          fetch-depth: 1
+          clean: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24.21.0
+          package-manager-cache: false
+      - name: Execute only six new owned-temporary-directory storage cases
+        run: python3 scripts/immutable-storage-checks.py
