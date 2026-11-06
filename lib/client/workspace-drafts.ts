@@ -71,8 +71,16 @@ export async function saveWorkspaceDraft(workspaceSlug: string, input: SaveWorks
       method: "POST", credentials: "same-origin", cache: "no-store", headers: { "Content-Type": "application/json" }, body, signal: controller.signal,
     })
     if ([400, 401, 403, 404].includes(response.status)) {
+      let invalidOrigin = false
+      if (response.status === 403) {
+        try {
+          const failure = await readResponse(response, controller.signal)
+          invalidOrigin = Boolean(failure && typeof failure === "object" && "code" in failure && failure.code === "INVALID_ORIGIN")
+        } catch { /* The HTTP refusal remains definite even if its explanation is unavailable. */ }
+      }
       void response.body?.cancel().catch(() => {})
-      throw new WorkspaceDraftRequestError(response.status === 401 ? "Sign in again before saving. Keep your local edits."
+      throw new WorkspaceDraftRequestError(invalidOrigin ? "Open this app at its configured address, then retry the save. Keep your local edits."
+        : response.status === 401 ? "Sign in again before saving. Keep your local edits."
         : response.status === 403 ? "Your current session or workspace role cannot save this draft. Keep your local edits."
           : "This draft could not be saved in this workspace. Keep your local edits and reopen its saved copy.", false)
     }

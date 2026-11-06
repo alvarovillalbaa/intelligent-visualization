@@ -1,5 +1,6 @@
 // T2: authored requests and responses only; no server, account or database.
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import { NextRequest } from "next/server"
 import { createLookupHash } from "@/lib/auth"
 import { createStarterCourseDocument } from "@/packages/domain/fixtures"
 import { contentHash } from "@/packages/domain/serialization"
@@ -40,8 +41,8 @@ function privateResponse(result: Response, status: number) {
 }
 
 describe("private workspace draft HTTP and client boundaries", () => {
-  beforeEach(() => { vi.clearAllMocks(); mock.list.mockResolvedValue({ items: [], nextCursor: null }); mock.get.mockResolvedValue(null); mock.save.mockResolvedValue(acknowledgement()) })
-  afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers() })
+  beforeEach(() => { vi.clearAllMocks(); vi.stubEnv("NEXT_PUBLIC_APP_URL", origin); mock.list.mockResolvedValue({ items: [], nextCursor: null }); mock.get.mockResolvedValue(null); mock.save.mockResolvedValue(acknowledgement()) })
+  afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.useRealTimers() })
 
   it("keeps unauthenticated reads and writes private without returning draft data", async () => {
     for (const method of [mock.list, mock.get, mock.save]) method.mockRejectedValue(new WorkspaceDraftAccessError("UNAUTHENTICATED"))
@@ -58,6 +59,22 @@ describe("private workspace draft HTTP and client boundaries", () => {
     for (let index = 0; index < cases.length; index++) privateResponse(await save(cases[index], context), index === 0 ? 403 : 400)
     privateResponse(await save(new Request(`${url}?override=1`, { method: "POST", body: "{}" }), context), 400)
     expect(mock.save).not.toHaveBeenCalled()
+    // Exercise the pinned framework's normalized URL, not a native Request stand-in.
+    const normalized = new NextRequest(post())
+    expect(new URL(normalized.url).origin).toBe("http://localhost:3100")
+    privateResponse(await save(normalized, context), 200)
+    for (const badOrigin of ["http://localhost:3100", "null", "", `${origin},https://outside.invalid`]) {
+      const rejected = await save(new NextRequest(post(input(), { Origin: badOrigin })), context)
+      privateResponse(rejected, 403)
+      expect((await rejected.json()).code).toBe("INVALID_ORIGIN")
+    }
+    for (const configuration of ["", "not-a-url", "javascript:alert(1)", "https://user:private-secret@app.invalid", `${origin}/other`, `${origin}/?private=query`]) {
+      vi.stubEnv("NEXT_PUBLIC_APP_URL", configuration)
+      const rejected = await save(post(), context)
+      privateResponse(rejected, 503)
+      expect(await rejected.text()).not.toContain("private-secret")
+    }
+    expect(mock.save).toHaveBeenCalledTimes(1)
   })
 
   it("scopes list and detail reads and rejects query overrides while preserving not-found privacy", async () => {
@@ -121,6 +138,8 @@ describe("private workspace draft HTTP and client boundaries", () => {
       vi.stubGlobal("fetch", vi.fn(async () => response({ error: "refused" }, status)))
       await expect(requestSave(slug, input())).rejects.toMatchObject({ uncertain: false })
     }
+    vi.stubGlobal("fetch", vi.fn(async () => response({ code: "INVALID_ORIGIN" }, 403)))
+    await expect(requestSave(slug, input())).rejects.toMatchObject({ uncertain: false, message: expect.stringContaining("configured address") })
     for (const make of [() => response({}, 503), () => response({}), () => response({ ...acknowledgement(), draft: { ...acknowledgement().draft, id: requestId } }),
       () => response({ ...acknowledgement(), receipt: { ...acknowledgement().receipt, acceptedRevision: 8 } }),
       () => response("x".repeat(5 * 1024 * 1024)), () => { throw new TypeError("lost response") }]) {

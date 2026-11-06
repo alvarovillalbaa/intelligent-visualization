@@ -19,7 +19,7 @@ import time
 
 repo = Path.cwd()
 source = os.environ["SOURCE_COMMIT"]
-branch = "qa/workspace-drafts-20261106-3"
+branch = "qa/workspace-drafts-20261106-4"
 app_url = "postgresql://iv_ci:authored-ci-only@127.0.0.1:54431/intelligent_visualization_ci"
 admin_url = "postgresql://iv_ci:authored-ci-only@127.0.0.1:54431/postgres"
 lock_sha = "b18dd278e6eded698e269d2e8400b0359083a8ba34de4721227a70b5e27c0d59"
@@ -86,7 +86,7 @@ def vector():
 
 before = vector()
 report = {"schemaVersion": 1, "sourceCommit": source, "startedAt": time.time(), "commands": [],
-    "scope": "Carry exactly 8 HTTP unit and 16 PostgreSQL passes from immutable attempt 2; execute 4 corrected browser fixtures plus current static/setup/doctor checks; no model/hosted provider/build",
+    "scope": "Carry exactly 16 PostgreSQL passes from immutable attempt 2; execute 8 current HTTP unit and 4 browser cases plus current static/setup/doctor checks; old HTTP unit results remain historical only; no model/hosted provider/build",
     "sourceFiles": before, "sourceGuards": []}
 
 
@@ -348,15 +348,17 @@ def carry_core():
     assert captures == 33
     prior_inputs = old["sourceExport"]["inputs"]
     assert len(prior_inputs) == 257 and set(prior_inputs) == set(export)
-    changed_fixture = "tests/e2e/workspace-drafts.spec.ts"
+    allowed_changes = {"lib/workspace-draft-http.ts", "lib/client/workspace-drafts.ts", "tests/unit/workspace-drafts-http.test.ts", "tests/e2e/workspace-drafts.spec.ts"}
+    assert allowed_changes <= prior_inputs.keys()
     for name, row in prior_inputs.items():
         assert row == old["sourceFiles"][name]
-        if name != changed_fixture: assert export[name] == row, "Previously checked runtime input changed: " + name
+        if name not in allowed_changes: assert export[name] == row, "Previously checked runtime input changed: " + name
     assert old["frozenLock"] == {"bytes": 618662, "sha256": lock_sha}
     assert sha((app / "package-lock.json").read_bytes()) == lock_sha
     report["carriedCore"] = {"validated": True, "sourceCommit": carry_source, "receipt": carry_path, "receiptBytes": len(raw), "receiptSha256": carry_sha,
-        "originalCapturesVerified": captures, "phases": phases, "unchangedRuntimeInputs": 256,
-        "changedBrowserFixture": {"path": changed_fixture, "before": prior_inputs[changed_fixture], "current": export[changed_fixture]},
+        "originalCapturesVerified": captures, "phases": {"postgres": phases["postgres"]}, "unchangedRuntimeInputs": 253,
+        "historicalUnitReference": {**phases["unit"], "acceptedForCurrentSource": False, "currentUnitExecutionRequired": True},
+        "allowedChangedRuntimeInputs": {name: {"before": prior_inputs[name], "current": export[name]} for name in sorted(allowed_changes)},
         "priorBrowser": {"passed": 0, "failed": 4, "acceptedThisAttempt": False, "originalJsonBytes": old["browserOriginalJson"]["bytes"], "originalJsonSha256": old["browserOriginalJson"]["sha256"]}}
 
 
@@ -423,6 +425,7 @@ try:
     run(["node_modules/.bin/eslint", *scoped], 60)
     (app / "tsconfig.workspace-drafts-checks.json").write_text(json.dumps({"extends": "./tsconfig.json", "include": scoped, "exclude": ["node_modules", "components/ai-elements"], "compilerOptions": {"incremental": False, "plugins": []}}))
     run(["node_modules/.bin/tsc", "--noEmit", "-p", "tsconfig.workspace-drafts-checks.json"], 60)
+    vitest("unit", "tests/unit/workspace-drafts-http.test.ts", 8)
     report["fixtureAuditBeforeSetup"] = database_guard("audit")
     assert report["fixtureAuditBeforeSetup"]["fixturesAbsent"]
     guard("after-focused-checks")
@@ -536,6 +539,6 @@ finally:
     captures += [report[key] for key in ["unitOriginalJson", "postgresOriginalJson", "browserOriginalJson"] if key in report]
     captures += [report["server"][key] for key in ["stdout", "stderr"] if key in report.get("server", {})]
     report["finishedAt"] = time.time()
-    report["passed"] = status == 0 and report.get("carriedCore", {}).get("validated") is True and len(report["sourceGuards"]) == 5 and all(report.get(key) for key in ["databaseRemoved", "portReleased", "exportUnchanged", "scratchRemoved", "scratchIdentityMatches"]) and all(row["complete"] for row in captures)
+    report["passed"] = status == 0 and report.get("carriedCore", {}).get("validated") is True and report.get("unit", {}).get("numPassedTests") == 8 and len(report["sourceGuards"]) == 5 and all(report.get(key) for key in ["databaseRemoved", "portReleased", "exportUnchanged", "scratchRemoved", "scratchIdentityMatches"]) and all(row["complete"] for row in captures)
     print("IV_WORKSPACE_DRAFT_RESULT=" + json.dumps(report, separators=(",", ":")), flush=True)
 raise SystemExit(0 if report["passed"] else 1)

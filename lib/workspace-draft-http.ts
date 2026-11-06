@@ -4,6 +4,7 @@ import { z } from "zod"
 import { WorkspaceDraftAccessError } from "@/packages/backend-contracts/workspace-drafts"
 
 export const WORKSPACE_DRAFT_BODY_LIMIT = 2 * 1024 * 1024
+class WorkspaceDraftOriginError extends Error {}
 export const workspaceDraftInputSchema = z.object({
   id: z.uuid(),
   requestId: z.uuid(),
@@ -16,6 +17,7 @@ export function draftJson(body: unknown, status = 200) {
 }
 
 export function draftFailure(error: unknown) {
+  if (error instanceof WorkspaceDraftOriginError) return draftJson({ code: "INVALID_ORIGIN", error: "Open the app at its configured address before saving." }, 403)
   if (error instanceof WorkspaceDraftAccessError) {
     const status = { UNAUTHENTICATED: 401, FORBIDDEN: 403, NOT_FOUND: 404, INVALID_INPUT: 400 }[error.code]
     return draftJson({ code: error.code, error: error.message }, status)
@@ -24,7 +26,14 @@ export function draftFailure(error: unknown) {
 }
 
 export async function readWorkspaceDraftInput(request: Request) {
-  if (request.headers.get("origin") !== new URL(request.url).origin) throw new WorkspaceDraftAccessError("FORBIDDEN")
+  const configured = process.env.NEXT_PUBLIC_APP_URL
+  if (!configured) throw new Error("Workspace draft origin is not configured.")
+  const app = new URL(configured)
+  if (!["http:", "https:"].includes(app.protocol) || app.username || app.password || app.search || app.hash || app.pathname !== "/") {
+    throw new Error("Workspace draft origin configuration is invalid.")
+  }
+  // NextRequest normalizes loopback hosts. Only the operator's configured origin is trusted.
+  if (request.headers.get("origin") !== app.origin) throw new WorkspaceDraftOriginError()
   if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get("content-type") ?? "") || !request.body) {
     throw new WorkspaceDraftAccessError("INVALID_INPUT")
   }

@@ -20,6 +20,8 @@ acknowledgements must be reconciled before retry or cleanup.
 Canonical and legacy identities are mapped with explicit legacy team/workspace/
 actor namespaces, never merged by email. Authentication stays in the locked legacy
 state; only team/workspace projections are created for canonical foreign keys.
+Saves require the browser Origin to match the explicitly configured
+`NEXT_PUBLIC_APP_URL`; no request-host or forwarded-header fallback grants access.
 Rich slide source/editor/rendering must survive. Existing public URLs, private
 access checks and artifact/event bindings need actual acceptance for every kind.
 The canonical Slides compiler's placeholders cannot silently replace rich legacy

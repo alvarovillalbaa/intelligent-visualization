@@ -50,6 +50,16 @@ validates the immutable original 24 passes/captures and all 256 protected runtim
 inputs, excluding only the changed browser fixture. Those cases do not rerun;
 the four failed browser identities are not carried as acceptance.
 
+Attempt 3 reached the save API but the original origin comparison rejected the
+valid loopback browser address. The pinned [NextURL implementation](https://raw.githubusercontent.com/vercel/next.js/v16.1.6/packages/next/src/server/web/next-url.ts)
+normalizes loopback addresses to localhost. Saves now require an explicitly
+configured `NEXT_PUBLIC_APP_URL` containing a root HTTP(S) URL without credentials,
+query or fragment. The raw Origin must match that configured origin exactly;
+request/forwarded headers and loopback aliases are not alternate trust sources.
+Missing/invalid configuration fails closed. Attempt 4 reruns the updated eight
+HTTP/client cases and four browser identities while carrying only the unchanged
+sixteen PostgreSQL passes. The old eight-case result remains historical evidence.
+
 This is local saving acceptance, not hosted Supabase/Auth/RLS/storage, publication,
 AI/Eve, physical touch/device, every editor action or full-product proof. Guest
 drafts still require explicit recovery; creating an account does not transfer them.
