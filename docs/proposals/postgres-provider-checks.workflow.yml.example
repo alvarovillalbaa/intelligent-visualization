@@ -1,12 +1,12 @@
 # Inactive. Pin the reviewed source before activating only on the owned QA branch.
-name: Temporary PostgreSQL app completion attempt 4
+name: Temporary PostgreSQL shutdown completion attempt 5
 on:
   create:
 permissions:
   contents: read
 jobs:
   postgres:
-    if: github.repository == 'alvarovillalbaa/intelligent-visualization' && github.event.repository.private == false && github.event.ref_type == 'branch' && github.event.ref == 'qa/postgres-provider-20261106-4' && github.ref == 'refs/heads/qa/postgres-provider-20261106-4'
+    if: github.repository == 'alvarovillalbaa/intelligent-visualization' && github.event.repository.private == false && github.event.ref_type == 'branch' && github.event.ref == 'qa/postgres-provider-20261106-5' && github.ref == 'refs/heads/qa/postgres-provider-20261106-5'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     services:
@@ -36,5 +36,5 @@ jobs:
         with:
           node-version: 24.21.0
           package-manager-cache: false
-      - name: Validate carried core evidence and complete current local app checks
+      - name: Validate accepted core and browser evidence and verify current shutdown
         run: python3 scripts/postgres-acceptance-controller.py

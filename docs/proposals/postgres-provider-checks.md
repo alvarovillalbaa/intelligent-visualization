@@ -14,10 +14,10 @@ workflow is preserved with an additive disposable PostgreSQL service. Its old
 474-case/build and four Course browser receipts retain their original sources;
 they are not rerun or relabelled as this candidate's acceptance.
 
-Attempt 3 uses one public Ubuntu 24.04 job, capped at twenty minutes, on
-`qa/postgres-provider-20261106-3`. It checks a pinned source in owned disposable
+Attempt 5 uses one public Ubuntu 24.04 job, capped at twenty minutes, on
+`qa/postgres-provider-20261106-5`. It checks a pinned source in owned disposable
 scratch with Node 24.21.0. It installs the accepted npm lock frozen with lifecycle
-scripts disabled; it does not regenerate the lock or rerun accepted core cases.
+scripts disabled; it does not regenerate the lock or rerun accepted core or browser cases.
 The lock remains 618,662 bytes with SHA-256
 `b18dd278e6eded698e269d2e8400b0359083a8ba34de4721227a70b5e27c0d59`.
 Its pg 8.23.1, pg types 8.23.1 and Playwright 1.57.0 versions, other direct
@@ -35,7 +35,22 @@ input set must match its 251 paths; all 249 core inputs must have identical hash
 Only `tests/e2e/postgres-app.spec.ts` and `playwright.postgres.config.ts` may differ.
 The new report includes the original core JSON and marks it as carried rather
 than newly executed. Attempt 2's two failed browser identities and overall failed
-packet remain failures; no browser result is carried as acceptance.
+packet remain failures.
+
+Both browser identities are carried from source
+`6b521c8ae28a3f75482208a69d665180bb070524` in the preserved
+[attempt 4 receipt](../results/2026/11-06/postgres-attempt-4.json), SHA-256
+`a4ca725a5b4d4e14eb5f76e10ce7cc629f744954b249794f6bd1b99a62e9d685`.
+All 251 exported inputs and the lock must match that run exactly. The controller
+validates the complete original captures, ordinary Playwright JSON, successful
+CLI exit, both exact identities, original boundary attachments and final cleanup.
+Each identity passed with six retained, classified navigation cancellations.
+The new packet labels both identities as carried and retains their original JSON.
+Attempt 4 remains an overall failure: its immediate residual scan found the owned
+Next telemetry process PID 3795, start time 14502, after the main server exited 0.
+Scoped TERM then left no process, and source, streams, port, database and scratch
+cleanup all verified. Carrying its browser results does not turn that packet into
+a full pass.
 
 Focused cases:
 
@@ -46,12 +61,18 @@ Focused cases:
   complete legacy slide/access/session scenarios and six private backup cases.
   Each creates and marks its own disposable database, closes its pools and drops
   only the exact owned resource after checking its marker and zero clients.
-- Two current real Chromium profiles, desktop and narrow mouse/keyboard: seeded sign-in,
+- Two carried real Chromium profiles, desktop and narrow mouse/keyboard: seeded sign-in,
   session reload, read-only slide editor, authored workspace creation/reload,
   sign-out/protected redirect and a new sign-in. Models and hosted providers stay
   disabled. These are separate from the closed Course download identities.
 
-Current scoped lint/types, actual setup/doctor and readiness precede the browser. The
+Attempt 5 runs current scoped lint/types, actual setup/doctor, an owned Next server,
+the existing readiness reads, and shutdown verification. It does not install
+Chromium or launch browser cases. After the main server group closes, the exact
+owned Next telemetry child may exit during a bounded fifteen-second window with
+no signals. Its working directory, owned script, arguments and parent event-file
+identity must match. Unknown or still-live residuals then fail the existing strict
+scan; scoped cleanup does not erase that failure. The
 runner retains original test JSON and complete bounded command/server streams,
 even on failure; asserts exact case identities/CLI success and original source
 hashes; stops owned server/processes; verifies marked app-database teardown and
