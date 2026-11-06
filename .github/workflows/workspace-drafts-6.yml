@@ -1,0 +1,42 @@
+# Inactive. Pin immutable reviewed source before creating the one owned QA ref.
+name: Temporary workspace draft browser completion attempt 6
+on:
+  create:
+permissions:
+  contents: read
+jobs:
+  workspace-drafts:
+    if: github.repository == 'alvarovillalbaa/intelligent-visualization' && github.event.repository.private == false && github.event.ref_type == 'branch' && github.event.ref == 'qa/workspace-drafts-20261106-6' && github.ref == 'refs/heads/qa/workspace-drafts-20261106-6'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_USER: iv_ci
+          POSTGRES_PASSWORD: authored-ci-only
+          POSTGRES_DB: intelligent_visualization_ci
+        ports:
+          - 54431:5432
+        options: >-
+          --health-cmd "pg_isready -U iv_ci -d intelligent_visualization_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      SOURCE_COMMIT: 3a9729fb1df58dd66023936ae195ea793b325bcc
+      IV_WORKSPACE_PUBLIC_REPOSITORY: ${{ github.event.repository.private == false }}
+      LOCAL_DATABASE_URL: postgresql://iv_ci:authored-ci-only@127.0.0.1:54431/intelligent_visualization_ci
+      IV_POSTGRES_TEST_ADMIN_URL: postgresql://iv_ci:authored-ci-only@127.0.0.1:54431/postgres
+      IV_POSTGRES_FIXTURES: disposable
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ env.SOURCE_COMMIT }}
+          persist-credentials: false
+          fetch-depth: 1
+          clean: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24.21.0
+          package-manager-cache: false
+      - name: Validate prior PostgreSQL and HTTP passes and execute four browser cases
+        run: python3 scripts/workspace-draft-checks.py
