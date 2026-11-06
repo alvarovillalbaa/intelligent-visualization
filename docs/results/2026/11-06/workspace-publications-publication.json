@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-06T12:00:00Z",
+  "repository": "alvarovillalbaa/intelligent-visualization",
+  "candidateBranch": "work/postgres-provider-20261106",
+  "sourceCommit": "56bb429684e9b3ca81ca9123eaa2b9c71f68b490",
+  "retiredQaCommit": "41aee755203906b47fdf432f317423909b41755e",
+  "sharedTree": "7d2eeb577741dee13634232b1fda52b17435758b",
+  "trackedLeaves": 542,
+  "trackedBytes": 9741016,
+  "clean": true,
+  "temporaryWorkflowFiles": [],
+  "permanentWorkflow": ".github/workflows/ci.yml",
+  "disabledTemporaryWorkflowIds": [409241894, 409251026, 409268729],
+  "pullRequest": {
+    "url": "https://github.com/alvarovillalbaa/intelligent-visualization/pull/1",
+    "title": "Add PostgreSQL workspaces and explicit Course/Report public versions",
+    "draft": true,
+    "merged": false,
+    "head": "56bb429684e9b3ca81ca9123eaa2b9c71f68b490",
+    "base": "a5fa01331281ac8d38eb135a1dcc381d6adb4ecc"
+  },
+  "acceptance": {
+    "receipt": "workspace-publications-checks.json",
+    "bytes": 245103,
+    "sha256": "2ece5c82965c2a4d9af261898c7a9e3ea52707f9e37a025b3910747130b5ae6c",
+    "currentSource": "5c7ea9c2756efefa8b74dd4f872a93c7482903e1",
+    "activation": "3678d4f20ef4803a20f2ef4aa0b04f781f80255f",
+    "run": 42213074301,
+    "job": 127876242484,
+    "core": {
+      "source": "3f1eee91e7e7372d011267d1f0d2f5c5d6ce209f",
+      "run": 42208984755,
+      "httpStagingDelivery": 14,
+      "clientProtocol": 6,
+      "realPostgres": 20,
+      "carriedNotRerun": true,
+      "protectedRuntimeInputs": 267
+    },
+    "browser": {
+      "carriedSource": "6d43b8d4b9393061ba0080aa4d93f87a814259ce",
+      "carriedRun": 42210404640,
+      "carriedCases": ["desktop Course", "desktop Report", "narrow Course"],
+      "protectedRuntimeInputs": 268,
+      "executedCurrentCases": ["narrow Report"],
+      "realPublicationPosts": 8,
+      "realRevisionSaves": 4,
+      "qualifiedNavigationCancellations": [1, 1, 3, 2],
+      "currentStatusCloneEofs": 2,
+      "currentStatusRequestsFinished": 2,
+      "currentStatusFailuresOrAborts": 0,
+      "earlierAbortCausesProven": false
+    },
+    "currentOriginalCapturesVerified": 27,
+    "currentDecodedCaptureBytes": 29262,
+    "carriedOriginalCapturesVerified": 63,
+    "sourceGuards": 5,
+    "guardedLeaves": 540,
+    "guardedBytes": 9484929,
+    "guardVectorSha256": "b7a0cf5bec1652117cc3344c79905e62cffade741431947e6b768e8f11f2d1f2",
+    "runtimeInputs": 269,
+    "runtimeBytes": 2152952,
+    "allRuntimeInputsMatch": true,
+    "frozenLock": {
+      "bytes": 618662,
+      "sha256": "b18dd278e6eded698e269d2e8400b0359083a8ba34de4721227a70b5e27c0d59"
+    },
+    "cleanupVerified": true,
+    "failedOverallAttemptsRetained": 2,
+    "independentReadOnlyAudits": 2
+  },
+  "production": {
+    "deployment": "dpl_EWQArRytPB9nV2TopnkaxsS1j3Vy",
+    "state": "READY",
+    "source": "a5fa01331281ac8d38eb135a1dcc381d6adb4ecc",
+    "canonicalHost": "intelligent-visualization.vercel.app",
+    "lastObservedAt": "2026-11-06T12:00:00Z",
+    "evidence": "Fresh deployment metadata only; no hosted HTTP acceptance or production cutover"
+  },
+  "limits": [
+    "Candidate is draft, unmerged and held off production",
+    "Forty core plus three browser passes are carried; only narrow Report executes in the final attempt",
+    "Earlier false overall verdicts and unproven sign-in/status-read abort causes are retained",
+    "Diagnostic ordinal/time correlation is not exact JavaScript-to-Playwright request identity",
+    "The browser reserved-namespace probe uses a guessed key rather than a known staged object",
+    "Linux Chromium development-server mouse/keyboard profiles do not establish physical devices, touch or a production build",
+    "Unpublish/delete, public passwords/embeds/reviews, canonical analytics and original-asset delivery remain unfinished",
+    "Hosted Supabase/Auth/RLS/storage/publication and full AI/Eve remain unfinished; recorded environment403 is not retried",
+    "Older migration/private-draft/storage receipts retain their original source boundaries",
+    "No local install/build/server/browser/database, account, paid plan, model call or production data",
+    "This record refers to the preceding source; adding it does not alter the 269 runtime inputs"
+  ]
+}
