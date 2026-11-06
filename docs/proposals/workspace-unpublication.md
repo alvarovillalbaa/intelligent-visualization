@@ -1,8 +1,9 @@
 # Revoke Course/Report public access
 
 Prepared 6 November 2026 after the accepted publication candidate
-`ae8de49746320295b2ff965f865d63862d9d69ff`. This is the next implementation
-scope, not an implemented or verified control. Standing approval covers necessary
+`ae8de49746320295b2ff965f865d63862d9d69ff`. The current local candidate now
+implements this scope; its [43 focused checks](workspace-unpublication-checks.md)
+are authored with execution/acceptance pending. Standing approval covers necessary
 source/access-policy changes and bounded checks; no new approval is requested.
 Hosted configuration, paid services and production data are outside this slice.
 
@@ -83,7 +84,7 @@ public version and reconcile conflicts explicitly. Historical acknowledgement
 links must not claim current availability after revocation. Viewer, loading,
 empty, error, retry, desktop and narrow states all need explicit behavior.
 
-## Focused verification to author before activation
+## Focused verification before activation
 
 - Real PostgreSQL: fresh roles/projections, both formats, all-version revocation,
   retained draft/version/object metadata, later republish without resurrection,
@@ -101,10 +102,12 @@ empty, error, retry, desktop and narrow states all need explicit behavior.
   version refusal, reload/reopen, new publication and permanently unavailable old
   version URLs. Preserve strict network/error boundaries and real API operations.
 
-Finalize exact authored test identities and packet scope before running checks.
+The packet freezes thirteen HTTP, six client, twenty real PostgreSQL and four
+browser identities before activation.
 Reuse the owned disposable PostgreSQL/Chromium controller patterns with a bounded
 temporary public job, frozen lock, original streams and full source/process/port/
 database/scratch closure. Never rerun the closed publication packet unchanged or
 relabel its existing evidence. Host Storage Guard remains below reserve; no local
 install/build/database/server/browser. No implementation or runtime check was
-performed during this read-only design review.
+performed during the original read-only design review; current implementation
+and pending verification are tracked in the separate focused packet.

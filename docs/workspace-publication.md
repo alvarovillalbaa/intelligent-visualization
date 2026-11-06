@@ -20,8 +20,9 @@ version. Later edits and saves do not update either snapshot automatically.
 Publish another saved revision explicitly to update the live link; the earlier
 version's URL remains public and its content stays unchanged.
 
-Workspace viewers can inspect publication status but cannot publish. Unpublishing
-and deletion controls are not included in this slice. Public
+Workspace viewers can inspect publication status but cannot publish or unpublish.
+The local candidate now adds separate [Unpublish controls](workspace-unpublication.md)
+with focused acceptance pending; deletion is not included. Public
 Course/Report passwords, embeds, review/experiment flows and analytics are not
 added by this slice. The public reader excludes protected or unavailable records.
 
