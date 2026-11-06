@@ -6,12 +6,14 @@ import {
   type PreparedWorkspacePublication,
   type PublicWorkspaceArtifact,
   type PublishWorkspaceDraftInput,
+  type UnpublishWorkspaceDraftInput,
   type WorkspacePublicationArtifact,
   type WorkspacePublicationBinding,
   type WorkspacePublicationRepository,
   type WorkspacePublicationResult,
   type WorkspacePublicationState,
   type WorkspacePublishedVersion,
+  type WorkspaceUnpublicationResult,
 } from "@/packages/backend-contracts/workspace-publications"
 import type { VisualizationRecord } from "@/packages/domain/entities"
 import { isDomainId } from "@/packages/domain/ids"
@@ -25,6 +27,7 @@ import { authorizeWorkspaceDraftAccess, verifyWorkspaceDraftProjection, workspac
 
 const COMMAND = "workspacePublication:v1"
 const VERSION_COMMAND = "workspacePublicationVersion:v1"
+const UNPUBLISH_COMMAND = "workspaceUnpublication:v1"
 const HASH = /^[a-f0-9]{64}$/
 type Row = Record<string, unknown>
 type Receipt = WorkspacePublicationResult["receipt"]
@@ -34,11 +37,13 @@ type Envelope = {
   binding: WorkspacePublicationBinding
   preparedAt: string
   originalPointer: string | null
+  originalStatus?: VisualizationRecord["status"]
   phase: "prepared" | "final"
   receipt?: Receipt
 }
 type Identity = Pick<VisualizationRecord, "id" | "teamId" | "workspaceId" | "publicId" | "kind">
 type VerifiedVersion = { artifact: PublicWorkspaceArtifact; publication: WorkspacePublishedVersion }
+type UnpublicationReceipt = WorkspaceUnpublicationResult["receipt"]
 
 function fail(code: WorkspaceDraftAccessError["code"]): never { throw new WorkspaceDraftAccessError(code) }
 function artifactFailure(): never { throw new WorkspacePublicationArtifactError() }
@@ -67,6 +72,10 @@ function normalize(value: PublishWorkspaceDraftInput): PublishWorkspaceDraftInpu
   return { id: value.id.toLowerCase(), requestId: value.requestId.toLowerCase(), versionId: value.versionId.toLowerCase(),
     expectedRevision: value.expectedRevision, expectedDraftHash: value.expectedDraftHash }
 }
+function normalizeUnpublication(value: UnpublishWorkspaceDraftInput): UnpublishWorkspaceDraftInput {
+  if (!value || [value.id, value.requestId, value.expectedCurrentVersionId].some((id) => typeof id !== "string" || !isDomainId(id))) fail("INVALID_INPUT")
+  return { id: value.id.toLowerCase(), requestId: value.requestId.toLowerCase(), expectedCurrentVersionId: value.expectedCurrentVersionId.toLowerCase() }
+}
 function bindingFor(record: VisualizationRecord, scope: WorkspaceDraftScope, input: PublishWorkspaceDraftInput): WorkspacePublicationBinding {
   return { actorId: scope.actorId, teamId: scope.teamId, workspaceId: scope.workspaceId, visualizationId: record.id,
     publicId: record.publicId, kind: record.kind as WorkspacePublicationBinding["kind"], requestId: input.requestId,
@@ -74,12 +83,12 @@ function bindingFor(record: VisualizationRecord, scope: WorkspaceDraftScope, inp
 }
 
 // This validates persisted version metadata, never a working draft or caller HTML.
-function verifyVersion(record: Identity, row: Row): VerifiedVersion | null {
+function verifyVersion(record: Identity, row: Row, eligibility: "published" | "revoked" = "published"): VerifiedVersion | null {
   try {
     const document = migrateVisualizationDocument(row.document_json)
     const manifest = object(row.manifest_json), publication = object(manifest?.publication)
     const versionId = String(row.id), createdAt = timestamp(row.created_at)
-    if (!isDomainId(versionId) || row.visualization_id !== record.id || row.status !== "published" || row.password_hash != null
+    if (!isDomainId(versionId) || row.visualization_id !== record.id || row.status !== eligibility || row.password_hash != null
       || !["course", "report"].includes(record.kind) || document.kind !== record.kind || document.schemaVersion !== 1
       || row.schema_version !== document.schemaVersion || !hash(row.document_hash) || contentHash(document) !== row.document_hash
       || !hash(row.artifact_hash) || !manifest || !publication || publication.formatVersion !== 1
@@ -134,7 +143,8 @@ export function createWorkspacePublicationRepository(database: LocalDatabase, pr
       const policy = (await database.query(`SELECT password_protected, password_hash FROM ${LOCAL_SCHEMA}.visualizations WHERE id = $1`, [id])).rows[0]
       const current = record.publishedVersionId ? await version(record.publishedVersionId) : null
       if (policy.password_protected || policy.password_hash != null || current?.password_hash != null) fail("FORBIDDEN")
-      if (record.publishedVersionId && (!current || current.visualization_id !== id || current.status !== "published")) fail("NOT_FOUND")
+      if (record.publishedVersionId && (!current || current.visualization_id !== id
+        || (current.status !== "published" && !(current.status === "revoked" && record.status === "draft" && verifyVersion(record, current, "revoked"))))) fail("NOT_FOUND")
     }
     return record
   }
@@ -145,6 +155,7 @@ export function createWorkspacePublicationRepository(database: LocalDatabase, pr
     if (row.command !== COMMAND || !envelope || envelope.formatVersion !== 1 || !object(envelope.binding) || envelope.requestHash !== contentHash(binding)
       || contentHash(envelope.binding) !== contentHash(binding) || !["prepared", "final"].includes(envelope.phase)
       || typeof envelope.preparedAt !== "string" || !Number.isFinite(Date.parse(envelope.preparedAt))
+      || (envelope.originalStatus !== undefined && !["draft", "preview", "published", "archived"].includes(envelope.originalStatus))
       || (envelope.originalPointer !== null && typeof envelope.originalPointer !== "string")) fail("INVALID_INPUT")
     if (envelope.phase === "final") {
       const receipt = object(envelope.receipt)
@@ -175,7 +186,7 @@ export function createWorkspacePublicationRepository(database: LocalDatabase, pr
   }
   function unchanged(record: VisualizationRecord, envelope: Envelope) {
     return record.draftRevision === envelope.binding.expectedRevision && record.draftHash === envelope.binding.expectedDraftHash
-      && record.publishedVersionId === envelope.originalPointer
+      && record.publishedVersionId === envelope.originalPointer && envelope.originalStatus !== undefined && record.status === envelope.originalStatus
   }
   async function result(record: VisualizationRecord, scope: WorkspaceDraftScope, envelope: Envelope): Promise<WorkspacePublicationResult> {
     if (!envelope.receipt) fail("INVALID_INPUT")
@@ -190,6 +201,11 @@ export function createWorkspacePublicationRepository(database: LocalDatabase, pr
       documentHash: input.expectedDraftHash, publication: null }
     await saveEnvelope(input, envelope, insert)
     return result(record, scope, envelope)
+  }
+  async function unpublicationResult(record: VisualizationRecord, scope: WorkspaceDraftScope, receipt: UnpublicationReceipt): Promise<WorkspaceUnpublicationResult> {
+    const latest = await state(record, scope)
+    return { status: receipt.status === "unpublished" && record.status === "draft"
+      && record.publishedVersionId === receipt.expectedCurrentVersionId && latest.current === null ? "unpublished" : "conflict", state: latest, receipt }
   }
   return {
     async get(input, id) {
@@ -217,7 +233,7 @@ export function createWorkspacePublicationRepository(database: LocalDatabase, pr
         const reserved = (await database.query(`SELECT key FROM ${LOCAL_SCHEMA}.idempotency_records WHERE key = $1`, [versionKey(intent)])).rows[0]
         if (existingVersion || reserved) fail("INVALID_INPUT")
         const envelope: Envelope = { formatVersion: 1, requestHash: contentHash(binding), binding, preparedAt: new Date().toISOString(),
-          originalPointer: record.publishedVersionId, phase: "prepared" }
+          originalPointer: record.publishedVersionId, originalStatus: record.status, phase: "prepared" }
         await database.query(`INSERT INTO ${LOCAL_SCHEMA}.idempotency_records (key, command, result_json, created_at) VALUES ($1, $2, $3::jsonb, $4)`,
           [versionKey(intent), VERSION_COMMAND, JSON.stringify({ requestKey: requestKey(intent), requestHash: envelope.requestHash }), envelope.preparedAt])
         if (record.draftRevision !== intent.expectedRevision || record.draftHash !== intent.expectedDraftHash) return conflict(record, scope, intent, envelope, true)
@@ -261,6 +277,44 @@ export function createWorkspacePublicationRepository(database: LocalDatabase, pr
         const updated = await provider.visualizations.get(record.id)
         if (!updated) fail("NOT_FOUND")
         return result(updated, scope, envelope)
+      })
+    },
+    async unpublish(input, value) {
+      const intent = normalizeUnpublication(value)
+      return access<WorkspaceUnpublicationResult>(input, true, async (scope) => {
+        const record = await load(intent.id, scope, true)
+        if (!record) fail("NOT_FOUND")
+        const binding = { actorId: scope.actorId, teamId: scope.teamId, workspaceId: scope.workspaceId, visualizationId: record.id,
+          publicId: record.publicId, kind: record.kind, requestId: intent.requestId, expectedCurrentVersionId: intent.expectedCurrentVersionId }
+        const key = `${UNPUBLISH_COMMAND}:${intent.requestId}`, requestHash = contentHash(binding)
+        const stored = (await database.query(`SELECT command, result_json FROM ${LOCAL_SCHEMA}.idempotency_records WHERE key = $1 FOR UPDATE`, [key])).rows[0]
+        if (stored) {
+          const envelope = object(stored.result_json), receipt = object(envelope?.receipt)
+          if (stored.command !== UNPUBLISH_COMMAND || !envelope || envelope.formatVersion !== 1 || envelope.requestHash !== requestHash || !object(envelope.binding)
+            || contentHash(envelope.binding) !== requestHash || !receipt || receipt.requestId !== intent.requestId
+            || receipt.expectedCurrentVersionId !== intent.expectedCurrentVersionId || !["unpublished", "conflict"].includes(String(receipt.status))
+            || (receipt.status === "unpublished" ? typeof receipt.revokedAt !== "string" || !Number.isFinite(Date.parse(receipt.revokedAt)) : receipt.revokedAt !== null)) fail("INVALID_INPUT")
+          return unpublicationResult(record, scope, { requestId: intent.requestId, expectedCurrentVersionId: intent.expectedCurrentVersionId,
+            status: receipt.status === "unpublished" ? "unpublished" : "conflict", revokedAt: typeof receipt.revokedAt === "string" ? receipt.revokedAt : null })
+        }
+        let revokedAt: string | null = null
+        if (record.status === "published" && record.publishedVersionId === intent.expectedCurrentVersionId) {
+          const current = await version(intent.expectedCurrentVersionId)
+          if (!current || !verifyVersion(record, current)) fail("NOT_FOUND")
+          revokedAt = new Date().toISOString()
+          await database.query(`UPDATE ${LOCAL_SCHEMA}.visualization_versions SET status = 'revoked' WHERE visualization_id = $1 AND status = 'published'`, [record.id])
+          // The retained UUID and draft status fence every previously prepared publication.
+          const updated = await database.query(`UPDATE ${LOCAL_SCHEMA}.visualizations SET status = 'draft', updated_at = $3
+            WHERE id = $1 AND status = 'published' AND published_version_id = $2`, [record.id, intent.expectedCurrentVersionId, revokedAt])
+          if (updated.rowCount !== 1) fail("NOT_FOUND")
+        }
+        const receipt: UnpublicationReceipt = { requestId: intent.requestId, expectedCurrentVersionId: intent.expectedCurrentVersionId,
+          status: revokedAt === null ? "conflict" : "unpublished", revokedAt }
+        await database.query(`INSERT INTO ${LOCAL_SCHEMA}.idempotency_records (key, command, result_json, created_at) VALUES ($1, $2, $3::jsonb, $4)`,
+          [key, UNPUBLISH_COMMAND, JSON.stringify({ formatVersion: 1, requestHash, binding, receipt }), revokedAt ?? new Date().toISOString()])
+        const updated = await provider.visualizations.get(record.id)
+        if (!updated) fail("NOT_FOUND")
+        return unpublicationResult(updated, scope, receipt)
       })
     },
     async resolve(publicId, versionId) {

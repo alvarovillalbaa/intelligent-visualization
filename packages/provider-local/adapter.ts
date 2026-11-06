@@ -56,6 +56,7 @@ export class LocalPersistenceProvider implements PersistenceProvider {
     get: (...args) => createWorkspacePublicationRepository(this.database, this).get(...args),
     prepare: (...args) => createWorkspacePublicationRepository(this.database, this).prepare(...args),
     commit: (...args) => createWorkspacePublicationRepository(this.database, this).commit(...args),
+    unpublish: (...args) => createWorkspacePublicationRepository(this.database, this).unpublish(...args),
     resolve: (...args) => createWorkspacePublicationRepository(this.database, this).resolve(...args),
   }
 
@@ -597,6 +598,11 @@ export class LocalPersistenceProvider implements PersistenceProvider {
         }
         const version = await this.versions.get(command.versionId)
         if (!version || version.visualizationId !== current.id) throw new Error("Version not found.")
+        if (version.status === "revoked") throw new Error("Revoked versions cannot be restored.")
+        if (["course", "report"].includes(current.kind) && current.teamId.startsWith("legacy-team:")
+          && current.workspaceId.startsWith("legacy-workspace:")) {
+          throw new Error("Canonical workspace publications require an explicit new publication.")
+        }
         const updatedAt = now()
         await this.execute({
           sql: `UPDATE ${LOCAL_SCHEMA}.visualizations SET published_version_id = $1, updated_at = $2, password_protected = $4, password_hash = $5 WHERE id = $3`,

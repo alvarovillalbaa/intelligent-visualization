@@ -306,7 +306,8 @@ export interface VisualizationVersion {
   id: string
   visualizationId: string
   label: string
-  status: "preview" | "published"
+  // Public eligibility may change; snapshot content and artifacts remain immutable.
+  status: "preview" | "published" | "revoked"
   schemaVersion: number
   document: VisualizationDocument
   documentHash: string

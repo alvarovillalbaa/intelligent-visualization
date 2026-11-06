@@ -4,7 +4,7 @@ import { getSessionToken } from "@/lib/server-auth"
 import { getStorageAdapter } from "@/lib/storage/factory"
 import { readWorkspacePublication, stageWorkspacePublication } from "@/lib/artifacts/publication"
 import { WorkspaceDraftAccessError } from "@/packages/backend-contracts/workspace-drafts"
-import type { PublishWorkspaceDraftInput } from "@/packages/backend-contracts/workspace-publications"
+import type { PublishWorkspaceDraftInput, UnpublishWorkspaceDraftInput } from "@/packages/backend-contracts/workspace-publications"
 
 async function currentAccess(workspaceSlug: string) {
   const token = await getSessionToken()
@@ -24,6 +24,11 @@ export async function publishWorkspaceDraft(workspaceSlug: string, input: Publis
   if (prepared.status !== "ready") return prepared
   const artifact = await stageWorkspacePublication(await getStorageAdapter(), prepared)
   return provider.workspacePublications.commit(access, input, artifact)
+}
+
+export async function unpublishWorkspaceDraft(workspaceSlug: string, input: UnpublishWorkspaceDraftInput) {
+  const access = await currentAccess(workspaceSlug)
+  return (await getPersistenceProvider()).workspacePublications.unpublish(access, input)
 }
 
 export async function getPublicWorkspaceArtifact(publicId: string, versionId?: string) {

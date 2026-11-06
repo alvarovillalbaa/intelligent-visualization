@@ -44,6 +44,23 @@ export interface WorkspacePublicationResult {
   }
 }
 
+export interface UnpublishWorkspaceDraftInput {
+  id: string
+  requestId: string
+  expectedCurrentVersionId: string
+}
+
+export interface WorkspaceUnpublicationResult {
+  status: "unpublished" | "conflict"
+  state: WorkspacePublicationState
+  receipt: {
+    requestId: string
+    expectedCurrentVersionId: string
+    status: "unpublished" | "conflict"
+    revokedAt: string | null
+  }
+}
+
 // Server-only staging identity. No actor or storage key comes from the HTTP body.
 export interface WorkspacePublicationBinding {
   actorId: string
@@ -90,6 +107,7 @@ export interface WorkspacePublicationRepository {
   get(access: WorkspaceDraftAccess, id: string): Promise<WorkspacePublicationState | null>
   prepare(access: WorkspaceDraftAccess, input: PublishWorkspaceDraftInput): Promise<PreparedWorkspacePublication | WorkspacePublicationResult>
   commit(access: WorkspaceDraftAccess, input: PublishWorkspaceDraftInput, artifact: WorkspacePublicationArtifact): Promise<WorkspacePublicationResult>
+  unpublish(access: WorkspaceDraftAccess, input: UnpublishWorkspaceDraftInput): Promise<WorkspaceUnpublicationResult>
   resolve(publicId: string, versionId?: string): Promise<PublicWorkspaceArtifact | null>
 }
 

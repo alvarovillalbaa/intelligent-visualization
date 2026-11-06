@@ -7,9 +7,10 @@ const uuid = z.uuid().refine((value) => value === value.toLowerCase())
 export const workspacePublicationPathId = uuid
 const bodySchema = z.object({ requestId: uuid, versionId: uuid,
   expectedRevision: z.number().int().min(1).max(2_147_483_646), expectedDraftHash: z.string().regex(/^[0-9a-f]{64}$/) }).strict()
+const unpublishBodySchema = z.object({ requestId: uuid, expectedCurrentVersionId: uuid }).strict()
 export const WORKSPACE_PUBLICATION_BODY_LIMIT = 16 * 1024
 
-export async function readWorkspacePublicationInput(request: Request) {
+async function readPublicationBody(request: Request): Promise<unknown> {
   requireWorkspaceDraftOrigin(request)
   if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get("content-type") ?? "") || !request.body) {
     throw new WorkspaceDraftAccessError("INVALID_INPUT")
@@ -29,19 +30,35 @@ export async function readWorkspacePublicationInput(request: Request) {
     }
   } finally { reader.releaseLock() }
   try {
-    return bodySchema.parse(JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks))))
+    return JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks)))
   } catch { throw new WorkspaceDraftAccessError("INVALID_INPUT") }
 }
 
-export function publicationFailure(error: unknown) {
-  if (error instanceof WorkspaceDraftOriginError) return draftJson({ code: "INVALID_ORIGIN", error: "Open the app at its configured address before publishing." }, 403)
+export async function readWorkspacePublicationInput(request: Request) {
+  const parsed = bodySchema.safeParse(await readPublicationBody(request))
+  if (!parsed.success) throw new WorkspaceDraftAccessError("INVALID_INPUT")
+  return parsed.data
+}
+
+export async function readWorkspaceUnpublicationInput(request: Request) {
+  const parsed = unpublishBodySchema.safeParse(await readPublicationBody(request))
+  if (!parsed.success) throw new WorkspaceDraftAccessError("INVALID_INPUT")
+  return parsed.data
+}
+
+export function publicationFailure(error: unknown, operation: "publish" | "unpublish" = "publish") {
+  if (error instanceof WorkspaceDraftOriginError) return draftJson({ code: "INVALID_ORIGIN", error: operation === "unpublish"
+    ? "Open the app at its configured address before unpublishing." : "Open the app at its configured address before publishing." }, 403)
   if (error instanceof WorkspaceDraftAccessError) {
     const status = { UNAUTHENTICATED: 401, FORBIDDEN: 403, NOT_FOUND: 404, INVALID_INPUT: 400 }[error.code]
-    return draftJson({ code: error.code, error: error.code === "FORBIDDEN" ? "Your current workspace role cannot publish this saved revision."
+    return draftJson({ code: error.code, error: error.code === "FORBIDDEN" ? operation === "unpublish"
+      ? "Your current workspace role cannot unpublish this visualization." : "Your current workspace role cannot publish this saved revision."
       : error.code === "INVALID_INPUT" ? "The publication request could not be validated."
         : error.code === "NOT_FOUND" ? "This workspace publication is unavailable." : "Sign in to access workspace publications." }, status)
   }
-  return draftJson({ code: "PUBLICATION_UNAVAILABLE", error: "Publishing could not be confirmed. Retry this same publication before starting another." }, 503)
+  return draftJson({ code: "PUBLICATION_UNAVAILABLE", error: operation === "unpublish"
+    ? "Unpublishing could not be confirmed. Retry this same unpublish request before starting another."
+    : "Publishing could not be confirmed. Retry this same publication before starting another." }, 503)
 }
 
 export function publicPublicationFailure(status: 404 | 503) {
