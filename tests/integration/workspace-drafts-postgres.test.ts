@@ -1,3 +1,4 @@
+// T3: authored data in separately marked, disposable PostgreSQL databases.
 import { randomUUID } from "node:crypto"
 
 import { describe, expect, it } from "vitest"
@@ -31,7 +32,7 @@ function check<T>(work: (context: Context) => Promise<T>) {
   return withPostgresFixture(async (fixture) => work(await prepare(fixture)))
 }
 
-function request(document: WorkspaceDraftDocument = createStarterCourseDocument(), id = randomUUID(), expectedRevision = 0): SaveWorkspaceDraftInput {
+function request(document: WorkspaceDraftDocument = createStarterCourseDocument(), id: string = randomUUID(), expectedRevision = 0): SaveWorkspaceDraftInput {
   return { id, requestId: randomUUID(), expectedRevision, document }
 }
 

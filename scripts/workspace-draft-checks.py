@@ -19,7 +19,7 @@ import time
 
 repo = Path.cwd()
 source = os.environ["SOURCE_COMMIT"]
-branch = "qa/workspace-drafts-20261106-1"
+branch = "qa/workspace-drafts-20261106-2"
 app_url = "postgresql://iv_ci:authored-ci-only@127.0.0.1:54431/intelligent_visualization_ci"
 admin_url = "postgresql://iv_ci:authored-ci-only@127.0.0.1:54431/postgres"
 lock_sha = "b18dd278e6eded698e269d2e8400b0359083a8ba34de4721227a70b5e27c0d59"

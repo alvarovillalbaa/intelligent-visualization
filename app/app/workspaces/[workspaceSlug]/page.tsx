@@ -178,7 +178,7 @@ function WorkspaceDraftRow({ draft, workspaceSlug }: { draft: WorkspaceDraftSumm
         <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs uppercase tracking-[0.12em] text-muted-foreground">{kind} · private draft</span>
       </div>
       <p className="mt-1 line-clamp-2 break-words text-sm text-muted-foreground">{draft.summary}</p>
-      <p className="mt-1 text-xs text-muted-foreground">Revision {draft.draftRevision} · updated {formatRelativeDate(draft.updatedAt)}</p>
+      <p className="mt-1 text-xs text-muted-foreground">Revision {draft.draftRevision} · updated {formatRelativeDate(Date.parse(draft.updatedAt))}</p>
     </div>
     <Link href={`/app/workspaces/${encodeURIComponent(workspaceSlug)}/visualizations/${draft.id}`} className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-[#111513] px-4 text-sm font-medium text-white transition-colors hover:bg-[#202820]">Open saved {kind}</Link>
   </article>

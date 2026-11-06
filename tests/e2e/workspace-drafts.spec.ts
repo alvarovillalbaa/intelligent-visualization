@@ -82,7 +82,7 @@ async function journey(kind: Kind, page: Page, testInfo: TestInfo) {
     } else problem("requestFailures", `${requestLabel(request)} ${request.failure()?.errorText ?? "unknown"} response=${response?.status ?? "none"} type=${response?.contentType ?? "none"}`)
   })
   async function layout(label: string) {
-    const size = await page.evaluate(() => ({ viewport: innerWidth, content: document.documentElement.scrollWidth }))
+    const size = await page.evaluate(() => ({ viewport: innerWidth, content: globalThis.document.documentElement.scrollWidth }))
     ;(observations.layout as unknown[]).push({ label, ...size })
     expect(size.content, `${label} horizontal layout`).toBeLessThanOrEqual(size.viewport + 1)
   }
