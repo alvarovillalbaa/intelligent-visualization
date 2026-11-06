@@ -43,23 +43,32 @@ export function WorkspacePublisher({ draft, canEdit, blocked, onRecoveryChange }
   useEffect(() => { if (error || loadError) errorRef.current?.focus() }, [error, loadError])
   useEffect(() => {
     const generation = ++readGeneration.current, controller = new AbortController()
+    let settled = false
     reading.current = controller
+    const release = () => {
+      settled = true
+      if (reading.current === controller) reading.current = null
+    }
     queueMicrotask(() => {
-      if (!mounted.current || generation !== readGeneration.current) return
+      if (!mounted.current || generation !== readGeneration.current || controller.signal.aborted) { release(); return }
       setLoading(true)
       setLoadError(null)
+      void getWorkspacePublicationState(draft.workspaceSlug, draft.id, draft.kind, controller.signal).then((value) => {
+        release()
+        if (!mounted.current || generation !== readGeneration.current || controller.signal.aborted) return
+        setState(value)
+        setLoading(false)
+      }, (cause) => {
+        release()
+        if (!mounted.current || controller.signal.aborted || generation !== readGeneration.current) return
+        setLoadError(cause instanceof WorkspacePublicationRequestError ? cause.message : "Publication status could not be loaded. A version may already be public.")
+        setLoading(false)
+      })
     })
-    void getWorkspacePublicationState(draft.workspaceSlug, draft.id, draft.kind, controller.signal).then((value) => {
-      if (!mounted.current || generation !== readGeneration.current) return
-      setState(value)
-    }).catch((cause) => {
-      if (!mounted.current || controller.signal.aborted || generation !== readGeneration.current) return
-      setLoadError(cause instanceof WorkspacePublicationRequestError ? cause.message : "Publication status could not be loaded. A version may already be public.")
-    }).finally(() => {
-      if (mounted.current && generation === readGeneration.current) setLoading(false)
+    return () => {
+      if (!settled) controller.abort()
       if (reading.current === controller) reading.current = null
-    })
-    return () => controller.abort()
+    }
   }, [draft.id, draft.workspaceSlug, draft.kind, draft.draftRevision, draft.draftHash, refresh])
 
   const available = !loading && !loadError && state !== null
