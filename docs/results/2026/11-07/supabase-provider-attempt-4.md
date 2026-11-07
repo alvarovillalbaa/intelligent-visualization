@@ -86,3 +86,8 @@ container teardown also completed successfully.
 Only temporary workflow **409972111** was disabled. A fresh GitHub read returned
 `disabled_manually`, updated **01:45:03 UTC**. This audit performed no retry,
 branch retirement, commit, factory activation or local product runtime.
+
+Root follow-up: QA4 was retired at
+`8eaa419cd04c9c2e5e7e9c081c95bdd8d762272e`, with the exact canonical
+`62f5cde` tree and no active temporary workflow. GitHub ref readback confirmed
+that retirement. The failed JSON receipt remains unchanged.

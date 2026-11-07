@@ -86,3 +86,8 @@ all passing tests was not reached; full stack removal is a separate cleanup fact
 Only temporary workflow **409977437** was disabled. Fresh GitHub readback reports
 `disabled_manually`, updated **01:55:34 UTC**. This audit performed no retry,
 branch retirement, commit, helper execution or factory activation.
+
+Root follow-up: QA5 was retired at
+`ef289e49139a79f75a900fea2551105ab740ecc4`, with the exact canonical
+`0ae67fc` tree and no active temporary workflow. GitHub ref readback confirmed
+that retirement. Its failed JSON and all 90 recorded outcomes remain unchanged.
