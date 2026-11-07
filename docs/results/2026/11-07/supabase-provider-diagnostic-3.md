@@ -65,3 +65,8 @@ after terminal status; a fresh readback confirmed `disabled_manually` at
 01:31:09 UTC. No rerun, provider/factory enablement, local runtime or deployment
 occurred. The next step is a reviewed correction based on these catalog rows and
 new bounded contract verification; the application browser packet remains gated.
+
+Root follow-up: QA3 was retired at
+`3502d7dcd251c1fba7356a800b25c71d7274adf6`, with the exact canonical
+`94850a9` tree and no active temporary workflow. GitHub ref readback confirmed
+that retirement. The diagnostic JSON and its nonacceptance verdict are unchanged.

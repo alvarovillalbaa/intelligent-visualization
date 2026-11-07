@@ -2,11 +2,15 @@
 
 Prepared 7 November 2026. Proposal only: no selector, controller, TLS, DNS,
 database, account, browser or deployment was changed. This packet depends on a
-passing, source-pinned current provider receipt (89 cases in retry 2). The first
+passing, source-pinned 90-case provider receipt; that prerequisite is not yet
+accepted. The first
 85-case provider attempt failed
 semantic TypeScript checking before CLI setup or tests; its
 [receipt](../results/2026/11-07/supabase-provider-attempt-1.json) is not provider
-acceptance. Preserve that failure and complete the prerequisite first.
+acceptance. Preserve earlier failures and complete the prerequisite first. The
+[fifth attempt](../results/2026/11-07/supabase-provider-attempt-5.md) executed all
+90 identities but remains failed with 88 passes and two native Storage failures;
+the separate diagnostic does not accept those failures or enable the factories.
 
 ## Source boundary
 
@@ -131,9 +135,11 @@ Use one public Ubuntu 24.04 job with a 20-minute limit, Node 24.21.0, frozen
 dependencies/lifecycle-off install and Chromium shell only. Reserve cleanup time
 inside that limit; benchmark the explicit setup and four journeys rather than
 silently expanding the job or dropping checks. Run focused factory/static checks
-and these four browser identities. Keep the prerequisite 89-case receipt tied to
+and these four browser identities. Keep the prerequisite 90-case receipt tied to
 its actual source and execution; do not describe this packet as one fresh
-93-case invocation or carry its changed factory inputs as byte-identical.
+94-case invocation or carry its changed factory inputs as byte-identical. The
+provider prerequisite and four browser identities belong to separate sources and
+executions.
 
 All certificates, CA material, proxy/app files, browser profiles and reports stay
 in one exclusively owned scratch tree. Emit ordinary Playwright JSON plus bounded

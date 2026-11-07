@@ -94,6 +94,22 @@ describe("private Supabase storage protocol", () => {
     }
     expect(f.objects.get(key)?.body).toEqual(bytes)
     expect(f.calls.some((call) => call.method === "PUT" || call.method === "DELETE")).toBe(false)
+    const vectors: Array<{ status: number; body: unknown; code: "EEXIST" | "STORAGE_UNAVAILABLE" }> = [
+      { status: 400, body: { code: "KeyAlreadyExists", error: "Duplicate", statusCode: "409", message: "The resource already exists" }, code: "EEXIST" },
+      { status: 409, body: { code: "KeyAlreadyExists", error: "UnknownLegacyLabel" }, code: "EEXIST" },
+      { status: 400, body: { error: "KeyAlreadyExists" }, code: "EEXIST" },
+      { status: 400, body: { code: "UnknownConflict", error: "Duplicate" }, code: "STORAGE_UNAVAILABLE" },
+      { status: 409, body: { code: "AccessDenied", error: "KeyAlreadyExists" }, code: "STORAGE_UNAVAILABLE" },
+      { status: 409, body: { error: "UnknownConflict" }, code: "STORAGE_UNAVAILABLE" },
+      ...[401, 403, 404, 500].map((status) => ({ status, body: { code: "KeyAlreadyExists", error: "Duplicate" }, code: "STORAGE_UNAVAILABLE" as const })),
+    ]
+    for (const vector of vectors) {
+      const fetcher = vi.fn(async (input: string | URL | Request) => String(input).includes("/bucket/") ? bucket() : json(vector.body, vector.status))
+      const attempt = createSupabaseStorageAdapter(config, fetcher).put({ key, body: "replacement", contentType: "text/plain", immutable: true })
+      await expect(attempt).rejects.toMatchObject({ code: vector.code,
+        ...(vector.code === "STORAGE_UNAVAILABLE" ? { message: "Private storage is unavailable." } : {}) })
+      expect(fetcher).toHaveBeenCalledTimes(2)
+    }
   })
 
   it("detaches the exact Buffer or typed-array view before asynchronous bucket validation", async () => {

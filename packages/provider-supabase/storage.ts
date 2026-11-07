@@ -134,7 +134,7 @@ export class SupabaseStorageAdapter implements StorageAdapter {
     await this.requirePrivateBucket()
     const response = await this.request(this.objectPath(key), "POST", new Uint8Array(body), { "content-type": contentType, "x-upsert": "false", "cache-control": "max-age=0" })
     if (response.status !== 200 && response.status !== 201) {
-      if ([400, 409].includes(response.status) && ["Duplicate", "ResourceAlreadyExists", "AlreadyExists"].includes(errorCode(response.body) ?? "")) throw new SupabaseStorageError("EEXIST")
+      if ([400, 409].includes(response.status) && ["Duplicate", "ResourceAlreadyExists", "KeyAlreadyExists", "AlreadyExists"].includes(errorCode(response.body) ?? "")) throw new SupabaseStorageError("EEXIST")
       throw new SupabaseStorageError()
     }
     // Do not trust an acknowledgement or delete after an uncertain result.
