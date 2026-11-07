@@ -18,11 +18,22 @@ type Fixture = { email: string; password: string; workspaceId: string; workspace
   victim: ObjectProof & { url: string } }
 type Publication = { publicId: string; versionId: string; sourceRevision: number; documentHash: string; artifactHash: string; title: string; publicUrl: string; versionUrl: string }
 type CloneRead = { ordinal: number; path: string; method: string; requestId: string | null; startedAt: number; status: number | null; responseAt: number | null; eofAt: number | null; eof: boolean; bytes: number; sha256: string | null; body: string | null; cacheControl: string; contentType: string; error: string | null; signal: { present: boolean; initialAborted: boolean | null; abortedAtEOF: boolean | null; finalAborted: boolean | null } }
-type CloneState = { documentId: string; reads: CloneRead[]; jobs: Set<Promise<void>>; failures: string[]; stops: Array<() => void> }
+type ConsumerReader = { ordinal: number; createdAt: number; mode: "default" | "byob" | "other"; methodsInstalled: boolean;
+  reads: number; fulfilled: number; rejected: number; pending: number; bytes: number; firstReadAt: number | null; lastReadAt: number | null;
+  doneAt: number | null; errorAt: number | null; overflow: boolean; observedSha256: string | null; hashBytes: number; hashAt: number | null; hashIncludesNativeDone: boolean;
+  cancelCalls: number; cancelSettled: number; cancelAt: number | null; cancelResolvedAt: number | null; cancelRejectedAt: number | null;
+  releaseCalls: number; releaseAt: number | null; releaseReturnedAt: number | null; releaseThrewAt: number | null; lockedAtCreation: boolean }
+type ConsumerRead = { ordinal: number; path: string; startedAt: number; requestIdSha256: string | null; actionSha256: string | null;
+  responseAt: number | null; status: number | null; contentType: string; bodyPresent: boolean; getReaderInstalled: boolean; getReaderCalls: number;
+  errors: string[]; readers: ConsumerReader[] }
+type CloneState = { documentId: string; reads: CloneRead[]; jobs: Set<Promise<void>>; failures: string[]; stops: Array<() => void>;
+  consumers: ConsumerRead[]; consumerJobs: Set<Promise<void>>; consumerHashers: Array<() => Promise<void>>; consumerErrors: string[]; consumerCopiedBytes: number }
 type NodeRead = { ordinal: number; path: string; method: string; stage: string; status: number | null; contentType: string; redirect: string | null; finished: boolean; failed: string | null }
+type SlidesEventRead = { ordinal: number; eventType: string; versionId: string; resourceType: string; framePath: string | null;
+  startedAt: number; responseAt: number | null; status: number | null; finishedAt: number | null; failedAt: number | null; failure: string | null }
 type SlidesPublishRead = {
   index: number; stage: string; phase: string; waitLimitMs: number; events: Array<{ phase: string; at: number }>;
-  request: null | { method: string; path: string; startedAt: number; actionSha256: string; payloadBytes: number; deckId: string; labelSha256: string; sourceSha256: string };
+  request: null | { method: string; path: string; startedAt: number; requestIdSha256: string | null; actionSha256: string; payloadBytes: number; deckId: string; labelSha256: string; sourceSha256: string };
   response: null | { at: number; status: number; contentType: string };
   finishedAt: number | null; failedAt: number | null; failure: string | null; finishedResolvedAt: number | null;
   listenersRemoved: boolean; timerCleared: boolean;
@@ -87,17 +98,116 @@ async function ownedFixture(kind: Kind, profile: string): Promise<Fixture> {
   return fixture
 }
 
-async function installClones(context: BrowserContext, key: string, prefix: string) {
-  await context.addInitScript(({ key, origin, prefix }) => {
-    const state: CloneState = { documentId: crypto.randomUUID(), reads: [], jobs: new Set(), failures: [], stops: [] }
+async function installClones(context: BrowserContext, key: string, prefix: string, slidesPath: string, deckId: string) {
+  await context.addInitScript(({ key, origin, prefix, slidesPath, deckId }) => {
+    const state: CloneState = { documentId: crypto.randomUUID(), reads: [], jobs: new Set(), failures: [], stops: [],
+      consumers: [], consumerJobs: new Set(), consumerHashers: [], consumerErrors: [], consumerCopiedBytes: 0 }
     Object.defineProperty(window, key, { value: state })
+    const digest = async (bytes: Uint8Array) => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array(bytes).buffer)), (byte) => byte.toString(16).padStart(2, "0")).join("")
+    function observe(job: Promise<void>) {
+      const settled = job.catch(() => { if (!state.consumerErrors.includes("observer-job")) state.consumerErrors.push("observer-job") }).finally(() => state.consumerJobs.delete(settled))
+      state.consumerJobs.add(settled)
+    }
+    function mark(row: ConsumerRead, code: string) { if (!row.errors.includes(code) && row.errors.length < 8) row.errors.push(code) }
+    function instrumentReader(reader: ReadableStreamDefaultReader<Uint8Array>, row: ConsumerRead, mode: ConsumerReader["mode"], locked: boolean) {
+          if (row.readers.length >= 4) { mark(row, "reader-bound"); return }
+          const item: ConsumerReader = { ordinal: row.readers.length + 1, createdAt: Date.now(), mode, methodsInstalled: false,
+            reads: 0, fulfilled: 0, rejected: 0, pending: 0, bytes: 0, firstReadAt: null, lastReadAt: null, doneAt: null, errorAt: null,
+            overflow: false, observedSha256: null, hashBytes: 0, hashAt: null, hashIncludesNativeDone: false,
+            cancelCalls: 0, cancelSettled: 0, cancelAt: null, cancelResolvedAt: null, cancelRejectedAt: null,
+            releaseCalls: 0, releaseAt: null, releaseReturnedAt: null, releaseThrewAt: null, lockedAtCreation: locked }
+          row.readers.push(item)
+          const nativeRead = reader.read, nativeCancel = reader.cancel, nativeRelease = reader.releaseLock
+          const chunks: Uint8Array[] = []
+          let hashGeneration = 0
+          const hashObserved = async () => {
+            if (item.overflow) return
+            if (item.hashAt !== null && item.hashBytes === item.bytes && item.hashIncludesNativeDone === (item.doneAt !== null)) return
+            const generation = ++hashGeneration, bytes = item.bytes, nativeDone = item.doneAt !== null
+            const joined = new Uint8Array(bytes)
+            let offset = 0
+            for (const chunk of chunks) { joined.set(chunk, offset); offset += chunk.byteLength }
+            const value = await digest(joined)
+            if (generation === hashGeneration) { item.observedSha256 = value; item.hashBytes = bytes; item.hashAt = Date.now(); item.hashIncludesNativeDone = nativeDone; if (nativeDone) chunks.length = 0 }
+          }
+          state.consumerHashers.push(hashObserved)
+          try {
+            Object.defineProperty(reader, "read", { configurable: true, writable: true, value: function (this: ReadableStreamDefaultReader<Uint8Array>, ...readArgs: unknown[]) {
+              item.reads++; item.pending++; item.firstReadAt ??= Date.now(); item.lastReadAt = Date.now()
+              let result: Promise<ReadableStreamReadResult<Uint8Array>>
+              try { result = Reflect.apply(nativeRead, this, readArgs) }
+              catch (error) { item.pending--; item.rejected++; item.errorAt = Date.now(); mark(row, "read-threw"); throw error }
+              void result.then((part) => {
+                item.pending--; item.fulfilled++; item.lastReadAt = Date.now()
+                if (part.done) item.doneAt = Date.now()
+                else if (part.value instanceof Uint8Array) {
+                  item.bytes += part.value.byteLength
+                  if (!item.overflow && state.consumerCopiedBytes + part.value.byteLength <= 5 * 1024 * 1024) { chunks.push(part.value.slice()); state.consumerCopiedBytes += part.value.byteLength }
+                  else { item.overflow = true; chunks.length = 0; mark(row, "body-bound") }
+                } else mark(row, "non-byte-read")
+              }, () => { item.pending--; item.rejected++; item.errorAt = Date.now() }).catch(() => { mark(row, "read-observer") })
+              return result
+            } })
+            Object.defineProperty(reader, "cancel", { configurable: true, writable: true, value: function (this: ReadableStreamDefaultReader<Uint8Array>, ...cancelArgs: unknown[]) {
+              item.cancelCalls++; item.cancelAt = Date.now()
+              let result: Promise<void>
+              try { result = Reflect.apply(nativeCancel, this, cancelArgs) }
+              catch (error) { item.cancelSettled++; item.cancelRejectedAt = Date.now(); mark(row, "cancel-threw"); throw error }
+              void result.then(() => { item.cancelSettled++; item.cancelResolvedAt = Date.now() }, () => { item.cancelSettled++; item.cancelRejectedAt = Date.now() }).catch(() => { mark(row, "cancel-observer") })
+              return result
+            } })
+            Object.defineProperty(reader, "releaseLock", { configurable: true, writable: true, value: function (this: ReadableStreamDefaultReader<Uint8Array>, ...releaseArgs: unknown[]) {
+              item.releaseCalls++; item.releaseAt = Date.now()
+              try { const result = Reflect.apply(nativeRelease, this, releaseArgs); item.releaseReturnedAt = Date.now(); return result }
+              catch (error) { item.releaseThrewAt = Date.now(); mark(row, "release-threw"); throw error }
+            } })
+            item.methodsInstalled = true
+          } catch { mark(row, "reader-install") }
+    }
+    function instrument(response: Response, row: ConsumerRead) {
+      row.responseAt = Date.now(); row.status = response.status; row.contentType = response.headers.get("content-type") ?? ""
+      const stream = response.body
+      row.bodyPresent = stream !== null
+      if (!stream) { mark(row, "body-missing"); return }
+      const nativeGetReader = stream.getReader
+      try {
+        Object.defineProperty(stream, "getReader", { configurable: true, writable: true, value: function (this: ReadableStream<Uint8Array>, ...args: unknown[]) {
+          row.getReaderCalls++
+          let reader: ReadableStreamDefaultReader<Uint8Array>
+          try { reader = Reflect.apply(nativeGetReader, this, args) }
+          catch (error) { mark(row, "get-reader-threw"); throw error }
+          const mode = args.length === 0 || args[0] === undefined ? "default" : (args[0] as { mode?: unknown } | null)?.mode === "byob" ? "byob" : "other"
+          try { instrumentReader(reader, row, mode, this.locked) } catch { mark(row, "reader-observer-install") }
+          return reader
+        } })
+        row.getReaderInstalled = true
+      } catch { mark(row, "stream-install") }
+    }
     const original = window.fetch
     window.fetch = function (this: unknown, ...args: Parameters<typeof window.fetch>) {
       const [input, init] = args
-      let observed: CloneRead | null = null
+      let observed: CloneRead | null = null, consumer: ConsumerRead | null = null
       try {
         const url = new URL(input instanceof Request ? input.url : String(input), location.href)
         const method = String(init?.method ?? (input instanceof Request ? input.method : "GET")).toUpperCase()
+        if (url.origin === origin && url.pathname === slidesPath && !url.search && !url.hash && method === "POST") {
+          const headers = new Headers(init?.headers ?? (input instanceof Request ? input.headers : undefined))
+          const action = headers.get("next-action"), requestId = headers.get("x-nextjs-request-id")
+          let payload: unknown
+          try { payload = typeof init?.body === "string" ? JSON.parse(init.body) : null } catch { /* Non-JSON actions are outside this observation. */ }
+          if (action && Array.isArray(payload) && payload.length === 1 && payload[0]?.deckId === deckId) {
+            if (state.consumers.length >= 32) { if (!state.consumerErrors.includes("action-bound")) state.consumerErrors.push("action-bound") }
+            else {
+              consumer = { ordinal: state.consumers.length + 1, path: url.pathname, startedAt: Date.now(), requestIdSha256: null, actionSha256: null,
+                responseAt: null, status: null, contentType: "", bodyPresent: false, getReaderInstalled: false, getReaderCalls: 0, errors: [], readers: [] }
+              const row = consumer
+              state.consumers.push(row)
+              observe(digest(new TextEncoder().encode(action)).then((value) => { row.actionSha256 = value }))
+              if (requestId && /^[0-9a-f]{1,8}$/.test(requestId)) observe(digest(new TextEncoder().encode(requestId)).then((value) => { row.requestIdSha256 = value }))
+              else row.errors.push("request-id-missing")
+            }
+          }
+        }
         if (url.origin === origin && !url.search && !url.hash && !url.username && !url.password
           && ((url.pathname === prefix || url.pathname.startsWith(prefix + "/")) && ["GET", "POST"].includes(method) || url.pathname === "/api/uploads" && method === "POST")) {
           if (state.reads.length >= 32) throw new Error("observer-count")
@@ -111,6 +221,10 @@ async function installClones(context: BrowserContext, key: string, prefix: strin
         }
       } catch { state.failures.push("observer-request") }
       const result = Reflect.apply(original, this, args) as Promise<Response>
+      if (consumer) {
+        const row = consumer
+        void result.then((response) => { instrument(response, row) }, () => { mark(row, "fetch-rejected") }).catch(() => { mark(row, "fetch-observer") })
+      }
       if (observed) {
         const row = observed, signal = init?.signal ?? (input instanceof Request ? input.signal : null)
         const job = result.then(async (response) => {
@@ -142,7 +256,7 @@ async function installClones(context: BrowserContext, key: string, prefix: strin
       }
       return result
     }
-  }, { key, origin: ORIGIN, prefix })
+  }, { key, origin: ORIGIN, prefix, slidesPath, deckId })
 }
 
 async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo) {
@@ -172,6 +286,11 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
   const cancellations: Array<{ stage: string; method: string; path: string; status: number; contentType: string; redirect: string | null; target: string }> = []
   const publications: Publication[] = [], snapshots: Array<Record<string, unknown>> = [], negatives: Array<Record<string, unknown>> = []
   const slidesPublishDiagnostics: SlidesPublishRead[] = []
+  const refusedWebSockets: Array<{ protocol: string; host: string; path: string; queryKeys: string[]; owner: boolean; at: number }> = []
+  const slidesEventReads: SlidesEventRead[] = [], eventRequests = new WeakMap<BrowserRequest, SlidesEventRead>()
+  const consumerSnapshots: Array<{ documentId: string; actions: ConsumerRead[]; [key: string]: unknown }> = []
+  const consumerCollectionErrors: string[] = []
+  let fixtureCloseStartedAt: number | null = null
   const responseProofs: Array<Record<string, unknown>> = [], observations: Record<string, unknown> = { layout: [], publications, snapshots, negatives, responseProofs }
   observations.slidesPublishDiagnostics = slidesPublishDiagnostics
   function problem(key: keyof typeof counts, detail: unknown) {
@@ -213,6 +332,8 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
     context.on("response", (response) => {
       const row = requests.get(response.request()), headers = response.headers()
       if (row) { row.status = response.status(); row.contentType = headers["content-type"] ?? "" }
+      const event = eventRequests.get(response.request())
+      if (event) { event.status = response.status(); event.responseAt = Date.now() }
       const permission = permissions.get(response.request())
       if (permission) {
         const status: NodeRead = { ordinal: 0, path: new URL(response.url()).pathname, method: response.request().method(), stage: permission.stage, status: response.status(), contentType: headers["content-type"] ?? "", redirect: headers["x-action-redirect"]?.split(";")[0] ?? headers.location ?? null, finished: false, failed: null }
@@ -220,10 +341,12 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
       }
       if (response.status() >= 400) problem("httpErrors", `${response.status()} ${new URL(response.url()).pathname}`)
     })
-    context.on("requestfinished", (request) => { const row = requests.get(request); if (row) row.finished = true })
+    context.on("requestfinished", (request) => { const row = requests.get(request); if (row) row.finished = true; const event = eventRequests.get(request); if (event) event.finishedAt = Date.now() })
     context.on("requestfailed", (request) => {
       const row = requests.get(request), error = request.failure()?.errorText ?? "unknown", url = new URL(request.url())
       if (row) row.failed = clean(error, secrets)
+      const event = eventRequests.get(request)
+      if (event) { event.failedAt = Date.now(); event.failure = error === "net::ERR_ABORTED" ? "net::ERR_ABORTED" : "other-network-failure" }
       const permission = permissions.get(request), response = received.get(request)
       const flight = request.method() === "GET" && url.searchParams.has("_rsc") && request.headers().rsc === "1"
       const stream = response?.status === 200 && response.contentType.startsWith("text/x-component")
@@ -237,7 +360,11 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
       const url = new URL(route.url())
       if (owner && url.protocol === "ws:" && url.host === "127.0.0.1:3100" && url.pathname === "/_next/webpack-hmr" && !url.username && !url.password && !url.hash && url.search.length <= 256) {
         developmentWebSockets++; route.connectToServer()
-      } else { problem("unexpectedWebSockets", "Unapproved WebSocket"); route.close() }
+      } else {
+        if (refusedWebSockets.length < 8) refusedWebSockets.push({ protocol: clean(url.protocol, secrets, 16), host: clean(url.host, secrets, 160), path: clean(url.pathname, secrets, 256),
+          queryKeys: [...new Set(url.searchParams.keys())].slice(0, 16).map((value) => clean(value, secrets, 64)).sort(), owner, at: Date.now() })
+        problem("unexpectedWebSockets", "Unapproved WebSocket"); route.close()
+      }
     })
     await context.route("**/*", async (route) => {
       const request = route.request(), url = new URL(request.url()), method = request.method(), headers = request.headers()
@@ -264,7 +391,17 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
         try { value = request.postDataJSON() } catch { /* An invalid body is refused below. */ }
         const allowed = stage.startsWith("slides-") && value?.publicId === fixture.slides.publicId && typeof value.versionId === "string" && legacyVersions.has(value.versionId)
           && ["view", "slide_view", "session_end", "deck_complete"].includes(String(value.type)) && (request.postDataBuffer()?.length ?? Infinity) <= 4096
-        if (allowed) { slidesEvents++; await route.continue(); return }
+        if (allowed) {
+          if (slidesEventReads.length < 16) {
+            let framePath: string | null = null
+            try { const frame = new URL(request.frame().url()); if (frame.origin === ORIGIN) framePath = clean(frame.pathname, secrets, 256) } catch { /* A detached frame has no retained path. */ }
+            const resource = request.resourceType(), resourceType = ["fetch", "xhr", "ping", "other"].includes(resource) ? resource : "other"
+            const event: SlidesEventRead = { ordinal: slidesEventReads.length + 1, eventType: String(value!.type), versionId: String(value!.versionId), resourceType, framePath,
+              startedAt: Date.now(), responseAt: null, status: null, finishedAt: null, failedAt: null, failure: null }
+            slidesEventReads.push(event); eventRequests.set(request, event)
+          }
+          slidesEvents++; await route.continue(); return
+        }
         problem("canonicalAnalytics", "Analytics outside the owned Slides frame"); await route.abort("blockedbyclient"); return
       }
       if (method === "POST" && url.pathname === actionPath && !url.search && headers.origin === ORIGIN && (owner || stage.startsWith("slides-password"))
@@ -286,6 +423,31 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
   async function layout(observed: Page, name: string) {
     const size = await observed.evaluate(() => ({ viewport: innerWidth, width: Math.max(globalThis.document.documentElement.scrollWidth, globalThis.document.body.scrollWidth) }))
     ;(observations.layout as unknown[]).push({ name, ...size }); expect(size.width).toBeLessThanOrEqual(size.viewport + 1)
+  }
+  async function captureConsumers(beforeFixtureClose: boolean) {
+    const snapshot = await page.evaluate(async ({ key, beforeFixtureClose }) => {
+      const state = (window as unknown as Record<string, CloneState>)[key]
+      if (!state) throw new Error("consumer-observer-missing")
+      const startedAt = Date.now(), deadline = startedAt + 500
+      const nativePending = () => state.consumers.reduce((count, row) => count + (row.responseAt === null && !row.errors.includes("fetch-rejected") ? 1 : 0)
+        + row.readers.reduce((pending, item) => pending + item.pending + item.cancelCalls - item.cancelSettled, 0), 0)
+      const initialPendingNative = nativePending()
+      while ((nativePending() || state.consumerJobs.size) && Date.now() < deadline - 50) await new Promise<void>((resolve) => setTimeout(resolve, Math.min(25, Math.max(1, deadline - 50 - Date.now()))))
+      let pendingHashes = 0, timer: ReturnType<typeof setTimeout> | undefined
+      const hashing = state.consumerHashers.map((hash) => {
+        pendingHashes++
+        return hash().catch(() => { if (!state.consumerErrors.includes("snapshot-hash")) state.consumerErrors.push("snapshot-hash") }).finally(() => { pendingHashes-- })
+      })
+      await Promise.race([Promise.allSettled(hashing), new Promise<void>((resolve) => { timer = setTimeout(resolve, Math.max(1, deadline - Date.now())) })]).finally(() => clearTimeout(timer))
+      return { documentId: state.documentId, stage: "", startedAt, snapshotAt: Date.now(), beforeFixtureClose, settleLimitMs: 500,
+        elapsedMs: Date.now() - startedAt, initialPendingNative, pendingNative: nativePending(), pendingHashJobs: state.consumerJobs.size + pendingHashes,
+        settlement: nativePending() === 0 ? "no-observed-native-operation-pending" : "observed-native-operation-still-pending",
+        copiedBytes: state.consumerCopiedBytes, errors: state.consumerErrors, actions: state.consumers }
+    }, { key: observerKey, beforeFixtureClose })
+    snapshot.stage = stage
+    const index = consumerSnapshots.findIndex((row) => row.documentId === snapshot.documentId)
+    if (index >= 0) consumerSnapshots[index] = snapshot
+    else { expect(consumerSnapshots.length).toBeLessThan(12); consumerSnapshots.push(snapshot) }
   }
   async function drain() {
     const snapshot = await page.evaluate(async (key) => {
@@ -424,7 +586,7 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
     actionPath = null; completed.add(stage)
   }
   try {
-    watch(page); await guard(auth, true); await installClones(auth, observerKey, draftApi)
+    watch(page); await guard(auth, true); await installClones(auth, observerKey, draftApi, fixture.slides.editorPath, fixture.slides.id)
     await signIn(false)
     stage = "save-1"
     const seedRequestId = randomUUID(), response = await auth.request.post(ORIGIN + draftApi, { headers: { Origin: ORIGIN }, data: { id, requestId: seedRequestId, expectedRevision: 0, document }, timeout: 10000, maxRedirects: 0 })
@@ -533,7 +695,7 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
     try { expect(rejected.status()).toBe(500); const bytes = await body(rejected, 1024 * 1024); negatives.push({ stage, kind: "real-asset-action", status: rejected.status(), bytes: bytes.length, sha256: sha(bytes) }) }
     finally { await rejected.dispose() }
     await http(auth, fixture.victim.url, 404, "GET", {}, 4096); await http(publicContext, fixture.victim.url, 404, "GET", {}, 4096)
-    await drain(); await page.reload({ waitUntil: "load" }); await expect(page.getByText(foreignTitle, { exact: true })).toHaveCount(0)
+    await drain(); await captureConsumers(false); await page.reload({ waitUntil: "load" }); await expect(page.getByText(foreignTitle, { exact: true })).toHaveCount(0)
     observations.foreignRegistrationAndReadRefused = true; completed.add(stage)
     async function publishSlides(protectedVersion: boolean, index: number) {
       stage = `slides-publish-${index}`; actionPath = fixture.slides.editorPath; target = fixture.slides.editorPath
@@ -562,7 +724,9 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
         if (selected) return
         selected = request
         const payload = request.postDataJSON()[0]
+        const existingRequestId = request.headers()["x-nextjs-request-id"]
         diagnostic.request = { method: request.method(), path: new URL(request.url()).pathname, startedAt: Date.now(),
+          requestIdSha256: existingRequestId && /^[0-9a-f]{1,8}$/.test(existingRequestId) ? sha(existingRequestId) : null,
           actionSha256: sha(request.headers()["next-action"]), payloadBytes: request.postDataBuffer()?.length ?? 0, deckId: payload.deckId,
           labelSha256: sha(payload.label), sourceSha256: sha(canonicalSerialize(payload.source)) }
       }
@@ -685,7 +849,7 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
     expect((await http(freshContext, attachmentUrl, 200)).bytes.equals(attachment)).toBe(true)
     observations.oldProtectedVersionStaysPrivate = true; completed.add(stage)
     stage = "sign-out"; actionPath = fixture.slides.editorPath; target = "/"
-    await drain(); await page.getByRole("button", { name: "Sign out", exact: true }).click()
+    await drain(); await captureConsumers(false); await page.getByRole("button", { name: "Sign out", exact: true }).click()
     await expect(page).toHaveURL(ORIGIN + "/"); await page.waitForLoadState("load")
     expect((await auth.cookies(ORIGIN)).some((cookie) => cookie.name === "slides_session")).toBe(false)
     completed.add(stage)
@@ -700,7 +864,9 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
   } catch (error) { primary = error }
   finally {
     actionPath = null
+    try { await captureConsumers(true) } catch { consumerCollectionErrors.push("before-close-collection-unavailable") }
     try { await drain() } catch (error) { cleanupFailures.push(clean(error, secrets)) }
+    fixtureCloseStartedAt = Date.now()
     for (const selected of [...contexts].reverse()) {
       try { await selected.close(); contextsClosed++ } catch (error) { cleanupFailures.push(clean(error, secrets)) }
     }
@@ -711,9 +877,26 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
       stage, status: !primary && Object.values(counts).every((value) => value === 0) && cleanupFailures.length === 0 && contextsClosed === 4 ? "passed" : "failed",
       primaryError: primary ? clean(primary instanceof Error ? primary.message : primary, secrets, 2048) : null,
       fixture: { workspaceSlug: fixture.workspaceSlug, slidesId: fixture.slides.id, slidesPublicId: fixture.slides.publicId },
-      observations, responseObserver: { kind: "native-fetch-response-clone", maxGetBytes: 131072, maxPostBytes: 5 * 1024 * 1024, maxPerDocument: 32, documents: cloneSnapshots,
+      observations, slidesConsumerObserver: { kind: "actual-server-action-reader", maxActionsPerDocument: 32, maxReadersPerAction: 4, maxCopiedBytesPerDocument: 5 * 1024 * 1024,
+        documents: consumerSnapshots, collectionErrors: consumerCollectionErrors, fixtureCloseStartedAt,
+        originalFetchPromiseAndReaderResultsRetained: true, extraReadCancelCloneOrTee: false, nativeObjectsOrPendingPromisesStored: false,
+        rawBodiesReasonsAndErrorsRetained: false, allBodyConsumersClaimed: false, debugChannelObserved: false,
+        nativeDoneProvesNetworkEOF: false, cancellationAndReadRejectionReportedSeparately: true,
+        correlation: "unique-existing-request-id-sha256-and-method-path-action-sha256",
+        correlations: slidesPublishDiagnostics.map((row) => {
+          const candidates = consumerSnapshots.flatMap((document) => document.actions.filter((item) => row.request?.requestIdSha256
+            && item.requestIdSha256 === row.request.requestIdSha256).map((item) => ({ documentId: document.documentId, item })))
+          const match = candidates.length === 1 ? candidates[0] : null
+          return { publishIndex: row.index, requestIdSha256: row.request?.requestIdSha256 ?? null, matches: candidates.length,
+            uniqueAcrossSelectedPublishes: Boolean(row.request?.requestIdSha256) && slidesPublishDiagnostics.filter((other) => other.request?.requestIdSha256 === row.request?.requestIdSha256).length === 1,
+            methodPathActionMatch: Boolean(match && row.request?.method === "POST" && match.item.path === row.request.path && match.item.actionSha256 === row.request.actionSha256),
+            documentId: match?.documentId ?? null, consumerOrdinal: match?.item.ordinal ?? null }
+        }) }, responseObserver: { kind: "native-fetch-response-clone", maxGetBytes: 131072, maxPostBytes: 5 * 1024 * 1024, maxPerDocument: 32, documents: cloneSnapshots,
         correlation: "method-path-request-id-and-time-only", exactGetRequestBindingClaimed: false, originalFetchArgumentsAndPromiseRetained: true, rawResponseBodiesRetained: false },
-      actualApiRequests: nodeReads, boundary: { counts, diagnostics, allowedReads, allowedActions, uploads, slidesEvents, developmentWebSockets, navigationCancellations: cancellations },
+      actualApiRequests: nodeReads, boundary: { counts, diagnostics, allowedReads, allowedActions, uploads, slidesEvents, developmentWebSockets, navigationCancellations: cancellations,
+        refusedWebSockets, refusedWebSocketMetadataTruncated: counts.unexpectedWebSockets > refusedWebSockets.length,
+        slidesEventRequests: slidesEventReads, slidesEventMetadataTruncated: slidesEvents > slidesEventReads.length,
+        eventResourceTypeDoesNotProveInitiator: true },
       cleanup: { contextsCreated: contexts.length, contextsClosed, pendingJobs: pending.size, failures: cleanupFailures } }
     const bytes = Buffer.from(JSON.stringify(report)); expect(bytes.length).toBeLessThanOrEqual(65536)
     await info.attach("iv-supabase-application-boundary", { body: bytes, contentType: "application/json" })
