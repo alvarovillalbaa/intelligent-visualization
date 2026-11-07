@@ -35,3 +35,5 @@ All four cases ran once with retry 0, zero passed/skipped/flaky. All retain part
 All four earlier application receipts remain byte/hash-pinned and false. The [accepted 90-case provider receipt](supabase-provider-attempt-8.json) remains separate and unchanged; zero provider cases executed here. This is not a combined 94-case invocation or application acceptance.
 
 Temporary workflow `410046536` was disabled after termination and freshly read back as `disabled_manually` at 04:08:25 UTC. No retry, source fix, commit, branch retirement, push or factory mutation was performed by this receipt task.
+
+Root follow-up: the raw JSON and receipt were published in `6527dcf765e3984d309f86aa21a89bbfcde1a614`. Root independently verified the 203 retained captures, 99 foreground closures, four source guards and 286 exported inputs. Retirement `7363c7f7634a9dacb3043c8dd31d713e1518963b` uses that canonical commit's exact tree `bf0a67a07b2626f7eeb8f9a61c9794cf3c0ee988`, with the active temporary workflow absent. Both branches were pushed atomically and the retired QA ref was freshly verified. The preceding receipt remains unchanged.

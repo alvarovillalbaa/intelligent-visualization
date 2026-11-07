@@ -11,6 +11,10 @@ its separate TLS/browser checks remain pending. This is **not accepted hosted
 support**. No hosted project, production configuration or production database
 has been changed. Concurrent Supabase initialization is shared, only healthy
 instances are cached, and a failed persistence candidate closes its owned pool.
+The [fifth application attempt](../../docs/results/2026/11-07/supabase-application-attempt-5.md)
+failed all four identities, with actual Slides response aborts and no successful
+completion proof for those requests. A completed earlier publication control does
+not accept its full journey. The separate provider result remains unchanged.
 
 The server uses portable application authentication and a dedicated `iv_runtime`
 database login. It does not implement Supabase Auth or browser tenant policies.

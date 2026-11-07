@@ -10,6 +10,11 @@ Current status:
 - Real database/private Storage selection is implemented with healthy-only
   caching and failed persistence initialization cleanup. Application TLS/browser
   verification and actual hosted acceptance remain pending.
+- [Application attempt 5](results/2026/11-07/supabase-application-attempt-5.md)
+  failed all four journeys: exact Slides action responses received HTTP 200 RSC
+  headers, then Chromium reported an abort before successful response completion.
+  Its qualified first Next-only TLS window and outer cleanup passed; the second
+  window was unrun. The abort cause remains unproven, and no full identity is accepted.
 
 Portable auth remains the default for Supabase persistence.
 

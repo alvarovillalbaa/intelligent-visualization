@@ -123,10 +123,15 @@ Allowed persistence providers:
 - `local`
 - `supabase`
 
-Only local PostgreSQL is implemented. The reserved Supabase boundary fails closed
-until its adapter and contract checks are implemented. Vercel Blob/Supabase storage
-and the remaining AI/Eve suite are separate unfinished work. This candidate is
-kept off production until the hosting database and storage are configured.
+Local PostgreSQL remains the default. Supabase PostgreSQL and private Storage
+adapters and application selection are implemented; the separate 90-case provider
+packet passed at its [recorded source](docs/results/2026/11-07/supabase-provider-attempt-8.md).
+The [latest application run](docs/results/2026/11-07/supabase-application-attempt-5.md)
+failed all four journeys, so application and hosted acceptance remain pending.
+Portable authentication remains the default; native Supabase Auth, Vercel Blob
+and the remaining AI/Eve suite are unfinished. This candidate stays off production
+until verified hosting database and private Storage configuration are available.
+See [Supabase status and setup boundaries](docs/supabase.md).
 
 ## Commands
 
