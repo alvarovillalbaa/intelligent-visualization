@@ -1,6 +1,6 @@
 # Verify the real Supabase application factories
 
-Prepared 7 November 2026. Application acceptance remains pending; the seventh
+Prepared 7 November 2026. Application acceptance remains pending; the eighth
 attempt is an inactive source packet. The prerequisite
 [90-case provider packet](../results/2026/11-07/supabase-provider-attempt-8.md)
 passed at `4da1844f22a332aad8bd827a026c3a806b4a308f`, with independent
@@ -169,6 +169,61 @@ All 37 controller function ASTs, probes, strict errors, original reader semantic
 four identities, 180/720-second browser bounds, 1,020-second work budget and
 90-second cleanup remain unchanged. There is no product fix, cancellation waiver,
 production-mode change or guaranteed pass.
+
+The [seventh application attempt](../results/2026/11-07/supabase-application-attempt-7.json)
+remains false: JSON 693,800 bytes, SHA-256
+`f6de7dbe156c28915b3dfe0ffd681d9df1042c4a2ee799c8c22438ec827a16f2`, source
+`e0cf4b9ea529b1d4d3a4fac9194e3521c2f72506`. All four boundaries recorded
+post-failure acknowledgement within the original deadline: fresh UI/live/new
+version and SQL/Storage matched pointer, label/source and HTML bytes/hash. The
+exact `ERR_ABORTED` remained fatal; no complete journey is accepted. Two reached
+public Slides and observed a refused owned development HMR socket in a public
+context. Session-end request failures also remain failures. Neither consumer
+completion nor those acknowledgements identifies the transport cause.
+
+Attempt eight on `qa/supabase-application-20261107-8` is a **route-handler-bypass
+control**, not a fully unpaused baseline. Only already admitted first-party URL
+paths/query grammars bypass the user HTTP route handler. The identical
+method/header/body/stage policy runs passively on request; every violation still
+fails. Unknown, foreign and model URLs remain blocked. An admitted URL's
+invalid-method effect may begin before passive detection; this limit is confined
+to owned disposable fixtures without external AI/model provider credentials. It is not a
+preventive method/body barrier. Playwright 1.57
+[maps URL predicates to catch-all interception](https://github.com/microsoft/playwright/blob/v1.57.0/packages/playwright-core/src/client/network.ts#L764),
+and [Chromium still enables Fetch interception and disables cache](https://github.com/microsoft/playwright/blob/v1.57.0/packages/playwright-core/src/server/chromium/crNetworkManager.ts#L141).
+Thus a changed result would not by itself prove the cause of earlier aborts.
+
+Permit development WebSockets in owner/public contexts only at exact
+`ws://127.0.0.1:3100/_next/webpack-hmr`, with no credentials/fragment and raw query
+`?id=` followed by either 21 URL-safe alphanumeric/underscore/hyphen characters
+or canonical unsigned-32-bit lowercase hexadecimal (`0` or 1–8 digits without a
+leading zero); reject duplicates, other keys and
+encoded variants. The pinned
+[App HMR client](https://github.com/vercel/next.js/blob/v16.1.6/packages/next/src/client/dev/hot-reloader/app/web-socket.ts)
+uses `self.__next_r`; [Node HTML rendering](https://github.com/vercel/next.js/blob/v16.1.6/packages/next/src/server/app-render/app-render.tsx)
+emits its request ID, using default
+[21-character nanoid](https://github.com/vercel/next.js/blob/v16.1.6/packages/next/src/compiled/nanoid/index.cjs).
+[Client request IDs](https://github.com/vercel/next.js/blob/v16.1.6/packages/next/src/client/components/router-reducer/fetch-server-response.ts)
+use unsigned-32-bit hexadecimal. Edge/static-build forms are outside this owned
+Node development fixture. This grants no arbitrary socket access.
+
+The separate client feedback improvement reports Publishing, awaited returned-label
+success, or generic uncertain publication with local edits retained and advice to
+check Published variants before retry. Its polite status supplies a direct
+action-resolution acknowledgement; it changes no request, role or server contract
+and is not an abort fix. Bounded passive primary-page CDP terminal metadata adds
+no interception/body consumption. Preserve every original `finished()`, request
+failure, UI, SQL/Storage, error, deadline and cleanup gate; no semantic abort
+classification or cancellation waiver is introduced.
+
+Against App7, only spec/feedback client may differ: 284/286 inputs remain exact,
+including snapshot helper and README. App6 preserves 283/286; App5 preserves
+282/286 with its separately labelled earlier README exception; App4 preserves
+282/286, App1–3 preserve 281/286, and QA8 preserves 292/297. All seven original
+false receipts and the separate accepted provider receipt stay pinned. All 37
+controller function ASTs, four identities and existing time/closure bounds remain
+unchanged. No cases are carried, no runtime has occurred for this candidate, and
+no pass or causal result is guaranteed.
 
 ## Source boundary
 
