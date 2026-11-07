@@ -20,6 +20,11 @@ Current status:
   `done` before the recorded abort callbacks, without observed read rejection or
   reader cancellation. This establishes neither network EOF nor UI acknowledgement;
   the original failure rules remain unchanged and no journey is accepted.
+- [Application attempt 7](results/2026/11-07/supabase-application-attempt-7.md)
+  retained all four abort failures. Its bounded post-failure checks independently
+  matched fresh version UI, SQL state and private Storage bytes in every case.
+  This confirms those observed publications, without accepting a full journey
+  or proving network completion. The later feedback change was outside its source.
 
 Portable auth remains the default for Supabase persistence.
 

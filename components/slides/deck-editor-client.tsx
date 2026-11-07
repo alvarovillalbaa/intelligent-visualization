@@ -217,14 +217,20 @@ export function DeckEditorClient({
       return
     }
 
-    const nextSource = updateManualDraft()
+    const nextSource = draftSource
+    setActivity("Publishing…")
     startTransition(async () => {
-      await publishDeckVersionAction({
-        deckId: deck.id,
-        label: publishLabel,
-        source: nextSource,
-        password: publishPassword || undefined,
-      })
+      try {
+        const version = await publishDeckVersionAction({
+          deckId: deck.id,
+          label: publishLabel,
+          source: nextSource,
+          password: publishPassword || undefined,
+        })
+        setActivity(`Published ${version.label}.`)
+      } catch {
+        setActivity("Publication could not be confirmed. Your local edits are still here. Check Published variants before trying again.")
+      }
     })
   }
 
@@ -477,7 +483,7 @@ export function DeckEditorClient({
               </CardContent>
             </Card>
 
-            <p className="rounded-[24px] border border-foreground/8 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+            <p role="status" aria-live="polite" className="rounded-[24px] border border-foreground/8 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
               {activity}
             </p>
           </CardContent>
