@@ -1,6 +1,6 @@
 # Verify the real Supabase application factories
 
-Prepared 7 November 2026. Application acceptance remains pending; the third
+Prepared 7 November 2026. Application acceptance remains pending; the fourth
 attempt is an inactive source packet. The prerequisite
 [90-case provider packet](../results/2026/11-07/supabase-provider-attempt-8.md)
 passed at `4da1844f22a332aad8bd827a026c3a806b4a308f`, with independent
@@ -42,6 +42,37 @@ helper `execFile` calls clone the child environment and remove only `FORCE_COLOR
 controller functions, probes, four identities, time limits and cleanup remain
 unchanged. No cases are carried or accepted by this correction.
 
+The [third application attempt](../results/2026/11-07/supabase-application-attempt-3.md)
+remains false: JSON 537,338 bytes, SHA-256
+`b37fc6d143e6e8600206be36307e34e2d0d07591ca4ef48a643640f9e289d310`, source
+`22ff1a18d6d5c81dca39ff77279dbaca0496ab4c`. Its report has zero expected passes,
+three unexpected 180-second timeouts at `slides-publish-1`, and one skipped result
+at the 720-second global limit. The fourth actor did server-side work but has no
+finalized browser boundary; skipped does not mean wholly unexecuted. The three
+partial boundaries retain fatal request failures (3/5/8) and failed browser-fixture
+cleanup. Outer owned process, database-client, DNS, proxy, Docker, port and scratch
+closure passed separately. No browser case is accepted or carried.
+
+Retry four on `qa/supabase-application-20261107-4` pins all three failures and the
+separate accepted provider receipt. Four exact application inputs may differ:
+the browser spec adds matched-request identity and bounded 10-second response
+completion/failure diagnostics; the Slides editor client removes three refreshes
+following publish/add-asset/upload-asset ServerActions that already revalidate an
+editor path. The publish/add-asset actions first resolve and validate the actual
+authorized deck workspace, before mutation, and revalidate its editor path rather
+than the user's primary workspace. Their role checks, inputs and return contracts
+remain unchanged. This refresh-race explanation remains an inference until verified.
+The authored Report-desktop actor now has a secondary workspace in the same team,
+with its primary `hq` unchanged; normal sign-in/navigation must reach that actual
+deck workspace. The authored fixture has four identities, eight users, eight
+Slides, nine workspaces and eight original/victim object proofs; seed returns its
+actual counts. These are fixture-design counts, without pre-run acceptance.
+No cancellation or response failure is waived. Every other 282 of each prior
+attempt's 286 exported inputs remains exact. Client and actions join scoped lint/types;
+only this static-input set changes inside the controller's bootstrap function.
+Actual acceptance, runtime and closure functions, four identities, per-case/global
+limits and the 20-minute job remain unchanged. All new execution remains held.
+
 ## Source boundary
 
 [Persistence selection](../../lib/persistence/factory.ts) and
@@ -49,12 +80,19 @@ unchanged. No cases are carried or accepted by this correction.
 adapters. The local branches remain unchanged; Supabase initialization is shared,
 only healthy instances are cached, and a failed persistence candidate closes its
 owned pool. Among the prerequisite's 297 exported inputs, only these two factory
-TypeScript files and the explicitly reviewed provider README status text may
-differ. The other 294 inputs remain byte-identical. The README exception is
-documentation only, not a provider-code allowance. Exercise the new branches
+TypeScript files, the exact Slides editor client and ServerActions file, and the
+explicitly reviewed provider README may differ. The other 292 inputs remain exact.
+The report separates factory code, application-client code and documentation,
+with accepted/current metadata for each exact path. Exercise the new branches
 through ordinary environment selection in a fresh Next process. Neither
 `setPersistenceProviderForTests`, `setStorageAdapterForTests`, an injected database,
 nor an injected fetcher belongs in that process or its fixture setup.
+
+Action-path verification distinguishes primary and the authored Report-desktop
+secondary workspace: both publish and asset registration must invalidate the
+deck's actual editor URL. Missing/foreign decks and inconsistent workspace/team
+linkage must refuse before mutation; role refusal remains unchanged. The new
+fixture is authored, with runtime regression acceptance still pending.
 
 [Portable sign-in](../../lib/server-auth.ts),
 [legacy repository operations](../../lib/repository.ts), canonical workspace

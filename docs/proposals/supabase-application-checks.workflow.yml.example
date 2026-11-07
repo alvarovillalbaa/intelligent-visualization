@@ -1,12 +1,12 @@
 # Inactive. Pin both the passing provider receipt and reviewed source before use.
-name: Temporary Supabase application checks 3
+name: Temporary Supabase application checks 4
 on:
   create:
 permissions:
   contents: read
 jobs:
   supabase-application:
-    if: github.repository == 'alvarovillalbaa/intelligent-visualization' && github.event.repository.private == false && github.event.ref_type == 'branch' && github.event.ref == 'qa/supabase-application-20261107-3' && github.ref == 'refs/heads/qa/supabase-application-20261107-3'
+    if: github.repository == 'alvarovillalbaa/intelligent-visualization' && github.event.repository.private == false && github.event.ref_type == 'branch' && github.event.ref == 'qa/supabase-application-20261107-4' && github.ref == 'refs/heads/qa/supabase-application-20261107-4'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
