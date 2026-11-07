@@ -36,3 +36,9 @@ All 75 attributed process identities were gone, with no uncertain ownership or r
 The actual checks use `iv_runtime` LOGIN, the installed private schema, disposable native Supabase services, and an explicitly mapped fixed HTTPS Storage fixture origin to owned loopback HTTP. They do not prove production TLS/pooler, the production selection factories, Next application sessions, hosted Auth mapping, Vercel, browser journeys or live account behavior. No model/provider generation or hosted account/settings calls were made.
 
 Temporary workflow `410006363` was disabled after termination and freshly read back as `disabled_manually` at 02:45:38 UTC. No rerun, branch retirement, commit, push or factory activation was performed by this receipt task.
+
+Root follow-up: the provider QA branch was retired at
+`1f99475032207ce9905c2ed23c3b110091f3f429`, with the exact canonical
+`4d6545d` tree and no active temporary workflow. GitHub ref readback confirmed
+the retirement. The accepted JSON remains unchanged; later factory wiring and
+application checks have separate sources and outcomes.
