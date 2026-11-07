@@ -2,6 +2,7 @@ import { nanoid } from "nanoid"
 
 import { buildInitialDeckAssets, buildStoredInputAssets } from "@/lib/deck-assets"
 import { buildStandaloneDeckHtml, remixTheme, themeLibrary } from "@/lib/deck-runtime"
+import { snapshotLegacyPublicAssets } from "@/lib/legacy-public-assets"
 import { writePublishedArtifact, writeStoredText } from "@/lib/storage"
 import type {
   AnalyticsEvent,
@@ -648,11 +649,13 @@ export function createLegacyOperations(state: RepositoryState) {
     async publishVersion(userId: string, deckId: string, source: DeckRecord["source"], label: string, passwordHash?: string) {
       const user = findUserById(userId)
       const deck = findDeck(deckId)
-      if (!user || !deck || deck.teamId !== user.teamId) {
+      const team = deck ? findTeam(deck.teamId) : null
+      if (!user || !deck || !team || deck.teamId !== user.teamId) {
         throw new Error("Deck not found")
       }
 
       const version = await createVersionFromSource(deck.publicId, source, label)
+      version.publicAssets = snapshotLegacyPublicAssets(deck, team.slug)
       if (passwordHash) {
         version.passwordHash = passwordHash
       }

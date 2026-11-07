@@ -183,6 +183,7 @@ export interface DeckVersion {
   artifactStorageKey?: string
   artifactUrl?: string
   passwordHash?: string
+  publicAssets?: AssetRecord[]
 }
 
 export interface ReviewComment {

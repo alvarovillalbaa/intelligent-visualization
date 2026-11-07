@@ -10,6 +10,7 @@ import { repository } from "@/lib/repository"
 import type { DeckExperiment, DeckSource, GenerationInput, Role } from "@/lib/types"
 import { getBaseUrl } from "@/lib/env"
 import { slugify } from "@/lib/utils"
+import { createPublicDeckAccessToken, currentPublicDeckPasswordHash, currentPublicDeckVersion, publicDeckRequiresPassword, PUBLIC_DECK_ACCESS_TTL_MS } from "@/lib/public-deck-access"
 
 function requireDeckMutationRole(role: Role) {
   if (role === "viewer") {
@@ -293,21 +294,26 @@ export async function applyReviewSuggestionAction(input: {
 }
 
 export async function unlockDeckAction(input: { publicId: string; password: string }) {
+  if (!input || typeof input.publicId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(input.publicId)
+    || typeof input.password !== "string" || input.password.length > 4096) return { ok: false, error: "Invalid deck access request." }
   const view = await repository.getPublicDeckById(input.publicId)
-  if (!view) {
+  if (!view || !currentPublicDeckVersion(view.deck)) {
     return { ok: false, error: "Deck not found." }
   }
 
-  if (!verifyDeckPassword(input.password, view.deck.passwordHash)) {
+  if (!publicDeckRequiresPassword(view.deck)) return { ok: true }
+  const passwordHash = currentPublicDeckPasswordHash(view.deck)
+  if (!passwordHash || !verifyDeckPassword(input.password, passwordHash)) {
     return { ok: false, error: "Incorrect password." }
   }
 
   const cookieStore = await cookies()
-  cookieStore.set(`slides_public_${view.deck.publicId}`, "1", {
+  cookieStore.set(`slides_public_${view.deck.publicId}`, createPublicDeckAccessToken(view.deck), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
+    maxAge: PUBLIC_DECK_ACCESS_TTL_MS / 1000,
   })
 
   return { ok: true }

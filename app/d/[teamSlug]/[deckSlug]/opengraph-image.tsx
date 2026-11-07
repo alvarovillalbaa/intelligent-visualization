@@ -1,6 +1,7 @@
 import { ImageResponse } from "next/og"
 
 import { repository } from "@/lib/repository"
+import { currentPublicDeckVersion, publicDeckRequiresPassword } from "@/lib/public-deck-access"
 
 export const size = {
   width: 1200,
@@ -8,6 +9,8 @@ export const size = {
 }
 
 export const contentType = "image/png"
+export const dynamic = "force-dynamic"
+const imageOptions = { ...size, headers: { "Cache-Control": "private, no-store" } }
 
 export default async function OpenGraphImage({
   params,
@@ -17,8 +20,8 @@ export default async function OpenGraphImage({
   const { teamSlug, deckSlug } = await params
   const view = await repository.getPublicDeck(teamSlug, deckSlug)
 
-  if (!view) {
-    return new ImageResponse(<div />, size)
+  if (!view || !currentPublicDeckVersion(view.deck) || publicDeckRequiresPassword(view.deck)) {
+    return new ImageResponse(<div />, imageOptions)
   }
 
   return new ImageResponse(
@@ -64,6 +67,6 @@ export default async function OpenGraphImage({
         </div>
       </div>
     ),
-    size,
+    imageOptions,
   )
 }

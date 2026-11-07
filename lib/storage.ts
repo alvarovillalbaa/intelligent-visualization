@@ -1,11 +1,26 @@
-import { promises as fs } from "fs"
 import path from "path"
 
 import { nanoid } from "nanoid"
 
 import { slugify } from "@/lib/utils"
+import { getStorageAdapter } from "@/lib/storage/factory"
+import { normalizeStorageKey } from "@/packages/storage/provider"
 
 const storageRoot = path.join(process.cwd(), ".slides-storage")
+export const LEGACY_STORAGE_PREFIX = "legacy-slides/"
+
+async function legacyStorage() {
+  const selected = await getStorageAdapter()
+  if (selected.kind !== "local") return { adapter: selected, prefix: LEGACY_STORAGE_PREFIX }
+  // Legacy Slides and canonical visualizations retain their distinct local roots.
+  const { LocalStorageAdapter } = await import("@/packages/storage/local")
+  return { adapter: new LocalStorageAdapter(storageRoot), prefix: "" }
+}
+
+function checkedKey(key: string) {
+  if (key !== normalizeStorageKey(key) || Buffer.byteLength(key) > 1024) throw new Error("Invalid legacy storage key.")
+  return key
+}
 
 function toPosixSegments(value: string) {
   return value.split("/").filter(Boolean).map((segment) => slugify(segment) || "file")
@@ -25,21 +40,13 @@ function joinStorageKey(...segments: string[]) {
     .join("/")
 }
 
-async function ensureParentDir(storageKey: string) {
-  await fs.mkdir(path.join(storageRoot, path.dirname(storageKey)), { recursive: true })
-}
-
-function getAbsolutePath(storageKey: string) {
-  return path.join(storageRoot, storageKey)
-}
-
 function getExtension(fileName: string, fallback = ".bin") {
   const ext = path.extname(fileName)
   return ext ? ext.toLowerCase() : fallback
 }
 
 export function getStoredFileUrl(storageKey: string) {
-  return `/files/${storageKey}`
+  return `/files/${checkedKey(storageKey)}`
 }
 
 export function getPublishedArtifactUrl(publicId: string, versionId: string) {
@@ -52,18 +59,19 @@ export async function writeStoredBuffer(input: {
   content: Buffer
   contentType?: string
 }) {
+  const content = Buffer.from(input.content)
+  const contentType = input.contentType || "application/octet-stream"
   const ext = getExtension(input.fileName)
   const baseName = slugify(path.basename(input.fileName, ext)) || "asset"
-  const storageKey = joinStorageKey(...input.namespace, `${baseName}-${nanoid(6)}${ext}`)
-
-  await ensureParentDir(storageKey)
-  await fs.writeFile(getAbsolutePath(storageKey), input.content)
+  const storageKey = checkedKey(joinStorageKey(...input.namespace, `${baseName}-${nanoid(6)}${ext}`))
+  const { adapter, prefix } = await legacyStorage()
+  await adapter.put({ key: prefix + storageKey, body: content, contentType, immutable: true })
 
   return {
     storageKey,
     url: getStoredFileUrl(storageKey),
-    contentType: input.contentType ?? "application/octet-stream",
-    sizeBytes: input.content.byteLength,
+    contentType,
+    sizeBytes: content.byteLength,
   }
 }
 
@@ -87,12 +95,12 @@ export async function writePublishedArtifact(input: {
   html: string
   metadata: Record<string, unknown>
 }) {
-  const artifactStorageKey = joinStorageKey("published", input.publicId, input.versionId, "index.html")
-  const manifestStorageKey = joinStorageKey("published", input.publicId, input.versionId, "manifest.json")
-
-  await ensureParentDir(artifactStorageKey)
-  await fs.writeFile(getAbsolutePath(artifactStorageKey), input.html, "utf8")
-  await fs.writeFile(getAbsolutePath(manifestStorageKey), JSON.stringify(input.metadata, null, 2), "utf8")
+  const html = Buffer.from(input.html, "utf8"), metadata = Buffer.from(JSON.stringify(input.metadata, null, 2), "utf8")
+  const artifactStorageKey = checkedKey(joinStorageKey("published", input.publicId, input.versionId, "index.html"))
+  const manifestStorageKey = checkedKey(joinStorageKey("published", input.publicId, input.versionId, "manifest.json"))
+  const { adapter, prefix } = await legacyStorage()
+  await adapter.put({ key: prefix + artifactStorageKey, body: html, contentType: "text/html; charset=utf-8", immutable: true })
+  await adapter.put({ key: prefix + manifestStorageKey, body: metadata, contentType: "application/json", immutable: true })
 
   return {
     artifactStorageKey,
@@ -102,12 +110,9 @@ export async function writePublishedArtifact(input: {
 }
 
 export async function readStoredFile(storageKey: string) {
-  try {
-    const content = await fs.readFile(getAbsolutePath(storageKey))
-    return content
-  } catch {
-    return null
-  }
+  const key = checkedKey(storageKey)
+  const { adapter, prefix } = await legacyStorage()
+  return (await adapter.get({ key: prefix + key }))?.body ?? null
 }
 
 export async function readPublishedArtifact(publicId: string, versionId: string) {

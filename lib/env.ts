@@ -1,3 +1,5 @@
+import { randomBytes } from "node:crypto"
+
 export function hasFirecrawlEnv() {
   return Boolean(process.env.FIRECRAWL_API_KEY)
 }
@@ -22,7 +24,9 @@ export function getSigningSecret() {
     throw new Error("VISUALIZATION_SIGNING_SECRET is required in production.")
   }
 
-  return "visualization-local-dev-secret"
+  const development = globalThis as typeof globalThis & { __ivDevelopmentSigningSecret?: string }
+  development.__ivDevelopmentSigningSecret ??= randomBytes(32).toString("hex")
+  return development.__ivDevelopmentSigningSecret
 }
 
 export function getProviderEnvironment() {
