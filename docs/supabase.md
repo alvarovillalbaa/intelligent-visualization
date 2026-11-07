@@ -34,6 +34,13 @@ Current status:
   completed the actual production build, then failed the controller's missing
   `tsconfigPath` manifest lookup. Server startup, both Next TLS windows and all
   four browser journeys were unrun. Cleanup passed; no journey is accepted.
+- [Production control 10](results/2026/11-07/supabase-application-attempt-10.md)
+  passed focused TypeScript, production build/standalone startup and four initial
+  Secure-cookie checks. All first Slides publications still aborted despite
+  direct action acknowledgements and matching UI/SQL/Storage diagnostics. All four
+  journeys remain failed; source/capture and owned cleanup checks passed. The
+  [source investigation](research/2026/11-07/slides-production-cancellation.md)
+  records the remaining distinction between action resolution and network EOF.
 
 Portable auth remains the default for Supabase persistence.
 
