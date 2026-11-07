@@ -21,3 +21,9 @@ observed the returned-label success message in one ordinary completed publicatio
 and three post-cancellation diagnostics. All four complete journeys remained
 failed. The uncertain-rejection branch has source review only. These observations
 do not fix the response-abort issue or establish hosted/production acceptance.
+
+[Production control 10](../results/2026/11-07/supabase-application-attempt-10.md)
+also observed the direct returned-label acknowledgement in all four identities,
+15–18 milliseconds after each first publication's fatal cancellation. Matching
+fresh UI/SQL/Storage diagnostics stayed inside the original deadline. Action
+resolution still does not establish network EOF or a complete journey.
