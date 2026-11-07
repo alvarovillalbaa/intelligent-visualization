@@ -1,41 +1,35 @@
-# Fresh Supabase contracts after observed Storage interoperability fixes
+# Fresh Supabase contracts after local fixture lifecycle repair
 
-Prepared 7 November 2026. Inactive QA7 packet: review and pin its source before
-creating `qa/supabase-provider-20261107-7`. Permanent CI and application factories
+Prepared 7 November 2026. Inactive QA8 packet: review and pin its source before
+creating `qa/supabase-provider-20261107-8`. Permanent CI and application factories
 remain untouched. No local runtime, installation or deployment is authorized here.
 
 ## Evidence and bounded change
 
-[QA5](../results/2026/11-07/supabase-provider-attempt-5.json) executed all 90 cases,
-with 88 passed and two native Storage failures; its overall verdict remains false.
-[QA6](../results/2026/11-07/supabase-storage-diagnostic-6.md) completed observation
-only, with zero tests and provider acceptance/passed false. Its exact JSON is
-306,883 bytes, SHA-256
-`0988205dcd19177cfb513f67ae35578705d850527c17936f649804710cbe42e1`.
+[QA7](../results/2026/11-07/supabase-provider-attempt-7.json) passed scoped lint
+and semantic TypeScript checks, then passed 27 local cases and failed the last
+portable case during fixture cleanup. The remaining 62 cases were unrun. Its
+exact failed JSON is 307,635 bytes, SHA-256
+`f7764d34669c564ee1c89b162c31ab37cb7cf529b0006d092369304a12dcfcaf`.
+The fixture's immediate activity count was nonzero after pool-close calls. It
+recorded no session identities or states, so a server-close observation delay
+is a possible cause, not an established diagnosis. The local fixture-database
+audit also failed; outer service teardown is a separate infrastructure fact.
 
-The actual losing immutable POST returned HTTP 400 with code
-`KeyAlreadyExists`, error `Duplicate` and body statusCode `409`; the winner's
-authored bytes remained exact. Anonymous list and DELETE returned exact EOF
-`[]` with HTTP 200, while independent service reads after every operation
-confirmed the target's exact original size/hash. Both original and well-formed
-binary anonymous writes were denied and their candidate keys remained absent.
-These are observed request-specific outcomes, not a generic error/200 waiver.
+Only `tests/providers/postgres-fixture.ts` may differ from QA7. Both pool-close
+attempts must settle. A bounded three-second observation of actual server activity
+records safe session metadata without query text; deletion still requires zero
+sessions and an immediate exact database identity/ownership recheck. Use ordinary
+DROP only, never termination or FORCE. Always close the fixture's admin pool on
+success and failure. A remaining session, changed identity or uncertain cleanup
+fails the packet; waiting is not acceptance of a nonzero count.
 
-Only these three prior runtime inputs may differ from QA5:
-
-- `packages/provider-supabase/storage.ts`: recognize the observed explicit
-  `KeyAlreadyExists` code within the existing immutable duplicate-status boundary.
-- `tests/unit/supabase-storage.test.ts`: cover that exact structured code.
-- `tests/integration/supabase-storage.test.ts`: permit only the exact list/DELETE
-  method/path empty-array response, with independent target byte/size/hash
-  retention after every operation; retain strict denial and absence checks for
-  both write candidates, including the well-formed binary control.
-
-The other 293 of QA5's 296 inputs must match byte-for-byte. The diagnostic script
-is an additional exported/static-checked source; the protected schema, migration,
-lineage, application auth and factory behavior do not change. All six prior
-failed/nonacceptance JSON receipts are byte/hash pinned by the controller. No
-prior passed case or diagnostic exit is carried into acceptance.
+The other 296 of QA7's 297 inputs remain byte-identical, including the Storage
+adapter, its expanded unit/native assertions, schema, migration, lineage,
+application auth and disabled factories. The Storage interoperability correction
+is still awaiting runtime acceptance. [QA6](../results/2026/11-07/supabase-storage-diagnostic-6.md)
+retains zero tests and false acceptance flags. All seven prior failed/nonacceptance
+receipts are hash-pinned; no earlier pass or diagnostic exit is carried forward.
 
 ## Full fresh execution
 

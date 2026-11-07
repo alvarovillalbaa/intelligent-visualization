@@ -21,7 +21,7 @@ import traceback
 from urllib.parse import urlsplit
 
 repo, source = Path.cwd(), os.environ["SOURCE_COMMIT"]
-BRANCH = "qa/supabase-provider-20261107-7"
+BRANCH = "qa/supabase-provider-20261107-8"
 LOCK_SHA = "b18dd278e6eded698e269d2e8400b0359083a8ba34de4721227a70b5e27c0d59"
 ASSET = "supabase_3.0.0_linux_amd64.tar.gz"
 ARCHIVE_SHA = "eeb61edcd59a4735fcb5e58596574f25d03d420efca779f43ddb307e1cc5c754"
@@ -92,6 +92,7 @@ prior_specs = [
     ("docs/results/2026/11-07/supabase-provider-attempt-4.json", 317657, "358576029ce7ec2a29dfd082e5ec2cea6ecae341a21635da4ff7b593ca08d035", "63a74b393063a5addfc412f14a75474ffcfa5372"),
     ("docs/results/2026/11-07/supabase-provider-attempt-5.json", 366433, "220187b7525e1b7eac9920a7a4471aa6425bf475889f1e5c8f4122ae59c62537", "f14d82a179277b2d742f0b79309286027c4676ca"),
     ("docs/results/2026/11-07/supabase-storage-diagnostic-6.json", 306883, "0988205dcd19177cfb513f67ae35578705d850527c17936f649804710cbe42e1", "26a141d06c9ae835fde59548650b6832a77a0e0a"),
+    ("docs/results/2026/11-07/supabase-provider-attempt-7.json", 307635, "f7764d34669c564ee1c89b162c31ab37cb7cf529b0006d092369304a12dcfcaf", "07222ed647ae61aca315850548228027b672195e"),
 ]
 report["priorReceipts"] = []
 for file, count, digest, commit in prior_specs:
@@ -101,15 +102,15 @@ for file, count, digest, commit in prior_specs:
     assert value["sourceCommit"] == commit and value["passed"] is False
     report["priorReceipts"].append({"receipt": file, "bytes": count, "sha256": digest, "sourceCommit": commit, "passed": False,
         "diagnosticComplete": value.get("diagnosticComplete"), "providerAccepted": value.get("providerAccepted"), "carriedCases": 0})
-qa5 = json.loads((repo / prior_specs[4][0]).read_bytes())
-protected = qa5["sourceExport"]["inputs"]
-allowed_changes = {"packages/provider-supabase/storage.ts", "tests/unit/supabase-storage.test.ts", "tests/integration/supabase-storage.test.ts"}
-assert len(protected) == 296 and allowed_changes <= protected.keys()
-assert all(before.get(name) == row for name, row in protected.items() if name not in allowed_changes), "Unapproved QA5 runtime input changed"
-report["priorAttempt5Outcomes"] = {"passed": 88, "failed": 2, "unrun": 0, "carried": 0}
+qa7 = json.loads((repo / prior_specs[-1][0]).read_bytes())
+protected = qa7["sourceExport"]["inputs"]
+allowed_changes = {"tests/providers/postgres-fixture.ts"}
+assert len(protected) == 297 and allowed_changes <= protected.keys()
+assert all(before.get(name) == row for name, row in protected.items() if name not in allowed_changes), "Unapproved QA7 runtime input changed"
+report["priorAttempt7Outcomes"] = {"passed": 27, "failed": 1, "unrun": 62, "carried": 0}
 report["protectedPriorRuntime"] = {"inputs": len(protected), "unchangedInputs": len(protected) - len(allowed_changes),
     "allowedChangedInputs": {name: {"before": protected[name], "current": before[name]} for name in sorted(allowed_changes)},
-    "reason": "Observed KeyAlreadyExists translation and exact empty list/DELETE plus per-operation retention/binary-write checks. All 90 cases execute freshly; no cases are carried."}
+    "reason": "Only the local fixture lifecycle changes: bounded fresh session observations, mandatory zero/identity recheck before ordinary DROP, and unconditional admin-pool closure. QA7's immediate count did not record session metadata or establish its cause. Product/Storage/assertion inputs remain exact. All 90 cases execute freshly; no cases are carried."}
 
 
 def guard(label):
