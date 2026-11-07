@@ -1,6 +1,6 @@
 # Intelligent Visualization
 
-Last updated: 2026-11-06
+Last updated: 2026-11-07
 
 Intelligent Visualization is a Next.js + TypeScript application for creating interactive visual documents.
 
@@ -31,6 +31,7 @@ Implemented in the current migration slice:
 - [Course HTML export](docs/course-export.md) preserves the committed learner content in a standalone Course copy.
 - [Private workspace drafts](docs/private-workspace-drafts.md) let authenticated users explicitly save, reopen and revise Course/Report documents on local PostgreSQL.
 - [Course/Report publication](docs/workspace-publication.md) explicitly publishes a saved revision to anonymous live and immutable-version links, keeping later draft edits separate.
+- [Unpublish](docs/workspace-unpublication.md) revokes existing Course/Report public versions while preserving drafts, local edits and stored content.
 
 The current [PostgreSQL migration checks](docs/results/2026/11-06/postgres-checks.md)
 accept seven configuration, 28 real PostgreSQL and two actual desktop/narrow
@@ -50,7 +51,13 @@ accepts forty HTTP/client/PostgreSQL cases and four actual desktop/narrow
 Course/Report journeys across three recorded sources. Real publication, anonymous
 reads, revision-two publication and unchanged earlier version bytes pass. Earlier
 passes are carried by exact input/capture checks; both failed overall attempts
-remain. Unpublish/delete controls and hosted publication are still unfinished.
+remain. Deletion and hosted publication are still unfinished.
+
+The separate [Unpublish receipt](docs/results/2026/11-07/workspace-unpublications-checks.md)
+accepts 39 core cases and four desktop/narrow journeys across two sources. Existing
+live/version links are refused after revocation, private edits and stored bytes
+remain, and later publishing does not reopen revoked versions. The failed first
+browser execution remains preserved; its abort causes are not established.
 
 The historical [Report CSV checks](docs/results/2026/11-04/report-csv-import-checks.md)
 passed all 176 focused cases on 4 November 2026. The separate

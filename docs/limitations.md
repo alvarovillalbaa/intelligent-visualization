@@ -1,6 +1,6 @@
 # Limitations
 
-Last updated: 2026-11-06
+Last updated: 2026-11-07
 
 This migration is not complete.
 
@@ -26,8 +26,15 @@ hosted access/storage or automatic guest-draft transfer.
 Explicit local Course/Report publication now has separate
 [focused acceptance](results/2026/11-06/workspace-publications-checks.md): live and
 immutable anonymous readers, two saved revisions and preserved earlier bytes.
-Unpublish/delete controls, public passwords, Course/Report embeds, canonical
+Deletion controls, public passwords, Course/Report embeds, canonical
 analytics and original-asset delivery remain unfinished. Course completion is
 browser-local per published version; quiz answers are not persisted. Publication
 uncertainty retains its object and intent rather than deleting potentially
 referenced data. Backups need database and object storage separately.
+
+Local [Unpublish acceptance](results/2026/11-07/workspace-unpublications-checks.md)
+now covers durable revocation, private edit preservation, backup/restore and later
+republishing without reopening revoked version URLs. This stops subsequent reads;
+already-open/history/downloaded copies cannot be recalled. Previously admitted
+requests may finish, but no in-flight revocation race was executed. Hosted
+revocation, physical devices/touch and a production cutover remain unverified.

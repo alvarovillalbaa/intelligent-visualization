@@ -3,9 +3,10 @@
 Last updated: 2026-11-07
 
 The local candidate adds Unpublish for saved Course and Report documents.
-[Focused checks](proposals/workspace-unpublication-checks.md) pass all 39 core
-cases. Strict browser acceptance is still pending after the first execution's
-status-read failures. Hosted activation remains separate.
+The [focused receipt](results/2026/11-07/workspace-unpublications-checks.md) accepts
+39 core cases and four desktop/narrow browser journeys at two recorded sources.
+The failed first browser verdict and its unproven abort causes remain. Hosted
+activation is separate.
 
 ## Stop public access
 

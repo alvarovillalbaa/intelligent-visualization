@@ -1,6 +1,6 @@
 # Provider architecture
 
-Last updated: 2026-11-06
+Last updated: 2026-11-07
 
 `PERSISTENCE_PROVIDER=local` selects standard PostgreSQL using the explicit
 loopback `LOCAL_DATABASE_URL`. Only local PostgreSQL is implemented; the reserved
@@ -71,6 +71,17 @@ HTML/manifest/binding/hash/CSP; recovery validates that object without recompili
 Only committed owned versions resolve publicly. Uncertain put/commit outcomes
 never cause automatic object deletion. See [the local flow](workspace-publication.md)
 and [its focused receipt](results/2026/11-06/workspace-publications-checks.md).
+
+`workspacePublications.unpublish` freshly authorizes an expected current version
+and atomically commits all-version `revoked` eligibility, draft record status and
+a payload-bound receipt. It retains the last pointer, working document and
+version/object contents. Prepared publish receipts now compare original status
+as well as pointer; old PREPARED receipts missing status become durable conflicts,
+while old FINAL receipts replay normally. A retained revoked pointer is accepted
+for new publishing only on a verified canonical draft. Generic rollback rejects
+revoked targets and the canonical workspace Course/Report namespace; legacy
+Slides rollback remains. Existing TEXT status columns and portable v1 carry the
+eligibility change without a schema migration. See [the Unpublish receipt](results/2026/11-07/workspace-unpublications-checks.md).
 
 Storage selection remains independent. `auto` selects local filesystem for local
 persistence and the reserved Supabase storage boundary for Supabase. Explicit

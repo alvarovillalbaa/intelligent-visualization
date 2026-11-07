@@ -5,8 +5,9 @@ the [revocation contract](workspace-unpublication.md) after the separately accep
 [publication slice](../results/2026/11-06/workspace-publications-checks.md). The
 source contains 39 new core cases and four browser identities. The
 [first execution](../results/2026/11-07/workspace-unpublications-attempt-1.md)
-passes all 39 core cases but fails all four strict browser boundaries. Browser
-acceptance remains pending.
+passes all 39 core cases but fails all four strict browser boundaries. The
+[final receipt](../results/2026/11-07/workspace-unpublications-checks.md) accepts
+those core results and four strict browser passes from the diagnostic execution.
 
 ## Behavior and protected state
 
@@ -61,11 +62,11 @@ frozen in the controller before activation. The first execution runs only these
 new cases; it does not rerun closed publication journeys. Its false verdict and
 all original streams remain retained.
 
-The next execution carries the 39 core passes after validating the complete
+The second execution carries the 39 core passes after validating the complete
 362,748-byte original receipt, all 38 original captures, exact raw JSON identities
 and protected source inputs. All 270 exported inputs must match except the
-observational browser fixture; no application code changes. Four browser
-identities still need strict current-source acceptance. The fixture waits for
+observational browser fixture; no application code changes. All four browser
+identities pass their strict current-source boundaries. The fixture waits for
 publication-status readiness before forcing a private reload and adds bounded
 GET clone EOF/hash/native-signal observations with actual Playwright request
 timelines across reload: at most sixteen GETs, 128 KiB per observed body and a

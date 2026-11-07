@@ -1,6 +1,6 @@
 # Architecture
 
-Last updated: 2026-11-06
+Last updated: 2026-11-07
 
 Intelligent Visualization is a Next.js App Router application with a provider-neutral backend contract.
 
@@ -40,6 +40,13 @@ Canonical `/v/` readers resolve committed ownership before validating stored HTM
 manifest, hashes and stored CSP. The legacy raw-file reader rejects the reserved
 publication namespace. See [publication](workspace-publication.md) and its
 [separate acceptance](results/2026/11-06/workspace-publications-checks.md).
+
+Unpublish atomically changes version eligibility to `revoked` and the record to
+draft while retaining its last published pointer. Snapshot documents/manifests and
+objects remain immutable. Prepared publication receipts compare original status
+and pointer; generic rollback cannot restore earlier canonical workspace
+Course/Report UUIDs. This prevents access revocation from making an older prepared
+publish valid again. See [the revocation flow](workspace-unpublication.md).
 
 ## Source Composer
 
