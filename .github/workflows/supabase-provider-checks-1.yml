@@ -1,0 +1,39 @@
+# Inactive until reviewed source is pinned and the exact QA branch is created.
+name: Temporary Supabase provider contracts 1
+on:
+  create:
+permissions:
+  contents: read
+jobs:
+  supabase-contracts:
+    if: github.repository == 'alvarovillalbaa/intelligent-visualization' && github.event.repository.private == false && github.event.ref_type == 'branch' && github.event.ref == 'qa/supabase-provider-20261107-1' && github.ref == 'refs/heads/qa/supabase-provider-20261107-1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_USER: iv_ci
+          POSTGRES_PASSWORD: authored-ci-only
+          POSTGRES_DB: intelligent_visualization_ci
+        ports:
+          - 54431:5432
+        options: >-
+          --health-cmd "pg_isready -U iv_ci -d intelligent_visualization_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      SOURCE_COMMIT: 5babe6dc068669a1f5d970cb22b9d0953d4ae818
+      IV_SUPABASE_PUBLIC_REPOSITORY: ${{ github.event.repository.private == false }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ env.SOURCE_COMMIT }}
+          persist-credentials: false
+          fetch-depth: 1
+          clean: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: 24.21.0
+          cache: ''
+      - name: Check isolated Supabase and affected PostgreSQL contracts
+        run: python3 scripts/supabase-provider-checks.py
