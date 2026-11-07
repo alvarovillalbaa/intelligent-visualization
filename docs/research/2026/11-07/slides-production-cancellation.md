@@ -30,9 +30,19 @@ Pinned source review found two relevant boundaries:
   continued when no handler matches. Handler bypass is therefore still an
   instrumented transport; it is not an unpaused baseline or proven cause.
 
-Production mode did not eliminate the cancellation. No causal product patch,
-request-failure waiver or automatic eleventh run follows from these observations.
-The next bounded source investigation is Chromium 143's DevTools Fetch/URLLoader
-completion and cancellation handoff. Preserve the existing failure and cleanup
-gates while that layer remains unresolved. No hosted/provider production result
-is established here.
+Chromium 143's [URLLoader contract](https://github.com/chromium/chromium/blob/143.0.7499.4/services/network/public/mojom/url_loader.mojom#L63)
+separates the response body pipe from completion notification. Discarding that
+pipe before completion can cancel a request, including one with an empty body.
+Its interceptor [forwards response/body directly](https://github.com/chromium/chromium/blob/143.0.7499.4/content/browser/devtools/devtools_url_loader_interceptor.cc#L1677)
+when response interception is disabled, handles completion separately, and calls
+[Shutdown on downstream loader disconnection](https://github.com/chromium/chromium/blob/143.0.7499.4/content/browser/devtools/devtools_url_loader_interceptor.cc#L852).
+The separate buffering BodyReader path does not explain this request-stage-only
+configuration. Playwright [propagates Chromium's failed terminal](https://github.com/microsoft/playwright/blob/v1.57.0/packages/playwright-core/src/server/chromium/crNetworkManager.ts#L507),
+independently of the observed JavaScript reader.
+
+That source contract supports a possible body/completion lifetime mechanism;
+App10 does not identify who disposed an endpoint. Production mode did not
+eliminate the cancellation. No causal product patch, request-failure waiver or
+automatic eleventh run follows. The next source step is endpoint disposal and
+`ERR_ABORTED` generation in `services/network/url_loader.cc`. Preserve the
+existing failure/cleanup gates. No hosted/provider production result is established.
