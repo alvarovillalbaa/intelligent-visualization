@@ -126,7 +126,7 @@ Allowed persistence providers:
 Local PostgreSQL remains the default. Supabase PostgreSQL and private Storage
 adapters and application selection are implemented; the separate 90-case provider
 packet passed at its [recorded source](docs/results/2026/11-07/supabase-provider-attempt-8.md).
-The [latest application run](docs/results/2026/11-07/supabase-application-attempt-5.md)
+The [latest application run](docs/results/2026/11-07/supabase-application-attempt-6.md)
 failed all four journeys, so application and hosted acceptance remain pending.
 Portable authentication remains the default; native Supabase Auth, Vercel Blob
 and the remaining AI/Eve suite are unfinished. This candidate stays off production
