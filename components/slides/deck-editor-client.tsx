@@ -225,7 +225,6 @@ export function DeckEditorClient({
         source: nextSource,
         password: publishPassword || undefined,
       })
-      router.refresh()
     })
   }
 
@@ -287,7 +286,6 @@ export function DeckEditorClient({
         description: "",
         url: "",
       })
-      router.refresh()
     })
   }
 
@@ -340,7 +338,6 @@ export function DeckEditorClient({
         url: "",
       })
       setActivity("Asset uploaded and attached to the deck.")
-      router.refresh()
     } finally {
       setUploadingAsset(false)
     }

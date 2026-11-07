@@ -137,6 +137,12 @@ export async function publishDeckVersionAction(input: {
 }) {
   const sessionUser = await requireSessionUser()
   requireDeckMutationRole(sessionUser.role)
+  const editorView = await repository.getDeckEditor(sessionUser.id, input.deckId)
+  if (!editorView || editorView.deck.id !== input.deckId || editorView.deck.teamId !== sessionUser.teamId
+    || editorView.workspace.id !== editorView.deck.workspaceId || editorView.workspace.teamId !== sessionUser.teamId
+    || typeof editorView.workspace.slug !== "string" || !editorView.workspace.slug) {
+    throw new Error("Deck not found.")
+  }
   const version = await repository.publishVersion(
     sessionUser.id,
     input.deckId,
@@ -145,7 +151,7 @@ export async function publishDeckVersionAction(input: {
     hashDeckPassword(input.password ?? ""),
   )
 
-  revalidatePath(`/app/workspaces/${sessionUser.workspaceSlug}/decks/${input.deckId}`)
+  revalidatePath(`/app/workspaces/${editorView.workspace.slug}/decks/${editorView.deck.id}`)
   revalidatePath(`/d/${sessionUser.teamSlug}/${slugify(version.source.title)}`)
 
   return version
@@ -200,8 +206,14 @@ export async function addDeckAssetAction(input: {
 }) {
   const sessionUser = await requireSessionUser()
   requireDeckMutationRole(sessionUser.role)
+  const editorView = await repository.getDeckEditor(sessionUser.id, input.deckId)
+  if (!editorView || editorView.deck.id !== input.deckId || editorView.deck.teamId !== sessionUser.teamId
+    || editorView.workspace.id !== editorView.deck.workspaceId || editorView.workspace.teamId !== sessionUser.teamId
+    || typeof editorView.workspace.slug !== "string" || !editorView.workspace.slug) {
+    throw new Error("Deck not found.")
+  }
   await repository.addAsset(sessionUser.id, input.deckId, input)
-  revalidatePath(`/app/workspaces/${sessionUser.workspaceSlug}/decks/${input.deckId}`)
+  revalidatePath(`/app/workspaces/${editorView.workspace.slug}/decks/${editorView.deck.id}`)
 }
 
 export async function saveDeckExperimentAction(input: {
