@@ -23,7 +23,9 @@ async function validate(database: PostgresDatabase): Promise<void> {
   await database.transaction(async (transaction) => {
     const role = (await transaction.query(`SELECT current_user AS current_role, session_user AS session_role,
       r.oid, r.rolsuper, r.rolcreaterole, r.rolcreatedb, r.rolreplication, r.rolbypassrls, r.rolinherit, r.rolcanlogin,
-      EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m WHERE m.member = r.oid OR m.roleid = r.oid) AS memberships,
+      EXISTS (SELECT 1 FROM pg_catalog.pg_auth_members m WHERE m.member = r.oid
+        OR (m.roleid = r.oid AND NOT (m.member = n.nspowner AND m.admin_option
+          AND NOT m.inherit_option AND NOT m.set_option))) AS memberships,
       EXISTS (SELECT 1 FROM pg_catalog.pg_namespace owned WHERE owned.nspowner = r.oid)
         OR EXISTS (SELECT 1 FROM pg_catalog.pg_class owned WHERE owned.relowner = r.oid) AS owns_objects,
       has_schema_privilege(r.oid, n.oid, 'USAGE') AS schema_usage,

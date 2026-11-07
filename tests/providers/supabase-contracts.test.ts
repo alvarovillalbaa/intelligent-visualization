@@ -388,6 +388,36 @@ describe("Supabase persistence provider shared contracts", () => {
     }
   }))
 
+  it("accepts only the schema owner administrative grant and rejects an untrusted administrative grant with inheritance and SET disabled", async () => withSupabaseFixture(async ({ admin, database, provider }) => {
+    const ownerGrants = async () => (await database.query(`SELECT owner.rolname AS owner_role, member.rolname AS member_role,
+      m.admin_option,m.inherit_option,m.set_option FROM pg_namespace n
+      JOIN pg_roles owner ON owner.oid=n.nspowner
+      JOIN pg_roles runtime ON runtime.rolname='iv_runtime'
+      JOIN pg_auth_members m ON m.roleid=runtime.oid AND m.member=n.nspowner
+      JOIN pg_roles member ON member.oid=m.member WHERE n.nspname=$1`, [SUPABASE_SCHEMA])).rows
+    const originalOwnerGrants = await ownerGrants()
+    expect(originalOwnerGrants).toEqual([{ owner_role: "postgres", member_role: "postgres", admin_option: true, inherit_option: false, set_option: false }])
+    expect((await provider.health()).ok).toBe(true)
+    const role = "iv_test_" + randomUUID().replaceAll("-", "")
+    await admin.query(`CREATE ROLE ${role} NOLOGIN NOINHERIT`)
+    try {
+      await admin.query(`GRANT iv_runtime TO ${role} WITH SET FALSE`)
+      await admin.query(`GRANT iv_runtime TO ${role} WITH INHERIT FALSE`)
+      await admin.query(`GRANT iv_runtime TO ${role} WITH ADMIN TRUE`)
+      const grant = (await database.query(`SELECT m.admin_option,m.inherit_option,m.set_option FROM pg_auth_members m
+        JOIN pg_roles runtime ON runtime.oid=m.roleid JOIN pg_roles member ON member.oid=m.member
+        WHERE runtime.rolname='iv_runtime' AND member.rolname=$1`, [role])).rows
+      expect(grant).toEqual([{ admin_option: true, inherit_option: false, set_option: false }])
+      await expect(provider.health()).rejects.toThrow()
+      await admin.query(`REVOKE iv_runtime FROM ${role}`)
+      expect((await provider.health()).ok).toBe(true)
+      expect(await ownerGrants()).toEqual(originalOwnerGrants)
+    } finally {
+      await admin.query(`REVOKE iv_runtime FROM ${role}`)
+      await admin.query(`DROP ROLE ${role}`)
+    }
+  }))
+
   it("routes legacy Slides originals uploads snapshots and published HTML through the selected database and actual private Storage", async () => withSupabaseFixture(async ({ provider, storage, keys, database }) => {
     setPersistenceProviderForTests(provider)
     setStorageAdapterForTests({ kind: "supabase", health: () => storage.health(), get: (input) => storage.get(input), exists: (input) => storage.exists(input),

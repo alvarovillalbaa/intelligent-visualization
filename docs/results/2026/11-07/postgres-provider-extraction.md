@@ -51,6 +51,14 @@ The runtime validator still requires an actual dedicated LOGIN session.
 
 The 21 authored backend paths were frozen with vector SHA-256
 `72ebe38c84943d743132aeacf7d3f89b27d8a3c484c14e876a78139d54bbd710`.
+This is the original candidate vector. The later
+[catalog diagnostic](supabase-provider-diagnostic-3.md) identified PostgreSQL's
+automatic administrator grant to the private schema owner. Its narrow validator
+correction changes `schema.ts` outside the local extraction equivalence claim;
+the local core, versioned local schema and hosted migration remain unchanged.
+It accepts only that owner's ADMIN-only management grant with INHERIT and SET
+disabled, while unrelated grants remain refused. Fresh 90-case acceptance is
+still required for the corrected candidate.
 The vector is the ordered inventory sent to the coordinating agent, each entry
 encoded as `path + NUL + decimal byte length + NUL + lowercase SHA-256`, joined by
 LF without a final LF. It includes the shared core, local compatibility wrappers,
