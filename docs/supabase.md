@@ -25,6 +25,11 @@ Current status:
   matched fresh version UI, SQL state and private Storage bytes in every case.
   This confirms those observed publications, without accepting a full journey
   or proving network completion. The later feedback change was outside its source.
+- [Application control 8](results/2026/11-07/supabase-application-attempt-8.md)
+  also failed all four journeys. The handler-bypass control retained actual CDP
+  cancellations; three diagnostics confirmed the awaited success-feedback branch
+  and matching UI/SQL/Storage state. Desktop Course completed its first publication,
+  then timed out without an exact second request binding. No journey is accepted.
 
 Portable auth remains the default for Supabase persistence.
 
