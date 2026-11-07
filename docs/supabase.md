@@ -30,6 +30,10 @@ Current status:
   cancellations; three diagnostics confirmed the awaited success-feedback branch
   and matching UI/SQL/Storage state. Desktop Course completed its first publication,
   then timed out without an exact second request binding. No journey is accepted.
+- [Production control 9](results/2026/11-07/supabase-application-attempt-9.md)
+  completed the actual production build, then failed the controller's missing
+  `tsconfigPath` manifest lookup. Server startup, both Next TLS windows and all
+  four browser journeys were unrun. Cleanup passed; no journey is accepted.
 
 Portable auth remains the default for Supabase persistence.
 
