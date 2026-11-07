@@ -43,3 +43,5 @@ The exact owned HMR grammar admitted 8/7/6/6 development sockets; refused-WebSoc
 Positive and missing-CA/wrong-SAN/wrong-password probes retained their expected finite results. One qualified Next-only window recorded five actual TLSv1.3 runtime sessions after helper closure. The second window was not reached; this fixture does not establish real hosted Supabase/pooler, Vercel or hosted Auth acceptance.
 
 Temporary workflow `410085100` was disabled after termination and freshly read back as `disabled_manually` at 05:23:58 UTC. This receipt task performed no retry, source fix, commit, push, branch retirement or factory mutation.
+
+Root publication follow-up: the raw JSON and original 8,455-byte Markdown receipt were published in `f4c5cd183189bc9d794dcdf002ce910288ed0c80`. The QA branch was then retired at `95dd87fd748d2c0550b6de30f768196d87eed3c5`, with the exact canonical tree `2684680211cc5c4fc74c2dae823cb42ef2fb7f5b` and both activation/canonical parents. The atomic push completed and a fresh GitHub ref read confirmed that retirement. The original receipt prefix is preserved; this publication does not change its failed result.
