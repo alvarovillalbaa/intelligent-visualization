@@ -21,7 +21,7 @@ import traceback
 from urllib.parse import urlsplit
 
 repo, source = Path.cwd(), os.environ["SOURCE_COMMIT"]
-BRANCH = "qa/supabase-provider-20261107-1"
+BRANCH = "qa/supabase-provider-20261107-2"
 LOCK_SHA = "b18dd278e6eded698e269d2e8400b0359083a8ba34de4721227a70b5e27c0d59"
 ASSET = "supabase_3.0.0_linux_amd64.tar.gz"
 ARCHIVE_SHA = "eeb61edcd59a4735fcb5e58596574f25d03d420efca779f43ddb307e1cc5c754"
@@ -37,6 +37,7 @@ TESTS = {
     "tests/providers/supabase-contracts.test.ts": 13, "tests/integration/supabase-storage.test.ts": 8,
     "tests/unit/supabase-storage.test.ts": 14, "tests/unit/legacy-public-assets.test.ts": 4,
     "tests/unit/public-deck-access.test.ts": 6, "tests/unit/supabase-database.test.ts": 12,
+    "tests/unit/legacy-upload-ownership.test.ts": 4,
 }
 assert re.fullmatch(r"[0-9a-f]{40}", source)
 assert os.environ.get("CI") == os.environ.get("IV_SUPABASE_PUBLIC_REPOSITORY") == "true"
@@ -81,8 +82,16 @@ def vector():
 
 before = vector()
 report = {"schemaVersion": 1, "sourceCommit": source, "startedAt": time.time(), "commands": [], "sourceFiles": before, "sourceGuards": [],
-    "scope": "85 fresh cases in ten explicit files: 28 affected local PostgreSQL regressions,13 Supabase provider,8 native Storage/Auth,36 focused unit cases. Actual disposable local services, not hosted TLS/pooler/Vercel/native application Auth acceptance. No browser/build/model/hosted account/settings calls; selection remains disabled.",
+    "scope": "89 fresh cases in eleven explicit files: 28 affected local PostgreSQL regressions,13 Supabase provider,8 native Storage/Auth,40 focused unit cases. Actual disposable local services, not hosted TLS/pooler/Vercel/native application Auth acceptance. No browser/build/model/hosted account/settings calls; selection remains disabled.",
     "capturePolicy": "Original streams exist only in controller memory. Original observed byte counts/SHA-256 are retained, but all retained text/JSON/errors are retrospectively sanitized using parsed disposable status keys and credential patterns. Sanitized gzip captures are not original independently replayable streams. No raw status/config/dotenv artifact is retained."}
+prior_path = "docs/results/2026/11-07/supabase-provider-attempt-1.json"
+prior_bytes = (repo / prior_path).read_bytes()
+assert len(prior_bytes) == 188095 and sha(prior_bytes) == "a99c0f71ff7dd1c5df2cd06e1cab1485f58fbdd54e249480db5ab1f9c98944b6"
+prior = json.loads(prior_bytes)
+assert prior["passed"] is False and prior["sourceCommit"] == "5babe6dc068669a1f5d970cb22b9d0953d4ae818"
+assert prior["error"] == "AssertionError: Command failed: node_modules/.bin/tsc" and "freshCasesPassed" not in prior and "cliArchive" not in prior
+report["priorAttempt"] = {"receipt": prior_path, "bytes": len(prior_bytes), "sha256": sha(prior_bytes), "sourceCommit": prior["sourceCommit"],
+    "passed": False, "testsExecuted": 0, "stackStarted": False, "reason": "Semantic TypeScript checking failed before CLI setup or tests. No prior cases are carried into this retry."}
 
 
 def guard(label):
@@ -372,8 +381,8 @@ console.log(JSON.stringify(result));'''
         rows = [row for suite in value["testResults"] for row in suite["assertionResults"]]
         assert len(rows) == count and sorted(row["fullName"] for row in rows) == sorted(names)
         assert all(row["status"] == "passed" and not row.get("failureMessages") for row in rows)
-    assert len(all_names) == len(set(all_names)) == 85
-    report["freshCasesPassed"] = 85; report["fixtureAuditAfter"] = fixture_audit(); guard("after-focused-checks")
+    assert len(all_names) == len(set(all_names)) == 89
+    report["freshCasesPassed"] = 89; report["fixtureAuditAfter"] = fixture_audit(); guard("after-focused-checks")
     report["serviceCleanupAudit"] = node("""import pg from 'pg';const p=new pg.Pool({connectionString:process.env.IV_SUPABASE_ADMIN_URL,max:1,statement_timeout:10000});try{
 const q=async sql=>(await p.query(sql)).rows[0].n;const result={runtimeClients:await q(\"SELECT count(*)::int AS n FROM pg_stat_activity WHERE usename='iv_runtime'\"),authUsers:await q('SELECT count(*)::int AS n FROM auth.users'),storageObjects:await q('SELECT count(*)::int AS n FROM storage.objects'),testRoles:await q(\"SELECT count(*)::int AS n FROM pg_roles WHERE rolname LIKE 'iv_test_%'\")};if(Object.values(result).some(x=>x!==0))throw Error('Owned fixture service residue remains');console.log(JSON.stringify(result));}finally{await p.end();}""")
     status = 0
@@ -448,6 +457,6 @@ finally:
             value.update({"sanitization": "byte-preserving-credential-substitution-v1", "sanitizedBytes": len(sanitized), "sanitizedSha256": sha(sanitized), "sanitizedGzipBase64": base64.b64encode(gzip.compress(sanitized, mtime=0)).decode()})
     report["finishedAt"] = time.time()
     report["interruption"] = interruption
-    report["passed"] = status == 0 and interruption is None and report.get("freshCasesPassed") == 85 and len(report["sourceGuards"]) == 5 and report.get("portsReleased") is True and report.get("stackRemoved") is True and report["scratchRemoved"] and safe_root and all(value["complete"] for value, _raw in raw_captures)
+    report["passed"] = status == 0 and interruption is None and report.get("freshCasesPassed") == 89 and len(report["sourceGuards"]) == 5 and report.get("portsReleased") is True and report.get("stackRemoved") is True and report["scratchRemoved"] and safe_root and all(value["complete"] for value, _raw in raw_captures)
     print("IV_SUPABASE_PROVIDER_RESULT=" + json.dumps(sanitize(report), separators=(",", ":")), flush=True)
 raise SystemExit(0 if report["passed"] else 1)

@@ -12,6 +12,7 @@ export default defineConfig({
       "tests/providers/supabase-contracts.test.ts", "tests/integration/supabase-storage.test.ts",
       "tests/unit/supabase-storage.test.ts", "tests/unit/legacy-public-assets.test.ts",
       "tests/unit/public-deck-access.test.ts", "tests/unit/supabase-database.test.ts",
+      "tests/unit/legacy-upload-ownership.test.ts",
     ],
   },
 })

@@ -2,7 +2,16 @@
 
 Prepared 7 November 2026. This inactive packet executes no local host runtime and
 does not enable the Supabase selector. Review and pin the candidate source before
-creating `qa/supabase-provider-20261107-1`; the permanent workflow is untouched.
+creating `qa/supabase-provider-20261107-2`; the permanent workflow is untouched.
+
+Attempt one at `5babe6dc068669a1f5d970cb22b9d0953d4ae818` failed semantic
+TypeScript checking before CLI setup or any test. Preserve its
+[failed receipt](../results/2026/11-07/supabase-provider-attempt-1.json), 188,095
+bytes, SHA-256
+`a99c0f71ff7dd1c5df2cd06e1cab1485f58fbdd54e249480db5ab1f9c98944b6`.
+This retry validates that receipt's identity but carries no passed cases. The new
+candidate includes the route response byte-type repair and the scoped legacy
+namespace ownership repair; their final source and tests need review before pinning.
 
 One public Ubuntu 24.04 job uses Node 24.21.0 and the checksum-pinned Supabase CLI
 3.0.0 archive already verified by the source probe. All app source exports,
@@ -11,10 +20,11 @@ exclusive controller-owned `/tmp/ivsb-*` directory. Source/index/symlink guards
 check the original checkout five times, and exported inputs retain their hashes.
 The existing lock is frozen; installation uses `npm ci --ignore-scripts`.
 
-The packet runs scoped ESLint and semantic TypeScript checks, then exactly 85
-cases from ten explicit files: 28 affected local PostgreSQL regressions on a
+The packet runs scoped ESLint and semantic TypeScript checks, then exactly 89
+cases from eleven explicit files: 28 affected local PostgreSQL regressions on a
 separate PostgreSQL 17.6 service, 13 Supabase provider contracts, eight native
-Storage/Auth contracts and 36 focused storage/attachment/password/URL unit cases.
+Storage/Auth contracts and 40 focused storage/attachment/password/URL/namespace
+unit cases, including four new `legacy-upload-ownership.test.ts` cases.
 Source-derived literal identities, ordinary per-file Vitest JSON, CLI zero exit,
 no skips/todos/retries/duplicates and exact counts are required. Failed JSON is
 retained before the success gate. No historical full suite, build or browser runs.
