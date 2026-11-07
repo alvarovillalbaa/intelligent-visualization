@@ -1,24 +1,26 @@
 # Verify the real Supabase application factories
 
-Prepared 7 November 2026. Proposal only: no selector, controller, TLS, DNS,
-database, account, browser or deployment was changed. This packet depends on a
-passing, source-pinned 90-case provider receipt; that prerequisite is not yet
-accepted. The first
-85-case provider attempt failed
-semantic TypeScript checking before CLI setup or tests; its
-[receipt](../results/2026/11-07/supabase-provider-attempt-1.json) is not provider
-acceptance. Preserve earlier failures and complete the prerequisite first. The
-[fifth attempt](../results/2026/11-07/supabase-provider-attempt-5.md) executed all
-90 identities but remains failed with 88 passes and two native Storage failures;
-the separate diagnostic does not accept those failures or enable the factories.
+Prepared 7 November 2026. Inactive application packet: no application process,
+TLS/DNS fixture, browser or deployment has run in this scope. The prerequisite
+[90-case provider packet](../results/2026/11-07/supabase-provider-attempt-8.md)
+passed at `4da1844f22a332aad8bd827a026c3a806b4a308f`, with independent
+capture/source/cleanup verification. Its exact JSON is 369,374 bytes, SHA-256
+`24e75dfa95b776210d369129d2a592f231e7dca8c78741910f1ab18e5ab74441`.
+All earlier failed/nonacceptance receipts retain their original verdicts. This
+prerequisite does not establish application factories, TLS, browsers or hosted
+acceptance; those require the fresh checks below.
 
 ## Source boundary
 
 [Persistence selection](../../lib/persistence/factory.ts) and
-[storage selection](../../lib/storage/factory.ts) still refuse Supabase. After the
-prerequisite passes, add only the real Supabase construction/health branches,
-preserving existing local behavior and caching only healthy instances. Exercise
-them through ordinary environment selection in a fresh Next process. Neither
+[storage selection](../../lib/storage/factory.ts) now construct the real Supabase
+adapters. The local branches remain unchanged; Supabase initialization is shared,
+only healthy instances are cached, and a failed persistence candidate closes its
+owned pool. Among the prerequisite's 297 exported inputs, only these two factory
+TypeScript files and the explicitly reviewed provider README status text may
+differ. The other 294 inputs remain byte-identical. The README exception is
+documentation only, not a provider-code allowance. Exercise the new branches
+through ordinary environment selection in a fresh Next process. Neither
 `setPersistenceProviderForTests`, `setStorageAdapterForTests`, an injected database,
 nor an injected fetcher belongs in that process or its fixture setup.
 
@@ -72,9 +74,12 @@ Before starting Next, prove a successful actual `iv_runtime` session has
 lineage/role policy. Probe fresh processes with a wrong CA, a wrong SAN leaf under
 the correct CA, and a wrong runtime password; require the corresponding TLS or
 authentication failure. Restore the correct owned leaf and repeat the positive
-probe after the SAN negative. Close every probe pool before proceeding. During the
-journeys, independently confirm the actual app's `iv_runtime` connections and
-application name also use SSL. These checks exercise CA/SAN/login enforcement;
+probe after the SAN negative. Close every probe pool before proceeding. In two
+explicit Next-only windows, before and after the four journeys, trigger the
+ordinary capabilities GET and inspect actual `iv_runtime` connections through a
+separate admin connection. Require SSL after every helper process and pool has
+closed; this is not continuous observation during the journeys. These checks
+exercise CA/SAN/login enforcement;
 they do not verify a real hosted certificate chain or transaction pooler.
 
 ## Four browser identities
