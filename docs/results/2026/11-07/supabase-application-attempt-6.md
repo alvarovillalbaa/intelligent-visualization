@@ -40,3 +40,5 @@ Positive and missing-CA/wrong-SAN/wrong-password probes retained their expected 
 All five earlier application receipts remain byte/hash-pinned and false. The [accepted 90-case provider receipt](supabase-provider-attempt-8.json) remains separate; zero provider cases ran here. No combined 94-case pass is claimed.
 
 Temporary workflow `410058958` was disabled after termination and freshly read back as `disabled_manually` at 04:33:35 UTC. No retry, source fix, commit, retirement, push or factory mutation was performed by this receipt task.
+
+Root follow-up: the exact raw JSON and receipt were published in `d64f07cb2e296524abdfc9d259aecb49c03deacf`. Root independently verified all 203 retained captures, 99 foreground closures, four source guards and 286 exported inputs; a second peer independently recomputed the four consumer/request correlations. Retirement `c6c61964a3d2345a5d4b8533ff2b2faad7c02dec` uses the canonical commit's exact tree `77ec8b531c5f0df3ac54dde7c46998a86c14eda4`, without the active temporary workflow. Both branches were pushed atomically and the retired QA ref was freshly verified. The preceding receipt remains unchanged.
