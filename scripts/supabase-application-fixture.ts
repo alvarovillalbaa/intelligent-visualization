@@ -12,6 +12,7 @@ import { getStorageAdapter } from "@/lib/storage/factory"
 import type { AssetRecord, DeckRecord, DeckSource, RepositoryState } from "@/lib/types"
 import { slugify } from "@/lib/utils"
 import type { PersistenceProvider } from "@/packages/backend-contracts/provider"
+import { contentHash } from "@/packages/domain/serialization"
 import { createSupabaseDatabase } from "@/packages/provider-supabase/database"
 import type { PostgresDatabase } from "@/packages/provider-postgres/database"
 import type { StorageAdapter } from "@/packages/storage/provider"
@@ -299,7 +300,11 @@ async function snapshot(key: CaseKey, kind: string, versionId?: string) {
   for (const version of deck.versions) {
     requireThat(version.artifactStorageKey && version.artifactStorageKey.startsWith(`published/${slugify(deck.publicId)}/${slugify(version.id)}/`))
     const artifact = await proof(chosen.storage, `legacy-slides/${version.artifactStorageKey}`)
-    versions.push({ id: version.id, status: version.status, passwordProtected: Boolean(version.passwordHash), artifact: { ...artifact, key: version.artifactStorageKey } })
+    const databaseArtifactHtml = Buffer.from(version.artifactHtml, "utf8")
+    versions.push({ id: version.id, status: version.status, passwordProtected: Boolean(version.passwordHash),
+      labelSha256: sha(version.label), sourceSha256: contentHash(version.source),
+      databaseArtifactHtml: { bytes: databaseArtifactHtml.length, sha256: sha(databaseArtifactHtml) },
+      artifact: { ...artifact, key: version.artifactStorageKey } })
   }
   const assets = []
   for (const asset of deck.assets) if (asset.storageKey) {

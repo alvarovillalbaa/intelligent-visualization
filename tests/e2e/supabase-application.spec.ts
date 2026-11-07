@@ -6,6 +6,7 @@ import { promisify } from "node:util"
 import { expect, test, type APIResponse, type Browser, type BrowserContext, type Page, type Request as BrowserRequest, type TestInfo } from "@playwright/test"
 import { createStarterCourseDocument, createStarterReportDocument } from "../../packages/domain/fixtures"
 import { canonicalSerialize } from "../../packages/domain/canonical"
+import { slugify } from "../../lib/utils"
 
 const ORIGIN = "http://127.0.0.1:3100"
 const HASH = /^[0-9a-f]{64}$/, UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
@@ -37,6 +38,11 @@ type SlidesPublishRead = {
   response: null | { at: number; status: number; contentType: string };
   finishedAt: number | null; failedAt: number | null; failure: string | null; finishedResolvedAt: number | null;
   listenersRemoved: boolean; timerCleared: boolean;
+  postFailure: null | { diagnosticOnly: true; failurePhase: string; phase: string; startedAt: number; finishedAt: number | null; deadlineAt: number;
+    status: "collecting" | "observed" | "unavailable"; code: string | null; buttonEnabled: boolean | null; articleMatched: boolean | null;
+    titleMatched: boolean | null; liveMarkerMatched: boolean | null; previousArticleCount: number; previousVersionId: string | null; versionId: string | null; artifactPath: string | null;
+    snapshotMatched: boolean | null; labelSha256: string; sourceSha256: string | null; artifact: ObjectProof | null;
+    databaseArtifactHtml: { bytes: number; sha256: string } | null; finishedPromiseNotObservedAfterFailure: true }
 }
 
 function sha(body: Buffer | string) { return createHash("sha256").update(body).digest("hex") }
@@ -483,10 +489,10 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
     responseProofs.push({ path: endpoint, requestId: payload.requestId, bytes: row.bytes, sha256: row.sha256, status: row.status })
     return { ack, payload }
   }
-  async function snapshot(type: "canonical" | "slides", versionId?: string) {
+  async function snapshot(type: "canonical" | "slides", versionId?: string, timeoutMs = 20000) {
     const args = ["--import", "tsx", "scripts/supabase-application-fixture.ts", "snapshot", "--case", caseKey, "--kind", type]
     if (versionId) args.push("--version-id", versionId)
-    const result = await promisify(execFile)(process.execPath, args, { cwd: process.cwd(), env: helperEnvironment, encoding: "utf8", timeout: 20000, maxBuffer: 256 * 1024 })
+    const result = await promisify(execFile)(process.execPath, args, { cwd: process.cwd(), env: helperEnvironment, encoding: "utf8", timeout: timeoutMs, maxBuffer: 256 * 1024 })
     expect(result.stderr).toBe("")
     const value = JSON.parse(result.stdout)
     if (type === "canonical") {
@@ -701,13 +707,43 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
       stage = `slides-publish-${index}`; actionPath = fixture.slides.editorPath; target = fixture.slides.editorPath
       expect(slidesPublishDiagnostics.length).toBeLessThan(3)
       const diagnostic: SlidesPublishRead = { index, stage, phase: "prepare", waitLimitMs: 10000, events: [], request: null, response: null,
-        finishedAt: null, failedAt: null, failure: null, finishedResolvedAt: null, listenersRemoved: false, timerCleared: false }
+        finishedAt: null, failedAt: null, failure: null, finishedResolvedAt: null, listenersRemoved: false, timerCleared: false, postFailure: null }
       slidesPublishDiagnostics.push(diagnostic)
       const phase = (value: string) => { diagnostic.phase = value; diagnostic.events.push({ phase: value, at: Date.now() }) }
       const deadline = Date.now() + 10000, remaining = () => Math.max(1, deadline - Date.now())
       phase("prepare")
       await page.getByPlaceholder("Optional password", { exact: true }).fill(protectedVersion ? password : "", { timeout: remaining() })
-      const expectedLabel = await page.getByText("Publishing", { exact: true }).locator("..").getByRole("textbox", { name: "Version label", exact: true }).inputValue({ timeout: remaining() })
+      const versionLabel = page.getByText("Publishing", { exact: true }).locator("..").getByRole("textbox", { name: "Version label", exact: true })
+      const authoredLabel = `Authored publish ${index} ${id}`
+      await versionLabel.fill(authoredLabel, { timeout: remaining() })
+      const expectedLabel = await versionLabel.inputValue({ timeout: remaining() })
+      expect(expectedLabel).toBe(authoredLabel)
+      const publishedVariants = page.getByText("Published variants", { exact: true }).locator("../..")
+      const versionArticle = publishedVariants.getByRole("article").filter({ has: page.getByText(expectedLabel, { exact: true }) })
+      await expect(versionArticle).toHaveCount(0, { timeout: remaining() })
+      const previousArticleCount = await publishedVariants.getByRole("article").count()
+      expect(previousArticleCount).toBeGreaterThanOrEqual(1); expect(previousArticleCount).toBeLessThan(16)
+      async function safeArtifactField() {
+        let readTimer: ReturnType<typeof setTimeout> | undefined
+        const read = page.evaluate(({ publicId }) => {
+          const labels = [...globalThis.document.querySelectorAll("label")].filter((label) => label.textContent?.trim() === "Immutable artifact")
+          if (labels.length === 0) return { code: "absent", path: null, versionId: null }
+          if (labels.length !== 1) return { code: "field-count", path: null, versionId: null }
+          const input = labels[0].parentElement?.querySelector("input")
+          if (!(input instanceof HTMLInputElement) || !input.readOnly) return { code: "field-shape", path: null, versionId: null }
+          try {
+            const url = new URL(input.value, location.origin), prefix = `/published/${publicId}/`
+            if (url.origin !== location.origin || url.username || url.password || url.hash || !url.pathname.startsWith(prefix)) return { code: "field-target", path: null, versionId: null }
+            const versionId = url.pathname.slice(prefix.length)
+            if (!/^[A-Za-z0-9_-]{1,128}$/.test(versionId)) return { code: "field-version", path: null, versionId: null }
+            return { code: "ready", path: url.pathname, versionId }
+          } catch { return { code: "field-url", path: null, versionId: null } }
+        }, { publicId: fixture.slides.publicId })
+        try { return await Promise.race([read, new Promise<never>((_resolve, reject) => { readTimer = setTimeout(() => reject(new Error("artifact-field-deadline")), remaining()) })]) }
+        finally { clearTimeout(readTimer) }
+      }
+      const previousArtifact = await safeArtifactField()
+      expect(["absent", "ready"]).toContain(previousArtifact.code)
       function matches(request: BrowserRequest) {
         if (request.url() !== ORIGIN + fixture.slides.editorPath || request.method() !== "POST" || !request.headers()["next-action"]) return false
         try {
@@ -716,7 +752,7 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
             && args[0]?.source && typeof args[0].source === "object" && args[0].source.title === fixture.slides.title && Array.isArray(args[0].source.slides)
         } catch { return false }
       }
-      let selected: BrowserRequest | null = null, rejectFailure: (error: Error) => void = () => {}
+      let selected: BrowserRequest | null = null, exactFailure: Error | null = null, rejectFailure: (error: Error) => void = () => {}
       const failure = new Promise<never>((_resolve, reject) => { rejectFailure = reject })
       const onRequest = (request: BrowserRequest) => {
         if (!matches(request)) return
@@ -733,7 +769,8 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
       const onFailed = (request: BrowserRequest) => {
         if (request !== selected) return
         diagnostic.failedAt = Date.now(); diagnostic.failure = clean(request.failure()?.errorText ?? "unknown", secrets)
-        rejectFailure(new Error("The exact Slides publish request failed: " + diagnostic.failure))
+        exactFailure ??= new Error("The exact Slides publish request failed: " + diagnostic.failure)
+        rejectFailure(exactFailure)
       }
       const onFinished = (request: BrowserRequest) => { if (request === selected) diagnostic.finishedAt = Date.now() }
       auth.on("request", onRequest); auth.on("requestfailed", onFailed); auth.on("requestfinished", onFinished)
@@ -758,6 +795,51 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
         expect(diagnostic.finishedAt).not.toBeNull(); expect(diagnostic.failedAt).toBeNull(); expect(request.failure()).toBeNull()
         phase("button-ready")
         await Promise.race([expect(page.getByRole("button", { name: "Publish version", exact: true })).toBeEnabled({ timeout: remaining() }), failure, expired])
+      } catch (error) {
+        if (exactFailure && error === exactFailure && diagnostic.request) {
+          const proof: NonNullable<SlidesPublishRead["postFailure"]> = { diagnosticOnly: true, failurePhase: diagnostic.phase, phase: "button", startedAt: Date.now(), finishedAt: null, deadlineAt: deadline,
+            status: "collecting", code: null, buttonEnabled: null, articleMatched: null, titleMatched: null, liveMarkerMatched: null,
+            previousArticleCount, previousVersionId: previousArtifact.versionId, versionId: null, artifactPath: null, snapshotMatched: null,
+            labelSha256: sha(expectedLabel), sourceSha256: diagnostic.request.sourceSha256, artifact: null, databaseArtifactHtml: null, finishedPromiseNotObservedAfterFailure: true }
+          diagnostic.postFailure = proof
+          const budget = () => { const value = deadline - Date.now(); if (value <= 0) throw new Error("diagnostic-deadline"); return value }
+          try {
+            await expect(page.getByRole("button", { name: "Publish version", exact: true })).toBeEnabled({ timeout: budget() }); proof.buttonEnabled = true
+            proof.phase = "article"
+            await expect(versionArticle).toHaveCount(1, { timeout: budget() }); await expect(versionArticle).toBeVisible({ timeout: budget() }); proof.articleMatched = true
+            await expect(versionArticle.getByText(fixture.slides.title, { exact: true })).toBeVisible({ timeout: budget() }); proof.titleMatched = true
+            await expect(versionArticle.getByText("Currently routed live", { exact: true })).toBeVisible({ timeout: budget() }); proof.liveMarkerMatched = true
+            proof.phase = "artifact-field"
+            budget()
+            const artifact = await safeArtifactField()
+            expect(artifact.code).toBe("ready"); expect(artifact.versionId).toMatch(/^[A-Za-z0-9_-]{1,128}$/)
+            expect(artifact.versionId).not.toBe(previousArtifact.versionId); expect(legacyVersions.has(artifact.versionId!)).toBe(false)
+            proof.versionId = artifact.versionId; proof.artifactPath = artifact.path
+            proof.phase = "snapshot"
+            const value = await snapshot("slides", undefined, budget())
+            budget()
+            expect(value.versions).toHaveLength(previousArticleCount + 1)
+            if (previousArtifact.versionId !== null) expect(value.versions.some((row: { id: string }) => row.id === previousArtifact.versionId)).toBe(true)
+            const current = value.versions.find((row: { id: string }) => row.id === value.deck.publishedVersionId)
+            expect(current).toBeTruthy(); expect(current.id).toBe(proof.versionId); expect(current.status).toBe("published")
+            expect(current.passwordProtected).toBe(protectedVersion); expect(value.deck.passwordProtected).toBe(protectedVersion)
+            expect(current.labelSha256).toBe(proof.labelSha256); expect(current.sourceSha256).toBe(proof.sourceSha256)
+            expect(value.versions.filter((row: { labelSha256: string }) => row.labelSha256 === proof.labelSha256)).toHaveLength(1)
+            expect(proof.artifactPath).toBe(`/published/${fixture.slides.publicId}/${current.id}`)
+            expect(current.artifact.key).toBe(`published/${slugify(fixture.slides.publicId)}/${slugify(current.id)}/index.html`)
+            expect(current.databaseArtifactHtml.bytes).toBe(current.artifact.bytes); expect(current.databaseArtifactHtml.sha256).toBe(current.artifact.sha256)
+            const asset = value.assets.find((row: { url: string }) => row.url === attachmentUrl)
+            expect(asset).toBeTruthy(); expect(asset.bytes).toBe(attachment.length); expect(asset.sha256).toBe(sha(attachment)); expect(asset.publicInVersions).toContain(current.id)
+            const original = value.assets.find((row: { url: string }) => row.url === fixture.slides.source.url)
+            expect(original).toBeTruthy(); expect(original.publicInVersions).toEqual([])
+            expect(value.assets.some((row: { url: string }) => row.url === fixture.victim.url)).toBe(false)
+            proof.artifact = { key: current.artifact.key, bytes: current.artifact.bytes, sha256: current.artifact.sha256 }
+            proof.databaseArtifactHtml = current.databaseArtifactHtml
+            budget(); proof.snapshotMatched = true; proof.status = "observed"; proof.phase = "complete"
+          } catch { proof.status = "unavailable"; proof.code = Date.now() >= deadline ? "original-deadline" : `unavailable-${proof.phase}` }
+          finally { proof.finishedAt = Date.now() }
+        }
+        throw error
       } finally {
         clearTimeout(timer); diagnostic.timerCleared = true
         auth.off("request", onRequest); auth.off("requestfailed", onFailed); auth.off("requestfinished", onFinished)
