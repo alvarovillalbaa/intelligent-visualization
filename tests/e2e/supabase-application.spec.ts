@@ -545,7 +545,7 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
       const deadline = Date.now() + 10000, remaining = () => Math.max(1, deadline - Date.now())
       phase("prepare")
       await page.getByPlaceholder("Optional password", { exact: true }).fill(protectedVersion ? password : "", { timeout: remaining() })
-      const expectedLabel = await page.getByText("Publishing", { exact: true }).locator("..").getByRole("textbox").inputValue({ timeout: remaining() })
+      const expectedLabel = await page.getByText("Publishing", { exact: true }).locator("..").getByRole("textbox", { name: "Version label", exact: true }).inputValue({ timeout: remaining() })
       function matches(request: BrowserRequest) {
         if (request.url() !== ORIGIN + fixture.slides.editorPath || request.method() !== "POST" || !request.headers()["next-action"]) return false
         try {
@@ -584,7 +584,7 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
           page.waitForResponse((response) => matches(response.request()), { timeout: remaining() }),
           page.getByRole("button", { name: "Publish version", exact: true }).click({ timeout: remaining() }),
         ]), failure, expired])
-        expect(request).toBe(selected); expect(response.request()).toBe(request)
+        expect(request === selected).toBe(true); expect(response.request() === request).toBe(true)
         diagnostic.response = { at: Date.now(), status: response.status(), contentType: response.headers()["content-type"] ?? "" }
         expect(response.status()).toBe(200)
         phase("response-finished")

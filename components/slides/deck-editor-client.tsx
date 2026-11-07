@@ -422,7 +422,7 @@ export function DeckEditorClient({
             <div className="rounded-[24px] border border-foreground/8 bg-muted/35 p-4">
               <p className="text-sm font-medium">Publishing</p>
               <div className="mt-3 grid gap-3">
-                <Input value={publishLabel} onChange={(event) => setPublishLabel(event.target.value)} disabled={!canEdit} />
+                <Input aria-label="Version label" value={publishLabel} onChange={(event) => setPublishLabel(event.target.value)} disabled={!canEdit} />
                 <Input
                   type="password"
                   placeholder="Optional password"
