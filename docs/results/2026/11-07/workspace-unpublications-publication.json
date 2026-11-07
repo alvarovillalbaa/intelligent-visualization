@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-07T00:05:31Z",
+  "repository": "alvarovillalbaa/intelligent-visualization",
+  "candidateBranch": "work/postgres-provider-20261106",
+  "sourceCommit": "c02809ff5e81fe39e735e25ba08e33a9f9de24e9",
+  "retiredQaCommit": "4568e014addc3839cfb0a0b07a7f9d7d3b51237c",
+  "sharedTree": "d38af8bea700c7d008f3847c5af43e6dca404faa",
+  "trackedLeaves": 559,
+  "trackedBytes": 10757594,
+  "clean": true,
+  "temporaryWorkflowFiles": [],
+  "permanentWorkflow": ".github/workflows/ci.yml",
+  "disabledTemporaryWorkflowIds": [
+    409906854,
+    409914734
+  ],
+  "pullRequest": {
+    "url": "https://github.com/alvarovillalbaa/intelligent-visualization/pull/1",
+    "title": "Add PostgreSQL workspaces and Course/Report publishing controls",
+    "draft": true,
+    "merged": false,
+    "head": "c02809ff5e81fe39e735e25ba08e33a9f9de24e9",
+    "base": "a5fa01331281ac8d38eb135a1dcc381d6adb4ecc"
+  },
+  "acceptance": {
+    "receipt": "workspace-unpublications-checks.json",
+    "bytes": 444808,
+    "sha256": "3f79687645ede78d51f39336fefc0c51daeebe479d54e172cfe601e77143a2fe",
+    "currentSource": "249122fe44f32cc43c81c6919a2161b422839148",
+    "activation": "ff151a554cd0ced60a09fac5e6dd681b2f729b97",
+    "run": 42314988042,
+    "job": 128225285246,
+    "carriedCore": {
+      "source": "3c0045290aebea045ebadff098b3c9b5c4769391",
+      "run": 42313570037,
+      "job": 128220636489,
+      "http": 13,
+      "client": 6,
+      "realPostgres": 20,
+      "executedThisAttempt": false,
+      "originalCaptures": 38,
+      "originalDecodedBytes": 162715,
+      "protectedRuntimeInputs": 269
+    },
+    "browser": {
+      "executedThisAttempt": 4,
+      "retries": 0,
+      "realPublicationPosts": 12,
+      "realUnpublishPosts": 4,
+      "realRevisionSaves": 8,
+      "authoredPrivateDocumentCreates": 4,
+      "anonymousGetHeadConditionalRefusals": 80,
+      "retainedArtifactObservations": 24,
+      "statusCloneEofs": 20,
+      "actualStatusRequestsFinished": 20,
+      "observedSignalAborts": 0,
+      "qualifiedNavigationCancellations": [
+        2,
+        3,
+        3,
+        1
+      ],
+      "earlierAbortCausesProven": false,
+      "applicationFixClaimed": false
+    },
+    "currentOriginalCaptures": 27,
+    "currentDecodedBytes": 155078,
+    "allOriginalCaptures": 65,
+    "allDecodedBytes": 317793,
+    "sourceGuards": 5,
+    "guardedLeaves": 557,
+    "guardedBytes": 10302760,
+    "guardVectorSha256": "693a2d8ec6280a4bd42d50db79e9f99b34cd82ed8bfd9b3b37a6faefc423ec01",
+    "runtimeInputs": 270,
+    "runtimeBytes": 2172871,
+    "allRuntimeInputsMatch": true,
+    "frozenLock": {
+      "bytes": 618662,
+      "sha256": "b18dd278e6eded698e269d2e8400b0359083a8ba34de4721227a70b5e27c0d59"
+    },
+    "cleanupVerified": true,
+    "failedOverallAttemptsRetained": 1,
+    "independentReadOnlyAudits": 2
+  },
+  "production": {
+    "deployment": "dpl_EWQArRytPB9nV2TopnkaxsS1j3Vy",
+    "state": "READY",
+    "source": "a5fa01331281ac8d38eb135a1dcc381d6adb4ecc",
+    "canonicalHost": "intelligent-visualization.vercel.app",
+    "lastObservedAt": "2026-11-07T00:03:05Z",
+    "evidence": "Fresh metadata only; no hosted HTTP acceptance or candidate production cutover"
+  },
+  "limits": [
+    "Candidate is draft and unmerged pending hosted configuration",
+    "39 core passes carried from first source plus four current browser cases; no single 43-case invocation",
+    "Earlier false verdict and unproven status-read abort causes remain; readiness/observations do not establish a product fix",
+    "GET signals end at explicit snapshots; HTTP clone hashes are metadata without original GET bodies for independent rehash; no exact cross-runtime request identity",
+    "Already-open/history/copied/downloaded and previously admitted content cannot be recalled; no in-flight revocation race executed",
+    "Linux development-server mouse/keyboard profiles do not establish physical devices, touch or a current broad production build",
+    "Deletion, public passwords/embeds/reviews, canonical analytics, original assets, hosted Supabase/Auth/RLS/storage and full AI/Eve remain unfinished",
+    "Earlier receipts retain original sources; environment403 not retried",
+    "No local install/build/server/browser/database, new account, paid plan, model call or production data",
+    "This record refers to preceding source; adding it does not alter 270 runtime inputs"
+  ]
+}
