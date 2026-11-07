@@ -27,3 +27,9 @@ No application browser report or connection probe was reached. No Supabase stack
 Temporary workflow `410012263` was disabled after termination and freshly read back as `disabled_manually` at 02:55:01 UTC. No retry, commit, branch retirement, push or factory mutation was performed by this receipt task.
 
 Application behavior, production-factory initialization and cleanup, native Next sessions, owned TLS/HTTPS transport, browser journeys and hosted deployment remain unverified by this attempt. The planned local CA/DNS fixture would itself be qualified local application proof, not real hosted Supabase TLS/pooler, Vercel or hosted Auth-mapping acceptance.
+
+Root follow-up: the failed application QA branch was retired at
+`a098cd488543fd5c10cbd0decb4321eb1c937b5c`, with the exact canonical
+`a33c8c8` tree and no active temporary workflow. GitHub ref readback confirmed
+the retirement. The failed JSON remains unchanged; the two-line spec correction
+and retry have separate source pins.
