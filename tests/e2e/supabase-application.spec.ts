@@ -173,7 +173,7 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
     observed.on("console", (message) => { if (message.type() === "error") problem("consoleErrors", message.text()) })
     observed.on("dialog", (dialog) => {
       problem("dialogs", dialog.type())
-      const job = dialog.dismiss().catch(() => cleanupFailures.push("Unexpected dialog did not close")).finally(() => pending.delete(job))
+      const job = dialog.dismiss().catch(() => { cleanupFailures.push("Unexpected dialog did not close") }).finally(() => pending.delete(job))
       pending.add(job)
     })
   }
@@ -261,7 +261,7 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
     return selected
   }
   async function layout(observed: Page, name: string) {
-    const size = await observed.evaluate(() => ({ viewport: innerWidth, width: Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) }))
+    const size = await observed.evaluate(() => ({ viewport: innerWidth, width: Math.max(globalThis.document.documentElement.scrollWidth, globalThis.document.body.scrollWidth) }))
     ;(observations.layout as unknown[]).push({ name, ...size }); expect(size.width).toBeLessThanOrEqual(size.viewport + 1)
   }
   async function drain() {
