@@ -61,25 +61,45 @@ describe("native private Supabase Storage contract", () => {
 
   it("refuses anonymous object reads public URLs listings writes and deletion without exposing private bytes", async () => withSupabaseFixture(async ({ storage, request, anonKey, prefix, keys }) => {
     const key = prefix + "private.txt", marker = "authored-private-marker-" + randomUUID()
-    keys.add(key); await storage.put({ key, body: marker, contentType: "text/plain", immutable: true })
+    const candidate = prefix + "anonymous.txt", binaryCandidate = prefix + "anonymous-binary.bin"
+    for (const owned of [key, candidate, binaryCandidate]) keys.add(owned)
+    await storage.put({ key, body: marker, contentType: "text/plain", immutable: true })
+    const assertRetained = async () => {
+      const retained = await storage.get({ key }), bytes = bodyOf(retained)
+      expect(bytes.toString()).toBe(marker)
+      expect(retained!.sizeBytes).toBe(Buffer.byteLength(marker)); expect(retained!.contentHash).toBe(hash(Buffer.from(marker)))
+    }
+    await assertRetained()
     for (const [method, pathname, body] of [
       ["GET", "/storage/v1/object/iv-private-checks/" + key, undefined],
       ["GET", "/storage/v1/object/authenticated/iv-private-checks/" + key, undefined],
       ["GET", "/storage/v1/object/public/iv-private-checks/" + key, undefined],
       ["POST", "/storage/v1/object/list/iv-private-checks", JSON.stringify({ prefix })],
-      ["POST", "/storage/v1/object/iv-private-checks/" + prefix + "anonymous.txt", "denied"],
+      ["POST", "/storage/v1/object/iv-private-checks/" + candidate, "denied"],
       ["DELETE", "/storage/v1/object/iv-private-checks", JSON.stringify({ prefixes: [key] })],
     ] as const) {
       const response = await request(pathname, { method, headers: { apikey: anonKey, Authorization: "Bearer " + anonKey, "content-type": "application/json" }, ...(body === undefined ? {} : { body }) })
-      if (pathname.startsWith("/storage/v1/object/list/") && response.status === 200) {
-        // RLS may intentionally return an empty visible-row set, rather than an auth error.
+      const emptyVisibleResult = response.status === 200 && (
+        method === "POST" && pathname === "/storage/v1/object/list/iv-private-checks"
+        || method === "DELETE" && pathname === "/storage/v1/object/iv-private-checks")
+      if (emptyVisibleResult) {
+        // These exact RLS-filtered operations may return no visible/deleted rows.
         expect(await readFixtureValue(response)).toEqual([])
-        continue
+      } else {
+        expect([400, 401, 403, 404]).toContain(response.status)
+        const value = await readFixtureJson(response); expect(JSON.stringify(value).includes(marker)).toBe(false)
       }
-      expect([400, 401, 403, 404]).toContain(response.status)
-      const value = await readFixtureJson(response); expect(JSON.stringify(value).includes(marker)).toBe(false)
+      await assertRetained()
+      if (method === "POST" && pathname === "/storage/v1/object/iv-private-checks/" + candidate) expect(await storage.get({ key: candidate })).toBeNull()
     }
-    expect(bodyOf(await storage.get({ key })).toString()).toBe(marker)
+    const binary = await request("/storage/v1/object/iv-private-checks/" + binaryCandidate, { method: "POST",
+      headers: { apikey: anonKey, Authorization: "Bearer " + anonKey, "content-type": "application/octet-stream" },
+      body: new Uint8Array(Buffer.from("authored-binary-unauthorized-write")) })
+    expect([400, 401, 403, 404]).toContain(binary.status)
+    expect(JSON.stringify(await readFixtureJson(binary)).includes(marker)).toBe(false)
+    await assertRetained()
+    expect(await storage.get({ key: binaryCandidate })).toBeNull()
+    expect(await storage.get({ key: candidate })).toBeNull()
   }))
 
   it("refuses a genuine authenticated user token without a private bucket policy", async () => withSupabaseFixture(async ({ storage, request, serviceKey, anonKey, prefix, keys, authUsers }) => {
