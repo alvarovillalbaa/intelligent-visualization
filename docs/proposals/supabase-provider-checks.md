@@ -1,106 +1,109 @@
-# Disposable Supabase provider verification packet
+# Disposable Supabase Storage diagnostic packet
 
-Prepared 7 November 2026. This inactive packet executes no local host runtime and
-does not enable the Supabase selector. Review and pin the candidate source before
-creating `qa/supabase-provider-20261107-5`; the permanent workflow is untouched.
+Prepared 7 November 2026. Inactive QA6 source only. Review and pin the candidate
+before creating `qa/supabase-provider-20261107-6`; permanent CI and application
+factory selection remain untouched. This packet does not rerun tests or accept
+the provider.
 
-Attempt one at `5babe6dc068669a1f5d970cb22b9d0953d4ae818` failed semantic
-TypeScript checking before CLI setup or any test. Preserve its
-[failed receipt](../results/2026/11-07/supabase-provider-attempt-1.json), 188,095
-bytes, SHA-256
-`a99c0f71ff7dd1c5df2cd06e1cab1485f58fbdd54e249480db5ab1f9c98944b6`.
-This retry validates that receipt's identity but carries no passed cases. The
-earlier route response and legacy namespace repairs remain protected inputs.
+QA5 at `f14d82a179277b2d742f0b79309286027c4676ca` executed all 90 cases:
+88 passed and two native Storage cases failed. Preserve its
+[exact failed receipt](../results/2026/11-07/supabase-provider-attempt-5.json),
+366,433 bytes, SHA-256
+`220187b7525e1b7eac9920a7a4471aa6425bf475889f1e5c8f4122ae59c62537`.
+The immutable race loser's public error was not EEXIST; an anonymous-operation
+response was 200 before the test reached its target-retention assertion. The
+specific HTTP responses and side effects require observation. No duplicate-error
+mapping or status-200 exception is introduced before that evidence.
 
-Attempt two ([receipt](../results/2026/11-07/supabase-provider-attempt-2.json),
-323,072 bytes, SHA-256
-`dd03c3c755b7a1f1b62fe62366596b447ee0632e8db306053c58c9bd87c651ae`)
-passed 28 local cases, failed 13 shared Supabase cases at fixture health and left
-48 cases unrun. [Diagnostic three](../results/2026/11-07/supabase-provider-diagnostic-3.md)
-completed collection only: its exact JSON is 266,607 bytes, SHA-256
-`150464cbaaece4dcd6ba28bf411ebc35187b8ca7127d1c3f3717513e02321e49`,
-with provider acceptance/passed false and zero tests.
+## Scope and unchanged inputs
 
-The observed runtime had one incoming grant to the exact private-schema owner:
-ADMIN true, INHERIT false, SET false. QA4 changes only the runtime membership
-predicate to permit that owner administrative grant, while rejecting every
-outgoing membership and all other incoming grants. The owner already controls
-schema DDL; this is not a general administrator exemption. One additional actual
-Supabase case checks that an unrelated NOLOGIN role with the same ADMIN-only
-options is refused, then restores health by revoking its owned test grant. The
-existing untrusted SET-grant case remains.
+All five earlier receipts remain hash-pinned: attempts one, two, diagnostic three,
+attempt four and attempt five. Their failed/nonacceptance verdicts remain intact.
+All 296 QA5 exported runtime inputs must remain byte-identical, including the
+Storage adapter, tests, schema and migration. The new
+`scripts/supabase-storage-diagnostic.ts` is an additional observation source,
+not a change to any tested input. No prior passed case is carried forward.
 
-QA4 ([receipt](../results/2026/11-07/supabase-provider-attempt-4.json), source
-`63a74b393063a5addfc412f14a75474ffcfa5372`, 317,657 bytes, SHA-256
-`358576029ce7ec2a29dfd082e5ec2cea6ecae341a21635da4ff7b593ca08d035`)
-passed 40 cases, failed two fixture expectations and left 48 cases unrun. The
-owner/untrusted-admin grant case passed; the overall verdict remains false.
+One public Ubuntu 24.04 job uses Node 24.21.0, the frozen package lock and
+`npm ci --ignore-scripts`. Reuse the accepted pinned CLI 3.0.0 archive and its
+checksum, exclusive scratch HOME/config/cache/temp directories, exact fresh
+project/container/volume/network ownership, positive DB/Kong running-port checks,
+single generated JSON configuration and explicit fresh migration/runtime LOGIN/
+private-bucket provisioning. Five native/index/source guards and unchanged
+export hashes remain mandatory. There is no separate regression PostgreSQL
+service, repeated lint/type suite, test collector, Vitest, browser or build.
 
-QA5 changes only those fixture expectations: check exact portable backup parity
-before a legacy read that updates its timestamp, and assert the database's actual
-42501 SET ROLE refusal rather than assume the administrator can enter that role.
-Privileged provider rejection, every parity/data/conflict assertion and explicit
-transaction rollback remain. No SET grant or policy relaxation is introduced.
+The standalone program checks the owned scratch nonce/identity, exact loopback
+endpoints and database marker before HTTP operations. It instantiates the actual
+`createSupabaseStorageAdapter`. Its fixture HTTPS origin maps only to the
+already-owned local Kong HTTP endpoint; fetch receives the original init and the
+original promise/response is returned unchanged. A bounded asynchronous
+`Response.clone()` observer records real HTTP metadata and drains all jobs.
+This transport is explicit local diagnostic context, not application factory or
+TLS/hosted verification. It fabricates no response.
 
-All four prior receipts are byte/hash pinned. Of QA4's 296 exported inputs, only
-`tests/providers/supabase-contracts.test.ts` may differ; the other 295 must match
-exactly, including schema `3e516771…` and the migration/lineage. The historical QA2
-comparison also retains its explicit schema/test change allowance for the already
-reviewed owner correction. All 90 cases run freshly; no prior passed case is
-carried and no diagnostic exit is accepted as a test pass.
+## Observations, not acceptance decisions
 
-One public Ubuntu 24.04 job uses Node 24.21.0 and the checksum-pinned Supabase CLI
-3.0.0 archive already verified by the source probe. All app source exports,
-dependencies, CLI files, HOME/config/cache/temp files and reports live inside an
-exclusive controller-owned `/tmp/ivsb-*` directory. Source/index/symlink guards
-check the original checkout five times, and exported inputs retain their hashes.
-The existing lock is frozen; installation uses `npm ci --ignore-scripts`.
+1. Two independent adapters race immutable writes with different authored bytes
+   to one exclusively named fresh key. Record both outcomes/public error codes,
+   each real HTTP error's bounded structural fields, and the service readback
+   size/hash and which authored input it matches. Preserve the object until final
+   owned cleanup; do not compensate a failed/uncertain write.
+2. Create a separate private object containing an authored marker. Execute each
+   anonymous request independently: GET raw, authenticated and public object
+   routes; POST list; POST an unauthorized candidate write; DELETE the target.
+   For every operation record method, owned path, actual status, content type,
+   bounded body bytes/hash/shape, array length, permitted error fields and whether
+   the response contains the own marker. Never retain a private object body.
+3. Preserve the original malformed text-with-JSON-content-type write probe, then
+   separately attempt a well-formed binary anonymous upload to another owned key.
+   This prevents mistaking a parse rejection for an authorization decision.
+   After **every** anonymous operation, service-read the target and record
+   existence, size/hash and whether its bytes still match the original, before
+   sending the next operation. Independently service-read the unauthorized-write
+   key after that POST to observe whether it was created. No status, including
+   200, is asserted or whitelisted as safe. A 200 empty array is not interpreted
+   as a harmless RLS no-op without the actual per-operation retention evidence.
+4. Decode only the anonymous/service JWT role labels and record whether the keys
+   differ; retain no raw JWT, header or complete claim set. Error JSON may retain
+   only code/error/statusCode and a short sanitized message or duplicate-database
+   flag. Read at most 64 KiB per observer with actual EOF; no response-body or
+   exception-message shortcut changes the caller's response.
 
-The packet runs scoped ESLint and semantic TypeScript checks, then exactly 90
-cases from eleven explicit files: 28 affected local PostgreSQL regressions on a
-separate PostgreSQL 17.6 service, 14 Supabase provider contracts, eight native
-Storage/Auth contracts and 40 focused storage/attachment/password/URL/namespace
-unit cases, including four new `legacy-upload-ownership.test.ts` cases.
-Execution order is local 28, focused unit 40, Supabase 14, then native Storage 8,
-so an integration failure cannot hide the independent unit outcomes again.
-Source-derived literal identities, ordinary per-file Vitest JSON, CLI zero exit,
-no skips/todos/retries/duplicates and exact counts are required. Failed JSON is
-retained before the success gate. No historical full suite, build or browser runs.
+Verify initial absence and track all four owned keys **before** any write: the
+race, marker, original unauthorized-write and binary-write candidates. A collision
+is refused without deleting pre-existing data. Delete only these keys in final cleanup, verify
+their absence via service reads, drain clone jobs and close database clients.
+Before normal CLI stop require zero Storage objects, Auth users, runtime clients
+and temporary roles in the fresh owned stack. Unexpected objects are reported,
+not broadly deleted.
 
-The actual disposable CLI stack keeps PostgreSQL, Auth, Storage, Kong and
-PostgREST. Other services are disabled/excluded. CLI help is read before each
-command family; the generated TOML is converted to the supported JSON shape and
-removed, leaving one unambiguous owned configuration. Exact project/workdir labels,
-running DB/Kong containers and their host-port bindings are verified before any
-administrative database or bucket mutation. The CLI-generated migration
-filename is preserved; explicit setup then gives its fresh restricted runtime
-role LOGIN and an authored disposable password, marks the owned database and
-creates a private test bucket. Tests authenticate as that actual runtime role.
-Production hostname/TLS policy is never relaxed: only the internal injected
-database and a transport-only HTTPS-to-owned-loopback Storage mapping are used.
-This proves no hosted TLS/pooler connection or native application Auth mapping.
+## Receipt and lifecycle
 
-The 1,020-second work budget reserves 90 seconds for owned cleanup. No unknown
-database is dropped and no outside client is terminated. Leftover local fixture
-databases, runtime clients, Auth users, storage objects or temporary roles fail the
-packet. CLI stop uses only this exact fresh project with `--no-backup`; final
-Docker container/network/volume identities must return to their initial state.
-Command EOF/reaping/process-group closure, owned descendants, released ports and
-scratch inode/UID/nonce are checked before deleting scratch. Forced or uncertain
-cleanup cannot pass. Docker images are runner cache, not a project-data deletion
-claim; the separate workflow service remains owned by GitHub Actions.
+The controller retains the Node JSON before its completion gate, including
+partial observations on a failed program exit. Prefix:
+`IV_SUPABASE_STORAGE_DIAGNOSTIC_RESULT`. Top-level `providerAccepted` and
+`passed` are always false. Only `diagnosticComplete` can become true after the
+scheduled observations, observer EOF/drain, owned-key cleanup, source/export
+guards, command EOF/reaping/groups, process ownership, Docker/port and scratch
+closure pass. Workflow exit zero means diagnostic collection completed; it never
+means a test or provider was accepted. The program observes unsafe outcomes too;
+it does not turn them into passing security assertions.
 
-Disposable CLI status/start output may contain credentials. Original command
-streams remain only in controller memory; the receipt keeps their observed byte
-counts and hashes. Every retained capture, JSON field and error is retrospectively
-sanitized using byte-preserving substitutions of actual parsed local status keys
-plus JWT/key patterns. Only the
-sanitized bytes have retained gzip payloads and their own hashes. These are not
-independently replayable original captures. Missing a complete key inventory after
-stack startup withholds stream payloads. No raw config, dotenv or credential file
-is uploaded. Failure evidence remains failure evidence.
+Keep the 20-minute job, 1,020-second work budget and 90-second cleanup reserve.
+Normal stop uses only the positively identified fresh project with
+`--no-backup`. No outside client is terminated and no unknown database/resource
+is removed. Forced or uncertain cleanup fails completion.
 
-Actual hosted Supabase, verified remote TLS/pooler behavior, Vercel environment
-access/deployment, full application Auth/Storage selection and full AI acceptance
-remain separate gates. Local native Auth cases create and delete authored
-disposable users. No hosted account/settings, paid resource or model call occurs.
+Original stdout/stderr exists only in memory. The receipt retains observed
+original byte counts/hashes and explicitly sanitized gzip bytes/hashes, using
+actual parsed disposable status keys and byte-preserving JWT/key/credential-URL
+substitution. These are not independently replayable original captures. Withhold
+payloads after incomplete capture or missing key inventory. Retain no raw key,
+config/dotenv, private body or credential-bearing browser state.
+
+No hosted account/settings, paid resource, model, native application Auth,
+production factory or deployment operation occurs. The application browser/TLS
+packet remains paused behind a complete provider acceptance gate. Choose any
+future mapping or test correction only after reviewing this actual response and
+post-operation state evidence.
