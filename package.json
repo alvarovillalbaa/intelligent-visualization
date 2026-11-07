@@ -24,7 +24,7 @@
     "supabase:start": "supabase start",
     "supabase:stop": "supabase stop",
     "supabase:reset": "supabase db reset",
-    "test:provider:supabase": "vitest run tests/providers/supabase",
+    "test:provider:supabase": "node -e \"if (process.env.CI !== 'true' || process.env.IV_SUPABASE_CHECKS !== 'disposable') throw new Error('Requires the owned disposable Supabase CI setup.')\" && vitest run --config vitest.supabase.config.ts",
     "data:export": "tsx scripts/data-export.ts",
     "data:verify": "tsx scripts/data-verify.ts",
     "data:import": "tsx scripts/data-import.ts",
