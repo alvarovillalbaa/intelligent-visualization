@@ -8,14 +8,14 @@ import { createStarterCourseDocument, createStarterReportDocument } from "../../
 import { canonicalSerialize } from "../../packages/domain/canonical"
 import { slugify } from "../../lib/utils"
 
-const ORIGIN = "http://127.0.0.1:3100"
+const ORIGIN = "http://localhost:3100"
 const HASH = /^[0-9a-f]{64}$/, UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const MAX_HTML = 8 * 1024 * 1024
 type Kind = "course" | "report"
 type ObjectProof = { key: string; bytes: number; sha256: string }
 type Fixture = { email: string; password: string; workspaceId: string; workspaceSlug: string; workspaceName: string;
   homeWorkspaceId: string; homeWorkspaceSlug: string; homeWorkspaceName: string; homePath: string;
-  slides: { id: string; publicId: string; title: string; editorPath: string; publicPath: string; source: ObjectProof & { url: string } };
+  slides: { id: string; publicId: string; title: string; editorPath: string; publicPath: string; initialVersionIds: string[]; source: ObjectProof & { url: string } };
   victim: ObjectProof & { url: string } }
 type Publication = { publicId: string; versionId: string; sourceRevision: number; documentHash: string; artifactHash: string; title: string; publicUrl: string; versionUrl: string }
 type CloneRead = { ordinal: number; path: string; method: string; requestId: string | null; startedAt: number; status: number | null; responseAt: number | null; eofAt: number | null; eof: boolean; bytes: number; sha256: string | null; body: string | null; cacheControl: string; contentType: string; error: string | null; signal: { present: boolean; initialAborted: boolean | null; abortedAtEOF: boolean | null; finalAborted: boolean | null } }
@@ -25,28 +25,33 @@ type ConsumerReader = { ordinal: number; createdAt: number; mode: "default" | "b
   cancelCalls: number; cancelSettled: number; cancelAt: number | null; cancelResolvedAt: number | null; cancelRejectedAt: number | null;
   releaseCalls: number; releaseAt: number | null; releaseReturnedAt: number | null; releaseThrewAt: number | null; lockedAtCreation: boolean }
 type ConsumerRead = { ordinal: number; path: string; startedAt: number; requestIdSha256: string | null; actionSha256: string | null;
+  rawRequestBodySha256: string | null; rawRequestBodyBytes: number | null;
   responseAt: number | null; status: number | null; contentType: string; bodyPresent: boolean; getReaderInstalled: boolean; getReaderCalls: number;
   errors: string[]; readers: ConsumerReader[] }
 type CloneState = { documentId: string; reads: CloneRead[]; jobs: Set<Promise<void>>; failures: string[]; stops: Array<() => void>;
-  consumers: ConsumerRead[]; consumerJobs: Set<Promise<void>>; consumerHashers: Array<() => Promise<void>>; consumerErrors: string[]; consumerCopiedBytes: number }
+  consumers: ConsumerRead[]; consumerJobs: Set<Promise<void>>; consumerHashers: Array<() => Promise<void>>; consumerErrors: string[]; consumerCopiedBytes: number; consumerRequestBytesHashed: number }
 type NodeRead = { ordinal: number; path: string; method: string; stage: string; status: number | null; contentType: string; redirect: string | null; finished: boolean; failed: string | null }
 type SlidesEventRead = { ordinal: number; eventType: string; versionId: string; resourceType: string; framePath: string | null;
   startedAt: number; responseAt: number | null; status: number | null; finishedAt: number | null; failedAt: number | null; failure: string | null }
 type NetworkTerminalRead = { ordinal: number; method: "POST"; path: string; requestIdSha256: string | null; actionSha256: string | null;
+  rawRequestBodySha256: string | null; rawRequestBodyBytes: number | null; suppliedPostDataIsJSON: boolean;
   startedAt: number; protocolStartedAt: number | null; responseAt: number | null; status: number | null;
   terminal: "pending" | "finished" | "failed" | "redirected"; terminalAt: number | null; protocolTerminalAt: number | null;
   canceled: boolean | null; errorCode: string | null; encodedDataLength: number | null; encodedBytesFromDataReceived: number; dataEvents: number;
   extraTerminalEvents: number; conflictingTerminalObserved: boolean; extraTerminals: Array<{ kind: string; at: number; protocolAt: number | null; canceled: boolean | null; errorCode: string | null; encodedDataLength: number | null }> }
+type PublishDocumentSample = { phase: string; at: number; afterOriginalDeadline: boolean; documentId: string | null; path: string | null;
+  documentUrlKind: "reviewed-own-path" | "own-unreviewed-path" | "other-origin"; focus: boolean; visibility: string; readyState: string; buttonCount: number; buttonDisabled: boolean | null; buttonAriaDisabled: boolean | null }
 type SlidesPublishRead = {
   index: number; stage: string; phase: string; waitLimitMs: number; events: Array<{ phase: string; at: number }>;
-  request: null | { method: string; path: string; startedAt: number; requestIdSha256: string | null; actionSha256: string; payloadBytes: number; deckId: string; labelSha256: string; sourceSha256: string };
+  click: { startedAt: number | null; resolvedAt: number | null; rejectedAt: number | null }; documents: PublishDocumentSample[]; documentSampleErrors: string[];
+  request: null | { method: string; path: string; startedAt: number; requestIdSha256: string | null; rawRequestBodySha256: string | null; actionSha256: string; payloadBytes: number; deckId: string; labelSha256: string; sourceSha256: string };
   response: null | { at: number; status: number; contentType: string };
   finishedAt: number | null; failedAt: number | null; failure: string | null; finishedResolvedAt: number | null;
   listenersRemoved: boolean; timerCleared: boolean; actionResolutionAckAt: number | null;
   postFailure: null | { diagnosticOnly: true; failurePhase: string; phase: string; startedAt: number; finishedAt: number | null; deadlineAt: number;
     status: "collecting" | "observed" | "unavailable"; code: string | null; buttonEnabled: boolean | null; actionResolutionAck: boolean | null; articleMatched: boolean | null;
     titleMatched: boolean | null; liveMarkerMatched: boolean | null; previousArticleCount: number; previousVersionId: string | null; versionId: string | null; artifactPath: string | null;
-    snapshotMatched: boolean | null; labelSha256: string; sourceSha256: string | null; artifact: ObjectProof | null;
+    snapshotMatched: boolean | null; initialVersionIdsRetained: boolean | null; labelSha256: string; sourceSha256: string | null; artifact: ObjectProof | null;
     databaseArtifactHtml: { bytes: number; sha256: string } | null; finishedPromiseNotObservedAfterFailure: true }
 }
 
@@ -100,6 +105,9 @@ async function ownedFixture(kind: Kind, profile: string): Promise<Fixture> {
     expect(fixture.workspaceId).toBe(fixture.homeWorkspaceId); expect(fixture.workspaceSlug).toBe(fixture.homeWorkspaceSlug)
   }
   for (const value of [fixture.slides.id, fixture.slides.publicId]) expect(value).toMatch(/^[A-Za-z0-9_-]{1,128}$/)
+  expect(Array.isArray(fixture.slides.initialVersionIds)).toBe(true); expect(fixture.slides.initialVersionIds.length).toBeGreaterThan(0); expect(fixture.slides.initialVersionIds.length).toBeLessThanOrEqual(16)
+  expect(new Set(fixture.slides.initialVersionIds).size).toBe(fixture.slides.initialVersionIds.length)
+  for (const value of fixture.slides.initialVersionIds) expect(value).toMatch(/^[A-Za-z0-9_-]{1,128}$/)
   expect(local(fixture.slides.editorPath)).toBe(`/app/workspaces/${fixture.workspaceSlug}/decks/${fixture.slides.id}`)
   expect(local(fixture.slides.publicPath)).toMatch(/^\/d\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+$/)
   for (const proof of [fixture.slides.source, fixture.victim]) {
@@ -112,7 +120,7 @@ async function ownedFixture(kind: Kind, profile: string): Promise<Fixture> {
 async function installClones(context: BrowserContext, key: string, prefix: string, slidesPath: string, deckId: string) {
   await context.addInitScript(({ key, origin, prefix, slidesPath, deckId }) => {
     const state: CloneState = { documentId: crypto.randomUUID(), reads: [], jobs: new Set(), failures: [], stops: [],
-      consumers: [], consumerJobs: new Set(), consumerHashers: [], consumerErrors: [], consumerCopiedBytes: 0 }
+      consumers: [], consumerJobs: new Set(), consumerHashers: [], consumerErrors: [], consumerCopiedBytes: 0, consumerRequestBytesHashed: 0 }
     Object.defineProperty(window, key, { value: state })
     const digest = async (bytes: Uint8Array) => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new Uint8Array(bytes).buffer)), (byte) => byte.toString(16).padStart(2, "0")).join("")
     function observe(job: Promise<void>) {
@@ -210,12 +218,20 @@ async function installClones(context: BrowserContext, key: string, prefix: strin
             if (state.consumers.length >= 32) { if (!state.consumerErrors.includes("action-bound")) state.consumerErrors.push("action-bound") }
             else {
               consumer = { ordinal: state.consumers.length + 1, path: url.pathname, startedAt: Date.now(), requestIdSha256: null, actionSha256: null,
+                rawRequestBodySha256: null, rawRequestBodyBytes: null,
                 responseAt: null, status: null, contentType: "", bodyPresent: false, getReaderInstalled: false, getReaderCalls: 0, errors: [], readers: [] }
               const row = consumer
               state.consumers.push(row)
               observe(digest(new TextEncoder().encode(action)).then((value) => { row.actionSha256 = value }))
               if (requestId && /^[0-9a-f]{1,8}$/.test(requestId)) observe(digest(new TextEncoder().encode(requestId)).then((value) => { row.requestIdSha256 = value }))
-              else row.errors.push("request-id-missing")
+              if (typeof init?.body === "string") {
+                const bytes = new TextEncoder().encode(init.body)
+                row.rawRequestBodyBytes = bytes.byteLength
+                if (state.consumerRequestBytesHashed + bytes.byteLength <= 1024 * 1024) {
+                  state.consumerRequestBytesHashed += bytes.byteLength
+                  observe(digest(bytes).then((value) => { row.rawRequestBodySha256 = value }))
+                } else mark(row, "request-body-hash-bound")
+              }
             }
           }
         }
@@ -289,7 +305,8 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
   const publicPages = new Set<string>(), legacyVersions = new Set<string>(), completed = new Set<string>()
   let stage = "setup", target = "/auth", actionPath: string | null = null, primary: unknown
   let publicContext: BrowserContext | undefined, publicPage: Page | undefined
-  let contextsClosed = 0, allowedReads = 0, allowedActions = 0, uploads = 0, slidesEvents = 0, developmentWebSockets = 0
+  let contextsClosed = 0, allowedReads = 0, allowedActions = 0, uploads = 0, slidesEvents = 0
+  const developmentWebSockets = 0
   const counts = { unexpectedRequests: 0, unexpectedWebSockets: 0, requestFailures: 0, httpErrors: 0, pageErrors: 0, consoleErrors: 0, dialogs: 0, canonicalAnalytics: 0 }
   const diagnostics: Array<{ stage: string; kind: string; detail: string }> = [], pending = new Set<Promise<void>>()
   const cleanupFailures: string[] = [], cloneSnapshots: Array<Record<string, unknown>> = [], nodeReads: NodeRead[] = []
@@ -307,6 +324,7 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
   const networkOff: Array<() => void> = [], networkJobs = new Set<Promise<void>>()
   const networkProblem = (code: string) => { if (!networkErrors.includes(code) && networkErrors.length < 8) networkErrors.push(code) }
   const refusedWebSockets: Array<{ protocol: string; host: string; path: string; queryKeys: string[]; owner: boolean; at: number }> = []
+  const rejectedAnalytics: Array<{ at: number; stage: string; bodyAvailable: boolean; parsed: boolean; stageAllowed: boolean; ownedPublicId: boolean; ownedVersionId: boolean; typeAllowed: boolean; sizeAllowed: boolean }> = []
   const slidesEventReads: SlidesEventRead[] = [], eventRequests = new WeakMap<BrowserRequest, SlidesEventRead>()
   const consumerSnapshots: Array<{ documentId: string; actions: ConsumerRead[]; [key: string]: unknown }> = []
   const consumerCollectionErrors: string[] = []
@@ -390,14 +408,9 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
     })
     await context.routeWebSocket("**/*", (route) => {
       const url = new URL(route.url())
-      if (url.protocol === "ws:" && url.host === "127.0.0.1:3100" && url.pathname === "/_next/webpack-hmr" && !url.username && !url.password && !url.hash
-        && /^\?id=(?:[A-Za-z0-9_-]{21}|0|[1-9a-f][0-9a-f]{0,7})$/.test(url.search)) {
-        developmentWebSockets++; route.connectToServer()
-      } else {
-        if (refusedWebSockets.length < 8) refusedWebSockets.push({ protocol: clean(url.protocol, secrets, 16), host: clean(url.host, secrets, 160), path: clean(url.pathname, secrets, 256),
-          queryKeys: [...new Set(url.searchParams.keys())].slice(0, 16).map((value) => clean(value, secrets, 64)).sort(), owner, at: Date.now() })
-        problem("unexpectedWebSockets", "Unapproved WebSocket"); route.close()
-      }
+      if (refusedWebSockets.length < 8) refusedWebSockets.push({ protocol: clean(url.protocol, secrets, 16), host: clean(url.host, secrets, 160), path: clean(url.pathname, secrets, 256),
+        queryKeys: [...new Set(url.searchParams.keys())].slice(0, 16).map((value) => clean(value, secrets, 64)).sort(), owner, at: Date.now() })
+      problem("unexpectedWebSockets", "WebSocket forbidden in the production profile"); route.close()
     })
     function validateRequest(request: BrowserRequest) {
       const url = new URL(request.url()), method = request.method(), headers = request.headers()
@@ -420,7 +433,8 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
       }
       if (method === "POST" && url.pathname === "/api/events" && !url.search) {
         let value: Record<string, unknown> | undefined
-        try { value = request.postDataJSON() } catch { /* An invalid body is refused below. */ }
+        let parsed = false
+        try { value = request.postDataJSON(); parsed = true } catch { /* An invalid body is refused below. */ }
         const allowed = stage.startsWith("slides-") && value?.publicId === fixture.slides.publicId && typeof value.versionId === "string" && legacyVersions.has(value.versionId)
           && ["view", "slide_view", "session_end", "deck_complete"].includes(String(value.type)) && (request.postDataBuffer()?.length ?? Infinity) <= 4096
         if (allowed) {
@@ -434,6 +448,10 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
           }
           slidesEvents++; return
         }
+        if (rejectedAnalytics.length < 16) rejectedAnalytics.push({ at: Date.now(), stage, bodyAvailable: request.postDataBuffer() !== null, parsed,
+          stageAllowed: stage.startsWith("slides-"), ownedPublicId: value?.publicId === fixture.slides.publicId,
+          ownedVersionId: typeof value?.versionId === "string" && legacyVersions.has(value.versionId),
+          typeAllowed: ["view", "slide_view", "session_end", "deck_complete"].includes(String(value?.type)), sizeAllowed: (request.postDataBuffer()?.length ?? Infinity) <= 4096 })
         problem("canonicalAnalytics", "Analytics outside the owned Slides frame"); return
       }
       if (method === "POST" && url.pathname === actionPath && !url.search && headers.origin === ORIGIN && (owner || stage.startsWith("slides-password"))
@@ -484,7 +502,7 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
       row.terminal = kind; row.terminalAt = Date.now(); row.protocolTerminalAt = finite(timestamp)
       row.canceled = canceled; row.errorCode = errorCode; row.encodedDataLength = encoded
     }
-    const onRequest = (event: { requestId: string; timestamp: number; redirectResponse?: { status: number }; request: { url: string; method: string; headers: Record<string, unknown> } }) => {
+    const onRequest = (event: { requestId: string; timestamp: number; redirectResponse?: { status: number }; request: { url: string; method: string; headers: Record<string, unknown>; postData?: string } }) => {
       const previous = networkRequests.get(event.requestId)
       if (previous && event.redirectResponse) {
         terminal(previous, "redirected", event.timestamp); previous.status ??= event.redirectResponse.status
@@ -496,8 +514,12 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
         if (networkRows.length >= 32) { networkProblem("cdp-request-bound"); return }
         if (networkRequests.has(event.requestId)) { networkProblem("cdp-duplicate-request"); return }
         const existingId = header(event.request.headers, "x-nextjs-request-id"), action = header(event.request.headers, "next-action")
+        const body = typeof event.request.postData === "string" ? Buffer.from(event.request.postData, "utf8") : null
+        let suppliedPostDataIsJSON = false
+        if (typeof event.request.postData === "string") { try { JSON.parse(event.request.postData); suppliedPostDataIsJSON = true } catch { /* No extra body retrieval or decoding is attempted. */ } }
         const row: NetworkTerminalRead = { ordinal: networkRows.length + 1, method: "POST", path: url.pathname,
           requestIdSha256: existingId && /^[0-9a-f]{1,8}$/.test(existingId) ? sha(existingId) : null,
+          rawRequestBodySha256: suppliedPostDataIsJSON && body && body.length <= 1024 * 1024 ? sha(body) : null, rawRequestBodyBytes: body?.length ?? null, suppliedPostDataIsJSON,
           actionSha256: action && /^[A-Za-z0-9_-]{1,256}$/.test(action) ? sha(action) : null,
           startedAt: Date.now(), protocolStartedAt: finite(event.timestamp), responseAt: null, status: null, terminal: "pending", terminalAt: null,
           protocolTerminalAt: null, canceled: null, errorCode: null, encodedDataLength: null, encodedBytesFromDataReceived: 0, dataEvents: 0,
@@ -570,7 +592,7 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
       return { documentId: state.documentId, stage: "", startedAt, snapshotAt: Date.now(), beforeFixtureClose, settleLimitMs: 500,
         elapsedMs: Date.now() - startedAt, initialPendingNative, pendingNative: nativePending(), pendingHashJobs: state.consumerJobs.size + pendingHashes,
         settlement: nativePending() === 0 ? "no-observed-native-operation-pending" : "observed-native-operation-still-pending",
-        copiedBytes: state.consumerCopiedBytes, errors: state.consumerErrors, actions: state.consumers }
+        copiedBytes: state.consumerCopiedBytes, requestBodyBytesHashed: state.consumerRequestBytesHashed, errors: state.consumerErrors, actions: state.consumers }
     }, { key: observerKey, beforeFixtureClose })
     snapshot.stage = stage
     const index = consumerSnapshots.findIndex((row) => row.documentId === snapshot.documentId)
@@ -710,12 +732,15 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
     await expect(page).toHaveURL(ORIGIN + workspace)
     await expect(page.getByRole("heading", { name: fixture.workspaceName, level: 1, exact: true })).toBeVisible()
     const cookie = (await auth.cookies(ORIGIN)).find((value) => value.name === "slides_session")
+    observations[fresh ? "freshSessionCookieSecurity" : "initialSessionCookieSecurity"] = { present: cookie !== undefined, httpOnly: cookie?.httpOnly === true, secure: cookie?.secure === true }
     expect(cookie?.httpOnly).toBe(true)
+    expect(cookie?.secure).toBe(true)
     actionPath = null; completed.add(stage)
   }
   try {
     watch(page); await guard(auth, true); await installClones(auth, observerKey, draftApi, fixture.slides.editorPath, fixture.slides.id); await startNetworkObserver()
     await signIn(false)
+    await expect(page.getByRole("link", { name: "Public", exact: true })).toHaveCount(0)
     stage = "save-1"
     const seedRequestId = randomUUID(), response = await auth.request.post(ORIGIN + draftApi, { headers: { Origin: ORIGIN }, data: { id, requestId: seedRequestId, expectedRevision: 0, document }, timeout: 10000, maxRedirects: 0 })
     try {
@@ -790,6 +815,9 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
     stage = "slides-open"; target = fixture.slides.editorPath; await drain()
     await page.goto(fixture.slides.editorPath, { waitUntil: "load" })
     await expect(page.getByRole("heading", { name: fixture.slides.title, level: 1, exact: true })).toBeVisible()
+    await expect(page.getByText("Published variants", { exact: true }).locator("../..").getByRole("article")).toHaveCount(fixture.slides.initialVersionIds.length)
+    await expect(page.getByRole("link", { name: "Open immutable artifact", exact: true })).toHaveCount(0)
+    await expect(page.locator("label").filter({ hasText: /^Immutable artifact$/ })).toHaveCount(0)
     const source = await http(auth, fixture.slides.source.url, 200)
     expect(sha(source.bytes)).toBe(fixture.slides.source.sha256); expect(source.bytes.length).toBe(fixture.slides.source.bytes)
     await http(publicContext, fixture.slides.source.url, 404, "GET", {}, 4096); completed.add(stage)
@@ -828,12 +856,32 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
     async function publishSlides(protectedVersion: boolean, index: number) {
       stage = `slides-publish-${index}`; actionPath = fixture.slides.editorPath; target = fixture.slides.editorPath
       expect(slidesPublishDiagnostics.length).toBeLessThan(3)
-      const diagnostic: SlidesPublishRead = { index, stage, phase: "prepare", waitLimitMs: 10000, events: [], request: null, response: null,
+      const diagnostic: SlidesPublishRead = { index, stage, phase: "prepare", waitLimitMs: 10000, events: [], click: { startedAt: null, resolvedAt: null, rejectedAt: null }, documents: [], documentSampleErrors: [], request: null, response: null,
         finishedAt: null, failedAt: null, failure: null, finishedResolvedAt: null, listenersRemoved: false, timerCleared: false, actionResolutionAckAt: null, postFailure: null }
       slidesPublishDiagnostics.push(diagnostic)
       const phase = (value: string) => { diagnostic.phase = value; diagnostic.events.push({ phase: value, at: Date.now() }) }
       const deadline = Date.now() + 10000, remaining = () => Math.max(1, deadline - Date.now())
+      async function sampleDocument(label: string) {
+        if (diagnostic.documents.length >= 8) { if (!diagnostic.documentSampleErrors.includes("sample-bound")) diagnostic.documentSampleErrors.push("sample-bound"); return }
+        let timer: ReturnType<typeof setTimeout> | undefined
+        try {
+          const sample = await Promise.race([page.evaluate(({ key, origin, paths }) => {
+            const state = (window as unknown as Record<string, CloneState>)[key]
+            const buttons = [...globalThis.document.querySelectorAll("button")].filter((button) => button.textContent?.trim() === "Publish version")
+            const button = buttons.length === 1 ? buttons[0] : null
+            return { at: Date.now(), documentId: state?.documentId ?? null,
+              path: location.origin === origin && paths.includes(location.pathname) ? location.pathname : null,
+              documentUrlKind: location.origin !== origin ? "other-origin" as const : paths.includes(location.pathname) ? "reviewed-own-path" as const : "own-unreviewed-path" as const,
+              focus: globalThis.document.hasFocus(), visibility: globalThis.document.visibilityState, readyState: globalThis.document.readyState,
+              buttonCount: buttons.length, buttonDisabled: button?.disabled ?? null,
+              buttonAriaDisabled: button ? button.getAttribute("aria-disabled") === "true" : null }
+          }, { key: observerKey, origin: ORIGIN, paths: [...pages] }), new Promise<never>((_resolve, reject) => { timer = setTimeout(() => reject(new Error("sample-deadline")), 250) })])
+          diagnostic.documents.push({ phase: label, afterOriginalDeadline: sample.at > deadline, ...sample })
+        } catch { if (diagnostic.documentSampleErrors.length < 8) diagnostic.documentSampleErrors.push(`unavailable-${label}`) }
+        finally { clearTimeout(timer) }
+      }
       phase("prepare")
+      await sampleDocument("prepare")
       await page.getByPlaceholder("Optional password", { exact: true }).fill(protectedVersion ? password : "", { timeout: remaining() })
       const versionLabel = page.getByText("Publishing", { exact: true }).locator("..").getByRole("textbox", { name: "Version label", exact: true })
       const authoredLabel = `Authored publish ${index} ${id}`
@@ -876,6 +924,7 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
       }
       let selected: BrowserRequest | null = null, exactFailure: Error | null = null, rejectFailure: (error: Error) => void = () => {}
       const failure = new Promise<never>((_resolve, reject) => { rejectFailure = reject })
+      void failure.catch(() => {})
       const onRequest = (request: BrowserRequest) => {
         if (!matches(request)) return
         if (selected && selected !== request) { rejectFailure(new Error("Multiple publish requests matched the reviewed action.")); return }
@@ -883,9 +932,11 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
         selected = request
         const payload = request.postDataJSON()[0]
         const existingRequestId = request.headers()["x-nextjs-request-id"]
+        const rawBody = request.postDataBuffer()
         diagnostic.request = { method: request.method(), path: new URL(request.url()).pathname, startedAt: Date.now(),
           requestIdSha256: existingRequestId && /^[0-9a-f]{1,8}$/.test(existingRequestId) ? sha(existingRequestId) : null,
-          actionSha256: sha(request.headers()["next-action"]), payloadBytes: request.postDataBuffer()?.length ?? 0, deckId: payload.deckId,
+          rawRequestBodySha256: rawBody ? sha(rawBody) : null,
+          actionSha256: sha(request.headers()["next-action"]), payloadBytes: rawBody?.length ?? 0, deckId: payload.deckId,
           labelSha256: sha(payload.label), sourceSha256: sha(canonicalSerialize(payload.source)) }
       }
       const onFailed = (request: BrowserRequest) => {
@@ -900,16 +951,23 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
       const expired = new Promise<never>((_resolve, reject) => {
         timer = setTimeout(() => reject(new Error("Slides publication deadline exceeded at " + diagnostic.phase)), remaining())
       })
+      void expired.catch(() => {})
       try {
         phase("request-and-response")
+        await sampleDocument("before-click")
+        if (Date.now() >= deadline) throw new Error("Slides publication deadline exceeded at " + diagnostic.phase)
+        const requestWait = page.waitForRequest(matches, { timeout: remaining() })
+        const responseWait = page.waitForResponse((response) => matches(response.request()), { timeout: remaining() })
+        diagnostic.click.startedAt = Date.now()
+        const click = page.getByRole("button", { name: "Publish version", exact: true }).click({ timeout: remaining() })
+        void click.then(() => { diagnostic.click.resolvedAt = Date.now() }, () => { diagnostic.click.rejectedAt = Date.now() })
         const [request, response] = await Promise.race([Promise.all([
-          page.waitForRequest(matches, { timeout: remaining() }),
-          page.waitForResponse((response) => matches(response.request()), { timeout: remaining() }),
-          page.getByRole("button", { name: "Publish version", exact: true }).click({ timeout: remaining() }),
+          requestWait, responseWait, click,
         ]), failure, expired])
         expect(request === selected).toBe(true); expect(response.request() === request).toBe(true)
         diagnostic.response = { at: Date.now(), status: response.status(), contentType: response.headers()["content-type"] ?? "" }
         expect(response.status()).toBe(200)
+        await sampleDocument("response-headers")
         phase("response-finished")
         if (request.failure()) onFailed(request)
         expect(await Promise.race([response.finished(), failure, expired])).toBeNull()
@@ -920,11 +978,13 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
         phase("action-ack")
         await Promise.race([expect(page.getByRole("status").filter({ hasText: `Published ${expectedLabel}.` })).toHaveText(`Published ${expectedLabel}.`, { timeout: remaining() }), failure, expired])
         diagnostic.actionResolutionAckAt = Date.now()
+        await sampleDocument("action-ack")
       } catch (error) {
+        await sampleDocument("failure")
         if (exactFailure && error === exactFailure && diagnostic.request) {
           const proof: NonNullable<SlidesPublishRead["postFailure"]> = { diagnosticOnly: true, failurePhase: diagnostic.phase, phase: "button", startedAt: Date.now(), finishedAt: null, deadlineAt: deadline,
             status: "collecting", code: null, buttonEnabled: null, actionResolutionAck: null, articleMatched: null, titleMatched: null, liveMarkerMatched: null,
-            previousArticleCount, previousVersionId: previousArtifact.versionId, versionId: null, artifactPath: null, snapshotMatched: null,
+            previousArticleCount, previousVersionId: previousArtifact.versionId, versionId: null, artifactPath: null, snapshotMatched: null, initialVersionIdsRetained: null,
             labelSha256: sha(expectedLabel), sourceSha256: diagnostic.request.sourceSha256, artifact: null, databaseArtifactHtml: null, finishedPromiseNotObservedAfterFailure: true }
           diagnostic.postFailure = proof
           const budget = () => { const value = deadline - Date.now(); if (value <= 0) throw new Error("diagnostic-deadline"); return value }
@@ -933,6 +993,7 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
             proof.phase = "action-ack"
             await expect(page.getByRole("status").filter({ hasText: `Published ${expectedLabel}.` })).toHaveText(`Published ${expectedLabel}.`, { timeout: budget() })
             proof.actionResolutionAck = true; diagnostic.actionResolutionAckAt = Date.now()
+            await sampleDocument("post-failure-ack")
             proof.phase = "article"
             await expect(versionArticle).toHaveCount(1, { timeout: budget() }); await expect(versionArticle).toBeVisible({ timeout: budget() }); proof.articleMatched = true
             await expect(versionArticle.getByText(fixture.slides.title, { exact: true })).toBeVisible({ timeout: budget() }); proof.titleMatched = true
@@ -942,12 +1003,15 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
             const artifact = await safeArtifactField()
             expect(artifact.code).toBe("ready"); expect(artifact.versionId).toMatch(/^[A-Za-z0-9_-]{1,128}$/)
             expect(artifact.versionId).not.toBe(previousArtifact.versionId); expect(legacyVersions.has(artifact.versionId!)).toBe(false)
+            expect(fixture.slides.initialVersionIds).not.toContain(artifact.versionId)
             proof.versionId = artifact.versionId; proof.artifactPath = artifact.path
             proof.phase = "snapshot"
             const value = await snapshot("slides", undefined, budget())
             budget()
             expect(value.versions).toHaveLength(previousArticleCount + 1)
             if (previousArtifact.versionId !== null) expect(value.versions.some((row: { id: string }) => row.id === previousArtifact.versionId)).toBe(true)
+            for (const initialId of fixture.slides.initialVersionIds) expect(value.versions.some((row: { id: string }) => row.id === initialId)).toBe(true)
+            proof.initialVersionIdsRetained = true
             const current = value.versions.find((row: { id: string }) => row.id === value.deck.publishedVersionId)
             expect(current).toBeTruthy(); expect(current.id).toBe(proof.versionId); expect(current.status).toBe("published")
             expect(current.passwordProtected).toBe(protectedVersion); expect(value.deck.passwordProtected).toBe(protectedVersion)
@@ -976,6 +1040,11 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
       phase("snapshot")
       const value = await snapshot("slides"), current = value.versions.find((row: { id: string }) => row.id === value.deck.publishedVersionId)
       expect(current).toBeTruthy(); expect(current.status).toBe("published"); expect(current.passwordProtected).toBe(protectedVersion)
+      expect(value.versions).toHaveLength(previousArticleCount + 1); expect(current.id).not.toBe(previousArtifact.versionId); expect(fixture.slides.initialVersionIds).not.toContain(current.id)
+      if (previousArtifact.versionId !== null) expect(value.versions.some((row: { id: string }) => row.id === previousArtifact.versionId)).toBe(true)
+      for (const initialId of fixture.slides.initialVersionIds) expect(value.versions.some((row: { id: string }) => row.id === initialId)).toBe(true)
+      expect(current.labelSha256).toBe(sha(expectedLabel)); expect(current.sourceSha256).toBe(diagnostic.request?.sourceSha256)
+      expect(current.databaseArtifactHtml.bytes).toBe(current.artifact.bytes); expect(current.databaseArtifactHtml.sha256).toBe(current.artifact.sha256)
       expect(value.deck.passwordProtected).toBe(protectedVersion)
       legacyVersions.add(current.id); const artifactPath = `/published/${fixture.slides.publicId}/${current.id}`
       publicPages.add(artifactPath); publicPages.add(fixture.slides.publicPath); publicPages.add(attachmentUrl)
@@ -1091,7 +1160,7 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
     const report = { kind: "iv-supabase-application-boundary", schemaVersion: 1, title: info.title, profile: info.project.name, documentKind: kind,
       stage, status: !primary && Object.values(counts).every((value) => value === 0) && activeUnknownUrlAborts === 0 && cleanupFailures.length === 0 && contextsClosed === 4 && networkClosureValid ? "passed" : "failed",
       primaryError: primary ? clean(primary instanceof Error ? primary.message : primary, secrets, 2048) : null,
-      fixture: { workspaceSlug: fixture.workspaceSlug, slidesId: fixture.slides.id, slidesPublicId: fixture.slides.publicId },
+      fixture: { workspaceSlug: fixture.workspaceSlug, slidesId: fixture.slides.id, slidesPublicId: fixture.slides.publicId, initialVersionIds: fixture.slides.initialVersionIds },
       observations, passiveNetworkObserver: { kind: "owned-primary-page-CDP-Network", maxRequests: 32, rows: networkRows, errors: networkErrors,
         createdAt: networkCreatedAt, enabledAt: networkEnabledAt, cutoffAt: networkCutoffAt, detachedAcknowledgedAt: networkDetachedAt, listenersRemovedAt: networkListenersRemovedAt, pendingCommandJobs: networkJobs.size,
         creationAttempted: networkCreationAttempted, creationSettled: networkCreationSettled, creationDeadlineExpired: networkCreateDeadlineExpired, lateCreation: networkLateCreation, creationPendingAtContextClose: networkCreationPendingAtContextClose,
@@ -1099,39 +1168,45 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
         sessionStatus: networkDetachedAt !== null && networkDetachWithinBudget && networkSetupCompleted && !networkCreateDeadlineExpired && !networkLateCreation ? "normal-detach-acknowledged" : "incomplete-session-observation",
         additionalTerminalMetadataTruncated: networkRows.some((row) => row.extraTerminalEvents > row.extraTerminals.length),
         sessionScope: "primary-auth-page-only", workersAndOtherTargetsClaimed: false, rawHeadersPayloadBodiesAndQueriesRetained: false,
+        requestBodySource: "provided-UTF8-JSON-postData-only", extraRequestBodyRetrieval: false, developmentRequestIdRequired: false,
         extraReadOrRoutingCommands: false, durableResponseBufferEnabled: false, decodedBodyByteEqualityClaimed: false,
         callbackClock: "epoch-milliseconds", protocolClock: "monotonic-seconds", detachProvesRequestsFinished: false,
         correlations: slidesPublishDiagnostics.map((row) => {
-          const sameId = networkRows.filter((item) => row.request?.requestIdSha256 && item.requestIdSha256 === row.request.requestIdSha256)
-          const matches = sameId.filter((item) => item.method === row.request?.method && item.path === row.request.path && item.actionSha256 === row.request.actionSha256)
-          const unique = sameId.length === 1 && matches.length === 1
-          return { publishIndex: row.index, requestIdSha256: row.request?.requestIdSha256 ?? null, sameIdRows: sameId.length, exactMatches: matches.length,
-            binding: unique ? "unique-primary-session-match" : sameId.length > 1 ? "ambiguous" : "unproven", ordinal: unique ? matches[0].ordinal : null }
+          const expected = row.request
+          const sameBody = expected?.rawRequestBodySha256 ? networkRows.filter((item) => item.rawRequestBodySha256 === expected.rawRequestBodySha256) : []
+          const matches = expected ? sameBody.filter((item) => item.method === expected.method && item.path === expected.path && item.actionSha256 === expected.actionSha256 && item.rawRequestBodyBytes === expected.payloadBytes) : []
+          const unique = sameBody.length === 1 && matches.length === 1
+          return { publishIndex: row.index, rawRequestBodySha256: expected?.rawRequestBodySha256 ?? null, sameBodyRows: sameBody.length, exactMatches: matches.length,
+            binding: unique ? "unique-primary-session-body-match" : sameBody.length > 1 ? "ambiguous" : "unproven", ordinal: unique ? matches[0].ordinal : null }
         }) }, slidesConsumerObserver: { kind: "actual-server-action-reader", maxActionsPerDocument: 32, maxReadersPerAction: 4, maxCopiedBytesPerDocument: 5 * 1024 * 1024,
         documents: consumerSnapshots, collectionErrors: consumerCollectionErrors, fixtureCloseStartedAt,
         originalFetchPromiseAndReaderResultsRetained: true, extraReadCancelCloneOrTee: false, nativeObjectsOrPendingPromisesStored: false,
         rawBodiesReasonsAndErrorsRetained: false, allBodyConsumersClaimed: false, debugChannelObserved: false,
         nativeDoneProvesNetworkEOF: false, cancellationAndReadRejectionReportedSeparately: true,
-        correlation: "unique-existing-request-id-sha256-and-method-path-action-sha256",
+        maxRawRequestBodyHashBytesPerDocument: 1024 * 1024, requestBodySource: "native-init-body-UTF8-JSON-string-only", developmentRequestIdRequired: false,
+        correlation: "unique-raw-request-body-sha256-bytes-and-method-path-action-sha256",
         correlations: slidesPublishDiagnostics.map((row) => {
-          const candidates = consumerSnapshots.flatMap((document) => document.actions.filter((item) => row.request?.requestIdSha256
-            && item.requestIdSha256 === row.request.requestIdSha256).map((item) => ({ documentId: document.documentId, item })))
-          const match = candidates.length === 1 ? candidates[0] : null
-          return { publishIndex: row.index, requestIdSha256: row.request?.requestIdSha256 ?? null, matches: candidates.length,
-            uniqueAcrossSelectedPublishes: Boolean(row.request?.requestIdSha256) && slidesPublishDiagnostics.filter((other) => other.request?.requestIdSha256 === row.request?.requestIdSha256).length === 1,
-            methodPathActionMatch: Boolean(match && row.request?.method === "POST" && match.item.path === row.request.path && match.item.actionSha256 === row.request.actionSha256),
+          const expected = row.request
+          const candidates = expected?.rawRequestBodySha256 ? consumerSnapshots.flatMap((document) => document.actions.filter((item) => item.rawRequestBodySha256 === expected.rawRequestBodySha256).map((item) => ({ documentId: document.documentId, item }))) : []
+          const matches = expected ? candidates.filter(({ item }) => item.path === expected.path && item.actionSha256 === expected.actionSha256 && item.rawRequestBodyBytes === expected.payloadBytes) : []
+          const match = candidates.length === 1 && matches.length === 1 ? matches[0] : null
+          return { publishIndex: row.index, rawRequestBodySha256: expected?.rawRequestBodySha256 ?? null, sameBodyRows: candidates.length, matches: matches.length,
+            uniqueAcrossSelectedPublishes: Boolean(expected?.rawRequestBodySha256) && slidesPublishDiagnostics.filter((other) => other.request?.rawRequestBodySha256 === expected?.rawRequestBodySha256).length === 1,
+            methodPathActionMatch: Boolean(match && expected?.method === "POST"), binding: match ? "unique-document-ordinal-body-match" : candidates.length > 1 ? "ambiguous" : "unproven",
             documentId: match?.documentId ?? null, consumerOrdinal: match?.item.ordinal ?? null }
         }) }, responseObserver: { kind: "native-fetch-response-clone", maxGetBytes: 131072, maxPostBytes: 5 * 1024 * 1024, maxPerDocument: 32, documents: cloneSnapshots,
         correlation: "method-path-request-id-and-time-only", exactGetRequestBindingClaimed: false, originalFetchArgumentsAndPromiseRetained: true, rawResponseBodiesRetained: false },
       actualApiRequests: nodeReads, boundary: { counts, diagnostics, allowedReads, allowedActions, uploads, slidesEvents, developmentWebSockets, navigationCancellations: cancellations,
         refusedWebSockets, refusedWebSocketMetadataTruncated: counts.unexpectedWebSockets > refusedWebSockets.length,
         slidesEventRequests: slidesEventReads, slidesEventMetadataTruncated: slidesEvents > slidesEventReads.length,
+        rejectedAnalytics, rejectedAnalyticsMetadataTruncated: counts.canonicalAnalytics > rejectedAnalytics.length,
         eventResourceTypeDoesNotProveInitiator: true,
         routingControl: { kind: "url-route-handler-bypass", urlOnlyPreflight: true, passiveMethodHeaderBodyAndStageValidation: true,
           playwrightPredicateRoutingMayStillPauseViaCDP: true, unpausedBrowserTransportClaimed: false, admittedInvalidMethodSideEffectsCanBeginBeforeDetection: true,
           ownedDisposableFixtureOnly: true, browserProviderKeysAvailable: false, unknownForeignModelUrlsActivelyAborted: true,
           passiveRequestsObserved, activeUnknownUrlAborts },
-        hmrRule: { ownEndpointOnly: true, allowedInPublicContexts: true, rawQueryGrammar: "id=nanoid21-or-canonical-uint32-hex", duplicateExtraOrEncodedKeysAllowed: false } },
+        webSocketPolicy: { production: true, anyWebSocketAllowed: false },
+        publishDocumentSamples: { maxPerPublish: 8, waitLimitMs: 250, metadataOnly: true, changesPublicationDeadline: false, callbackSettlementMayBeObservedAfterFixtureClose: true } },
       cleanup: { contextsCreated: contexts.length, contextsClosed, pendingJobs: pending.size, failures: cleanupFailures } }
     const bytes = Buffer.from(JSON.stringify(report)); expect(bytes.length).toBeLessThanOrEqual(65536)
     await info.attach("iv-supabase-application-boundary", { body: bytes, contentType: "application/json" })
