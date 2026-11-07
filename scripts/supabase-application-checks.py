@@ -23,7 +23,7 @@ import traceback
 from urllib.parse import urlsplit
 
 repo, source = Path.cwd(), os.environ["SOURCE_COMMIT"]
-BRANCH = "qa/supabase-application-20261107-9"
+BRANCH = "qa/supabase-application-20261107-10"
 LOCK_SHA = "b18dd278e6eded698e269d2e8400b0359083a8ba34de4721227a70b5e27c0d59"
 ASSET = "supabase_3.0.0_linux_amd64.tar.gz"
 ARCHIVE_SHA = "eeb61edcd59a4735fcb5e58596574f25d03d420efca779f43ddb307e1cc5c754"
@@ -72,6 +72,10 @@ APPLICATION_EIGHTH_PATH = "docs/results/2026/11-07/supabase-application-attempt-
 APPLICATION_EIGHTH_SOURCE = "3635084b0b35d96d97470e2f3c103e106e583534"
 APPLICATION_EIGHTH_SHA256 = "17de177b639348e28a213a13bc76f245e3675aa186c1b3103ad5a1efb4b8c2f4"
 APPLICATION_EIGHTH_BYTES = 706477
+APPLICATION_NINTH_PATH = "docs/results/2026/11-07/supabase-application-attempt-9.json"
+APPLICATION_NINTH_SOURCE = "0caf57b9f623d08bef1b8d919900ac4f2ccfa8cb"
+APPLICATION_NINTH_SHA256 = "f68b997132c73415d209993c806b8c512a5991dcae379b5788213fae7e215dab"
+APPLICATION_NINTH_BYTES = 379235
 assert re.fullmatch(r"[0-9a-f]{40}", source)
 assert os.environ.get("CI") == os.environ.get("IV_SUPABASE_APPLICATION_PUBLIC_REPOSITORY") == "true"
 assert os.environ.get("GITHUB_REPOSITORY") == "alvarovillalbaa/intelligent-visualization"
@@ -318,6 +322,18 @@ for reviewed_input in report["providerPrerequisite"]["reviewedInputs"]:
         reviewed_input["reason"] = "Workspace links require an actual current published version; the editor server computes eligible unsigned published artifact destinations and the signed current field without changing authorization"
     elif reviewed_input["path"] == "components/slides/deck-editor-client.tsx":
         reviewed_input["reason"] += "; published-only public links and server-computed eligible unsigned artifact anchors replace dead preview links without changing authorization"
+application_ninth_bytes = (repo / APPLICATION_NINTH_PATH).read_bytes()
+assert len(application_ninth_bytes) == APPLICATION_NINTH_BYTES and sha(application_ninth_bytes) == APPLICATION_NINTH_SHA256
+application_ninth = json.loads(application_ninth_bytes)
+assert application_ninth["sourceCommit"] == APPLICATION_NINTH_SOURCE and application_ninth["passed"] is False
+assert application_ninth["providerCasesExecutedThisAttempt"] == 0 and not application_ninth.get("freshBrowserCasesPassed")
+assert "playwright" not in application_ninth and application_ninth["error"] == "KeyError: 'tsconfigPath'"
+ninth_protected = application_ninth["sourceExport"]["inputs"]
+assert len(ninth_protected) == 286 and all(before.get(name) == row for name, row in ninth_protected.items()), "Ninth application attempt runtime inputs must remain exact"
+report["previousApplicationAttempts"].append({"receipt": APPLICATION_NINTH_PATH, "bytes": len(application_ninth_bytes), "sha256": sha(application_ninth_bytes),
+    "sourceCommit": APPLICATION_NINTH_SOURCE, "passed": False, "providerCasesExecuted": 0, "browserCasesExecuted": 0, "acceptedBrowserCases": 0, "carriedCases": 0,
+    "failurePhase": "The actual production build exited zero; the controller then required a manifest tsconfigPath property that Next omits for its default, before server or browser startup",
+    "protectedInputs": 286, "preservedExactInputs": 286, "allowedRuntimeInputs": [], "allowedDocumentationOnlyInputs": [], "reviewedInputs": []})
 report["diagnosticPurpose"] = {"boundary": "Actual production webpack build and standalone localhost server with unchanged Secure cookies, TLS and strict application completion/failure gates",
     "diagnosticOnly": True, "originalPublicationDeadlineSeconds": 10, "newPostFailureBudgetGranted": False, "originalRequestErrorRethrown": True,
     "extraSlidesCloneTeeOrRead": False, "abortFixClaimed": False, "guaranteedPass": False, "completionAndFailureRulesUnchanged": True,
@@ -745,7 +761,12 @@ def bootstrap():
     assert "**/*.ts" in configuration["include"] and "**/*.tsx" in configuration["include"]
     assert configuration["exclude"] == ["node_modules", "components/ai-elements/**/*"]
     assert all(not name.startswith(("node_modules/", "components/ai-elements/")) and name.endswith((".ts", ".tsx")) for name in scoped)
-    report["semanticTypecheck"] = {"replacedFocusedCompile": True, "replacement": "Actual Next production build over the unpruned exported root tsconfig graph", "focusedEntriesCovered": scoped, "completed": False}
+    (app / "tsconfig.supabase-application-checks.json").write_text(json.dumps({"extends": "./tsconfig.json", "include": scoped,
+        "exclude": ["node_modules", "components/ai-elements"], "compilerOptions": {"incremental": False, "plugins": []}}))
+    run(["node_modules/.bin/tsc", "--noEmit", "-p", "tsconfig.supabase-application-checks.json"], 60)
+    report["focusedTypecheck"] = {"entries": scoped, "completed": True, "includesBrowserSpec": True}
+    report["semanticTypecheck"] = {"replacement": None, "kind": "Actual Next production build over the unpruned exported root tsconfig graph",
+        "testFileDiagnosticsFilteredByNext": True, "browserSpecCoveredBySeparateFocusedTypecheck": True, "completed": False}
     run(["node_modules/.bin/playwright", "install", "--with-deps", "--only-shell", "chromium"], 100)
     for port in [5432, 54321, 54443, 3100]:
         with socket.socket() as sock: sock.bind(("127.0.0.1", port))
@@ -949,7 +970,8 @@ def build_production():
     build = app / ".next"
     manifest = json.loads((build / "required-server-files.json").read_text())
     assert manifest["config"]["output"] == "standalone" and manifest["config"]["typescript"]["ignoreBuildErrors"] is False
-    assert manifest["config"]["typescript"]["tsconfigPath"] == "tsconfig.json"
+    configured_tsconfig = manifest["config"]["typescript"].get("tsconfigPath", "tsconfig.json")
+    assert configured_tsconfig == "tsconfig.json"
     entry = build / "standalone/server.js"; info = entry.lstat(); data = entry.read_bytes()
     assert stat.S_ISREG(info.st_mode) and not entry.is_symlink() and info.st_uid == os.getuid()
     assert b"process.env.NODE_ENV = 'production'" in data and entry.resolve().is_relative_to(app)
@@ -966,7 +988,8 @@ def build_production():
         copied.append({"source": str(source_directory.relative_to(app)), "destination": str(destination.relative_to(app)), "files": len(files), "bytes": total, "hashesMatch": True})
     build_id = (build / "BUILD_ID").read_text().strip(); assert re.fullmatch(r"[A-Za-z0-9_-]{1,128}", build_id)
     report["productionBuild"] = {"buildId": build_id, "entry": str(entry.relative_to(app)), "entryBytes": len(data), "entrySha256": sha(data),
-        "nodeEnv": "production", "ignoreBuildErrors": False, "tsconfigPath": "tsconfig.json", "copied": copied, "generatedManifestsOrSecretsRetained": False}
+        "nodeEnv": "production", "ignoreBuildErrors": False, "tsconfigPath": configured_tsconfig,
+        "tsconfigPathUsesNextDefault": "tsconfigPath" not in manifest["config"]["typescript"], "copied": copied, "generatedManifestsOrSecretsRetained": False}
     report["semanticTypecheck"]["completed"] = True
     check_export()
 

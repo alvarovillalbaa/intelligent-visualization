@@ -299,6 +299,31 @@ with its exact two additional page exceptions. All eight false application recei
 and separate 90-case provider acceptance remain pinned. This candidate is
 source-only, with no local build, runtime, activation or acceptance claim.
 
+### Production control correction for attempt ten
+
+[Attempt nine](../results/2026/11-07/supabase-application-attempt-9.md), source
+`0caf57b9f623d08bef1b8d919900ac4f2ccfa8cb`, remains false. Its actual production
+build exited zero in 51.678 seconds and printed the TypeScript phase. The
+controller then raised `KeyError: 'tsconfigPath'`; standalone entry/asset checks,
+server startup, both Next TLS windows and all four browser journeys were unrun.
+The overall result and incomplete semantic-typecheck flag remain unchanged.
+
+Next 16.1.6 [defaults this field to undefined](https://github.com/vercel/next.js/blob/v16.1.6/packages/next/src/server/config-shared.ts#L1409),
+omitted by JSON, and [resolves the effective path to tsconfig.json](https://github.com/vercel/next.js/blob/v16.1.6/packages/next/src/lib/verify-typescript-setup.ts#L63).
+Attempt ten on `qa/supabase-application-20261107-10` accepts the omitted field as
+that documented default, while rejecting explicit null/custom paths and keeping
+`ignoreBuildErrors=false`. Record the effective path and whether the default was
+used. All 286 App9 exported runtime inputs must remain byte/mode/blob/hash exact.
+
+The earlier claim that the production build covers every focused entry was too
+broad: Next [filters test/spec diagnostics](https://github.com/vercel/next.js/blob/v16.1.6/packages/next/src/lib/typescript/runTypeCheck.ts#L163).
+Restore the separate focused TypeScript check over the nine existing scoped
+entries, including the browser spec and both corrected pages; retain the actual
+unignored production build over the unchanged root graph. Report these separately.
+The four identities, all failure gates and full browser/cleanup reserves stay
+unchanged. No earlier failure becomes a pass; no production, server or browser
+result is claimed by this source correction.
+
 ## Source boundary
 
 [Persistence selection](../../lib/persistence/factory.ts) and
