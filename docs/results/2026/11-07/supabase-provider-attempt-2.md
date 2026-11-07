@@ -73,3 +73,10 @@ separate PostgreSQL service-container teardown step also completed successfully.
 Only temporary workflow **409956725** was disabled. Fresh GitHub readback reports
 `disabled_manually`, updated **01:16:12 UTC**. This audit performed no rerun,
 branch retirement, commit, local runtime execution or factory activation.
+
+Owner follow-up: the QA branch was retired at
+`4beea3bb7972c4f8ffb2514db542ae2e51148c22`, with the exact tree of receipt
+commit `d0e5a1284e72ef3379e282fcecd64c9f26bf5185`. Remote ref readback confirmed
+retirement, and the active temporary workflow is absent from that tree. The
+failure and its 28/13/48 outcome remain unchanged. The next packet collects
+catalog metadata only, with zero test invocations and no provider acceptance.
