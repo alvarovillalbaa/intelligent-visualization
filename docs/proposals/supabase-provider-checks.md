@@ -2,16 +2,15 @@
 
 Prepared 7 November 2026. This inactive packet executes no local host runtime and
 does not enable the Supabase selector. Review and pin the candidate source before
-creating `qa/supabase-provider-20261107-4`; the permanent workflow is untouched.
+creating `qa/supabase-provider-20261107-5`; the permanent workflow is untouched.
 
 Attempt one at `5babe6dc068669a1f5d970cb22b9d0953d4ae818` failed semantic
 TypeScript checking before CLI setup or any test. Preserve its
 [failed receipt](../results/2026/11-07/supabase-provider-attempt-1.json), 188,095
 bytes, SHA-256
 `a99c0f71ff7dd1c5df2cd06e1cab1485f58fbdd54e249480db5ab1f9c98944b6`.
-This retry validates that receipt's identity but carries no passed cases. The new
-candidate includes the route response byte-type repair and the scoped legacy
-namespace ownership repair; their final source and tests need review before pinning.
+This retry validates that receipt's identity but carries no passed cases. The
+earlier route response and legacy namespace repairs remain protected inputs.
 
 Attempt two ([receipt](../results/2026/11-07/supabase-provider-attempt-2.json),
 323,072 bytes, SHA-256
@@ -31,11 +30,24 @@ Supabase case checks that an unrelated NOLOGIN role with the same ADMIN-only
 options is refused, then restores health by revoking its owned test grant. The
 existing untrusted SET-grant case remains.
 
-All three prior receipts are byte/hash pinned. Of the 296 prior exported inputs,
-only `packages/provider-supabase/schema.ts` and
-`tests/providers/supabase-contracts.test.ts` may differ; the other 294 must match
-exactly. The migration and lineage remain unchanged. All 90 cases run freshly;
-no prior passed case is carried and no diagnostic exit is accepted as a test pass.
+QA4 ([receipt](../results/2026/11-07/supabase-provider-attempt-4.json), source
+`63a74b393063a5addfc412f14a75474ffcfa5372`, 317,657 bytes, SHA-256
+`358576029ce7ec2a29dfd082e5ec2cea6ecae341a21635da4ff7b593ca08d035`)
+passed 40 cases, failed two fixture expectations and left 48 cases unrun. The
+owner/untrusted-admin grant case passed; the overall verdict remains false.
+
+QA5 changes only those fixture expectations: check exact portable backup parity
+before a legacy read that updates its timestamp, and assert the database's actual
+42501 SET ROLE refusal rather than assume the administrator can enter that role.
+Privileged provider rejection, every parity/data/conflict assertion and explicit
+transaction rollback remain. No SET grant or policy relaxation is introduced.
+
+All four prior receipts are byte/hash pinned. Of QA4's 296 exported inputs, only
+`tests/providers/supabase-contracts.test.ts` may differ; the other 295 must match
+exactly, including schema `3e516771…` and the migration/lineage. The historical QA2
+comparison also retains its explicit schema/test change allowance for the already
+reviewed owner correction. All 90 cases run freshly; no prior passed case is
+carried and no diagnostic exit is accepted as a test pass.
 
 One public Ubuntu 24.04 job uses Node 24.21.0 and the checksum-pinned Supabase CLI
 3.0.0 archive already verified by the source probe. All app source exports,
@@ -49,6 +61,8 @@ cases from eleven explicit files: 28 affected local PostgreSQL regressions on a
 separate PostgreSQL 17.6 service, 14 Supabase provider contracts, eight native
 Storage/Auth contracts and 40 focused storage/attachment/password/URL/namespace
 unit cases, including four new `legacy-upload-ownership.test.ts` cases.
+Execution order is local 28, focused unit 40, Supabase 14, then native Storage 8,
+so an integration failure cannot hide the independent unit outcomes again.
 Source-derived literal identities, ordinary per-file Vitest JSON, CLI zero exit,
 no skips/todos/retries/duplicates and exact counts are required. Failed JSON is
 retained before the success gate. No historical full suite, build or browser runs.

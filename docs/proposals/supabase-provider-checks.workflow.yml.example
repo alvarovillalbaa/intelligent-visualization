@@ -1,12 +1,12 @@
 # Inactive until reviewed source is pinned and the exact QA branch is created.
-name: Temporary Supabase provider contracts 4
+name: Temporary Supabase provider contracts 5
 on:
   create:
 permissions:
   contents: read
 jobs:
   supabase-contracts:
-    if: github.repository == 'alvarovillalbaa/intelligent-visualization' && github.event.repository.private == false && github.event.ref_type == 'branch' && github.event.ref == 'qa/supabase-provider-20261107-4' && github.ref == 'refs/heads/qa/supabase-provider-20261107-4'
+    if: github.repository == 'alvarovillalbaa/intelligent-visualization' && github.event.repository.private == false && github.event.ref_type == 'branch' && github.event.ref == 'qa/supabase-provider-20261107-5' && github.ref == 'refs/heads/qa/supabase-provider-20261107-5'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     services:

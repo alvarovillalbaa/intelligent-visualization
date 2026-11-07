@@ -21,7 +21,7 @@ import traceback
 from urllib.parse import urlsplit
 
 repo, source = Path.cwd(), os.environ["SOURCE_COMMIT"]
-BRANCH = "qa/supabase-provider-20261107-4"
+BRANCH = "qa/supabase-provider-20261107-5"
 LOCK_SHA = "b18dd278e6eded698e269d2e8400b0359083a8ba34de4721227a70b5e27c0d59"
 ASSET = "supabase_3.0.0_linux_amd64.tar.gz"
 ARCHIVE_SHA = "eeb61edcd59a4735fcb5e58596574f25d03d420efca779f43ddb307e1cc5c754"
@@ -34,10 +34,10 @@ PG_ADMIN = "postgresql://iv_ci:authored-ci-only@127.0.0.1:54431/postgres"
 TESTS = {
     "tests/providers/local-provider.test.ts": 3, "tests/providers/postgres-invariants.test.ts": 11,
     "tests/providers/legacy-postgres.test.ts": 8, "tests/providers/portable-postgres.test.ts": 6,
-    "tests/providers/supabase-contracts.test.ts": 14, "tests/integration/supabase-storage.test.ts": 8,
     "tests/unit/supabase-storage.test.ts": 14, "tests/unit/legacy-public-assets.test.ts": 4,
     "tests/unit/public-deck-access.test.ts": 6, "tests/unit/supabase-database.test.ts": 12,
     "tests/unit/legacy-upload-ownership.test.ts": 4,
+    "tests/providers/supabase-contracts.test.ts": 14, "tests/integration/supabase-storage.test.ts": 8,
 }
 assert re.fullmatch(r"[0-9a-f]{40}", source)
 assert os.environ.get("CI") == os.environ.get("IV_SUPABASE_PUBLIC_REPOSITORY") == "true"
@@ -82,7 +82,7 @@ def vector():
 
 before = vector()
 report = {"schemaVersion": 1, "sourceCommit": source, "startedAt": time.time(), "commands": [], "sourceFiles": before, "sourceGuards": [],
-    "scope": "90 fresh cases in eleven explicit files: 28 affected local PostgreSQL regressions,14 Supabase provider,8 native Storage/Auth,40 focused unit cases. Actual disposable local services, not hosted TLS/pooler/Vercel/native application Auth acceptance. No browser/build/model/hosted account/settings calls; selection remains disabled.",
+    "scope": "90 fresh cases in eleven explicit files, in order: 28 affected local PostgreSQL regressions,40 focused unit cases,14 Supabase provider,8 native Storage/Auth. Actual disposable local services, not hosted TLS/pooler/Vercel/native application Auth acceptance. No browser/build/model/hosted account/settings calls; selection remains disabled.",
     "capturePolicy": "Original streams exist only in controller memory. Original observed byte counts/SHA-256 are retained, but all retained text/JSON/errors are retrospectively sanitized using parsed disposable status keys and credential patterns. Sanitized gzip captures are not original independently replayable streams. No raw status/config/dotenv artifact is retained."}
 prior_path = "docs/results/2026/11-07/supabase-provider-attempt-1.json"
 prior_bytes = (repo / prior_path).read_bytes()
@@ -113,9 +113,23 @@ report["priorAttempt2"] = {"receipt": second_path, "bytes": len(second_bytes), "
     "passed": False, "passedCases": 28, "failedCases": 13, "unrunCases": 48, "carriedCases": 0}
 report["priorDiagnostic3"] = {"receipt": third_path, "bytes": len(third_bytes), "sha256": sha(third_bytes), "sourceCommit": third["sourceCommit"],
     "diagnosticComplete": True, "passed": False, "providerAccepted": False, "testsExecuted": 0, "carriedCases": 0}
-report["protectedPriorRuntime"] = {"inputs": len(protected), "unchangedInputs": len(protected) - len(allowed_changes),
+report["protectedPriorRuntime2"] = {"inputs": len(protected), "unchangedInputs": len(protected) - len(allowed_changes),
     "allowedChangedInputs": {name: {"before": protected[name], "current": before[name]} for name in sorted(allowed_changes)},
     "reason": "Observed owner ADMIN-only grant correction and one actual untrusted ADMIN-only grant case. All 90 cases execute freshly; no cases are carried."}
+fourth_path = "docs/results/2026/11-07/supabase-provider-attempt-4.json"
+fourth_bytes = (repo / fourth_path).read_bytes()
+assert len(fourth_bytes) == 317657 and sha(fourth_bytes) == "358576029ce7ec2a29dfd082e5ec2cea6ecae341a21635da4ff7b593ca08d035"
+fourth = json.loads(fourth_bytes)
+assert fourth["passed"] is False and fourth["sourceCommit"] == "63a74b393063a5addfc412f14a75474ffcfa5372"
+latest_protected = fourth["sourceExport"]["inputs"]
+latest_allowed = {"tests/providers/supabase-contracts.test.ts"}
+assert len(latest_protected) == 296 and latest_allowed <= latest_protected.keys()
+assert all(before.get(name) == row for name, row in latest_protected.items() if name not in latest_allowed), "Unapproved QA4 runtime input changed"
+report["priorAttempt4"] = {"receipt": fourth_path, "bytes": len(fourth_bytes), "sha256": sha(fourth_bytes), "sourceCommit": fourth["sourceCommit"],
+    "passed": False, "passedCases": 40, "failedCases": 2, "unrunCases": 48, "carriedCases": 0}
+report["protectedPriorRuntime"] = {"inputs": len(latest_protected), "unchangedInputs": len(latest_protected) - len(latest_allowed),
+    "allowedChangedInputs": {name: {"before": latest_protected[name], "current": before[name]} for name in sorted(latest_allowed)},
+    "reason": "Two fixture expectation corrections only. Product code, schema and migration unchanged. Full fresh90; local28 then focusedunit40 then Supabase14 then nativeStorage8; no carried cases."}
 
 
 def guard(label):
