@@ -109,3 +109,41 @@ old prepared/final replay fences, private reads/list pagination, retained bytes,
 real export/import without receipts, public cache/refusal behavior, dirty edits
 and desktop/narrow confirmation/recovery. No pass counts or execution are claimed.
 Use owned disposable CI fixtures only; no local storage-heavy operation is implied.
+
+## Compatibility audit appendix — 7 November 2026
+
+Removal remains **NEXT and unimplemented**, held behind the current Supabase
+application gate. Recommend a separate versioned v2 migration with terminal DB
+fences, preserving immutable v1, **plus proved retirement of old processes and
+tools**. Simultaneous old-reader support is not claimed.
+
+The fence should reject changes/deletion of an already removed parent, preserve
+its identity and retained graph, and serialize child mutations against removal.
+[Current child and generic command lanes](../../packages/provider-postgres/adapter.ts)
+need parent-first locking; retargeting must check both old and new parents in a
+consistent order. A plain parent status read leaves a race. Exact child coverage,
+lock ordering, restore exceptions and trigger definitions remain design/verification
+work. PostgreSQL executes triggers in the writing transaction, so trigger errors
+roll back its effects: [PostgreSQL 17 trigger behavior](https://www.postgresql.org/docs/17/trigger-definition.html).
+
+Triggers alone cannot fence reads: generic `withIdempotency` returns cached full
+records before checking the target. [Hosted grants/policies](../../supabase/migrations/20261107002755_intelligent_visualization_hosted.sql)
+currently permit runtime reads of every row. Both [local initialization](../../packages/provider-local/database.ts)
+and [hosted validation](../../packages/provider-supabase/schema.ts) cache successful
+lineage checks. New lineage therefore rejects newly initialized old binaries,
+but does not evict existing pools. Drain old app instances, jobs and portable
+snapshots before enabling removal. Local owner-level DDL remains a trusted
+operator boundary.
+
+[Portable v1](../../packages/provider-postgres/portable.ts) accepts arbitrary text
+statuses and omits receipts/lineage. V2 needs explicit lifecycle compatibility.
+For newly absent tombstones only, a transactional importer could stage the parent
+as nonterminal, restore its retained children, then terminalize before commit;
+never temporarily reopen an existing tombstone. Compare identical existing rows
+before attempted inserts. This restore design still requires validation.
+
+Preservation covers removals present in the selected backup or current target.
+Restoring a pre-removal backup into an empty target loses later tombstones absent
+from both: v2 format alone cannot prevent that resurrection. Stronger monotonic
+recovery requires independently retained latest tombstone/revocation history and
+explicit reconciliation. No such recovery mechanism or new authority is implemented.
