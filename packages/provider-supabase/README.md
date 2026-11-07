@@ -5,9 +5,12 @@ private Storage REST adapter. Provider-neutral SQL and transactions live in
 `../provider-postgres`; the local adapter keeps its loopback-only connection and
 original migration lineage. Application code uses provider contracts.
 
-Status: implementation candidate, **not accepted hosted support**. Application
-selection still fails closed pending the shared provider and disposable-service
-checks. No project, production configuration or database has been changed.
+Status: the [90-case disposable-service packet](../../docs/results/2026/11-07/supabase-provider-attempt-8.json)
+passed at its recorded source. Real application selection is now implemented;
+its separate TLS/browser checks remain pending. This is **not accepted hosted
+support**. No hosted project, production configuration or production database
+has been changed. Concurrent Supabase initialization is shared, only healthy
+instances are cached, and a failed persistence candidate closes its owned pool.
 
 The server uses portable application authentication and a dedicated `iv_runtime`
 database login. It does not implement Supabase Auth or browser tenant policies.
@@ -17,7 +20,7 @@ Requests validate an installed schema and never run migration DDL or seed users.
 
 The migration filename in `supabase/migrations` came from the actual pinned CLI
 probe documented in [its receipt](../../docs/results/2026/11-07/supabase-cli-source-probe.md).
-Its populated SQL is a separate, unexecuted candidate. Provision credentials
+Its populated SQL ran only in owned disposable stacks. Provision hosted credentials
 outside source control, apply migrations under an explicit migration owner, then
 enable LOGIN and set a private password on the newly created runtime role.
 Existing schemas or runtime roles are refused without adopting or changing them.

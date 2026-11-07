@@ -3,13 +3,15 @@
 Last updated: 2026-11-07
 
 `PERSISTENCE_PROVIDER=local` selects standard PostgreSQL using the explicit
-loopback `LOCAL_DATABASE_URL`. Only local PostgreSQL is implemented; the reserved
-`supabase` boundary fails closed pending an adapter and shared contract checks.
+loopback `LOCAL_DATABASE_URL`. `supabase` selects the private-schema adapter using
+the strict, verified-TLS `SUPABASE_DATABASE_URL`. The later
+[90-case disposable packet](results/2026/11-07/supabase-provider-attempt-8.json)
+passed; real application TLS/browser checks and hosted acceptance remain pending.
 Other database provider selectors, SDKs and deployment stubs are removed.
 
 `packages/backend-contracts/provider.ts` owns canonical persistence commands.
 Provider SDKs belong inside provider packages or migration tools/tests. Queries
-are parameterized and qualified under `intelligent_visualization_local`; commands
+are parameterized and qualified under the selected trusted private schema; commands
 use transactions, idempotency/resource locks and expected-revision checks.
 
 The legacy slide repository uses the same PostgreSQL connection/schema boundary
@@ -84,8 +86,10 @@ Slides rollback remains. Existing TEXT status columns and portable v1 carry the
 eligibility change without a schema migration. See [the Unpublish receipt](results/2026/11-07/workspace-unpublications-checks.md).
 
 Storage selection remains independent. `auto` selects local filesystem for local
-persistence and the reserved Supabase storage boundary for Supabase. Explicit
-`vercel-blob` and `supabase` storage are recognized but unimplemented and fail
-closed. The local filesystem implements exclusive immutable creation, and the
-local publication service verifies durable readback. This does not establish
-hosted storage/access or a production cutover. See [the migration](postgres-migration.md).
+persistence and private Supabase Storage for Supabase. Explicit `vercel-blob`
+remains unimplemented and fails closed. Both implemented adapters use exclusive
+immutable creation and verified durable readback. Supabase requires an existing
+private bucket and server-only credentials; it does not expose public object
+URLs. Healthy-only factory caching and shared first initialization do not replace
+the pending application/hosted checks or authorize a production cutover. See
+[Supabase status](supabase.md) and [the migration](postgres-migration.md).

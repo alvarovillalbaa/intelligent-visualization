@@ -5,9 +5,11 @@ Supabase support is planned as a provider-contract adapter over Supabase Postgre
 Current status:
 
 - `packages/provider-supabase` boundary exists.
-- Adapter, migration, private Storage and disposable-service checks are authored
-  as an implementation candidate. Provider and hosted acceptance remain pending;
-  application selection still fails closed.
+- The [fresh 90-case provider packet](results/2026/11-07/supabase-provider-attempt-8.json)
+  passed, including local regressions, Supabase SQL and actual private Storage/Auth.
+- Real database/private Storage selection is implemented with healthy-only
+  caching and failed persistence initialization cleanup. Application TLS/browser
+  verification and actual hosted acceptance remain pending.
 
 Portable auth remains the default for Supabase persistence.
 
@@ -20,6 +22,7 @@ rejected. Browser schema/RLS and application authorization requirements remain.
 
 The [actual catalog diagnostic](results/2026/11-07/supabase-provider-diagnostic-3.md)
 observed the owner grant while the original validator refused it. The narrow
-correction and a real untrusted admin-only grant check are candidates for a new
-90-case run; no migration or lineage is changed. Diagnostic completion is not
-provider acceptance, hosted support or zero global database access.
+correction and a real untrusted admin-only grant check passed in the later
+90-case run; no migration or lineage changed. That diagnostic remains observation
+only. Neither the disposable packet nor diagnostics establish hosted support or
+zero global database access. Earlier failed receipts remain failed.
