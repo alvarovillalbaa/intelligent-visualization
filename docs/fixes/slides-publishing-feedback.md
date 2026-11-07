@@ -1,6 +1,6 @@
 # Slides publishing feedback
 
-Source change, 7 November 2026; runtime verification pending.
+Source change, 7 November 2026; partial runtime observations, full acceptance pending.
 
 The [editor](../../components/slides/deck-editor-client.tsx) previously left its
 manual-edits message visible after publishing. It now announces progress, then
@@ -15,6 +15,9 @@ Inputs remain editable during publication; success names that submitted version
 without claiming later local edits were published.
 
 TSX syntax, whitespace and independent source review passed. No local runtime
-check ran. Application attempt 7 tests the earlier `e0cf4b9` source and cannot
-verify this feedback change. This is separate from the unresolved response-abort
-investigation and establishes no hosted or production acceptance.
+check ran. Application attempt 7 excluded this change. Later
+[control 8](../results/2026/11-07/supabase-application-attempt-8.md), at `3635084`,
+observed the returned-label success message in one ordinary completed publication
+and three post-cancellation diagnostics. All four complete journeys remained
+failed. The uncertain-rejection branch has source review only. These observations
+do not fix the response-abort issue or establish hosted/production acceptance.
