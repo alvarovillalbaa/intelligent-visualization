@@ -2,6 +2,8 @@ import { nanoid } from "nanoid"
 
 import { buildInitialDeckAssets, buildStoredInputAssets } from "@/lib/deck-assets"
 import { buildStandaloneDeckHtml, remixTheme, themeLibrary } from "@/lib/deck-runtime"
+import { getBaseUrl } from "@/lib/env"
+import { hasUniqueLegacyTeamNamespace, isOwnedLegacyUploadKey } from "@/lib/legacy-file-access"
 import { snapshotLegacyPublicAssets } from "@/lib/legacy-public-assets"
 import { writePublishedArtifact, writeStoredText } from "@/lib/storage"
 import type {
@@ -307,6 +309,13 @@ export function createLegacyOperations(state: RepositoryState) {
       const now = Date.now()
       const teamId = nanoid(12)
       const workspaceId = nanoid(12)
+      const baseSlug = slugify(input.teamName)
+      const existingNamespaces = new Set(state.teams.map((team) => slugify(team.slug)))
+      let teamSlug = baseSlug
+      for (let suffix = 2; existingNamespaces.has(slugify(teamSlug)); suffix += 1) {
+        const ending = `-${suffix}`
+        teamSlug = baseSlug.slice(0, 64 - ending.length).replace(/-+$/g, "") + ending
+      }
       const user: UserRecord = {
         id: nanoid(12),
         name: input.name,
@@ -320,7 +329,7 @@ export function createLegacyOperations(state: RepositoryState) {
 
       const team: TeamRecord = {
         id: teamId,
-        slug: slugify(input.teamName),
+        slug: teamSlug,
         name: input.teamName,
         brand: {
           companyName: input.teamName,
@@ -655,7 +664,10 @@ export function createLegacyOperations(state: RepositoryState) {
       }
 
       const version = await createVersionFromSource(deck.publicId, source, label)
-      version.publicAssets = snapshotLegacyPublicAssets(deck, team.slug)
+      const publicAssets = snapshotLegacyPublicAssets(deck, team.slug)
+      version.publicAssets = hasUniqueLegacyTeamNamespace(state, team)
+        ? publicAssets
+        : publicAssets.filter((asset) => !asset.storageKey)
       if (passwordHash) {
         version.passwordHash = passwordHash
       }
@@ -728,8 +740,25 @@ export function createLegacyOperations(state: RepositoryState) {
     addAsset(userId: string, deckId: string, asset: Omit<AssetRecord, "id">) {
       const user = findUserById(userId)
       const deck = findDeck(deckId)
-      if (!user || !deck || deck.teamId !== user.teamId) {
+      const team = deck ? findTeam(deck.teamId) : null
+      if (!user || !deck || !team || deck.teamId !== user.teamId) {
         throw new Error("Deck not found")
+      }
+
+      if (asset.storageKey !== undefined) {
+        if (typeof asset.storageKey !== "string" || asset.url !== `/files/${asset.storageKey}`
+          || !hasUniqueLegacyTeamNamespace(state, team)
+          || !isOwnedLegacyUploadKey(asset.storageKey, team.slug, deck.id, deck.publicId, true)) {
+          throw new Error("Asset does not belong to this team and deck")
+        }
+      } else {
+        const base = new URL(getBaseUrl())
+        const url = new URL(asset.url, base)
+        let pathname: string
+        try { pathname = decodeURIComponent(url.pathname) } catch { throw new Error("Invalid asset URL") }
+        if (url.origin === base.origin && (pathname === "/files" || pathname.startsWith("/files/"))) {
+          throw new Error("Internal files require owned storage metadata")
+        }
       }
 
       deck.assets.unshift({
@@ -819,10 +848,11 @@ export function createLegacyOperations(state: RepositoryState) {
     },
 
     getPublicDeck(teamSlug: string, deckSlug: string): PublicDeckView | null {
-      const team = state.teams.find((item) => item.slug === teamSlug)
-      if (!team) {
+      const teams = state.teams.filter((item) => item.slug === teamSlug)
+      if (teams.length !== 1) {
         return null
       }
+      const team = teams[0]
 
       const deck = state.decks.find((item) => item.teamId === team.id && item.slug === deckSlug)
       if (!deck || deck.status !== "published" || !deck.publishedVersionId) {

@@ -1,6 +1,13 @@
-import type { AssetRecord, RepositoryState } from "@/lib/types"
+import type { AssetRecord, RepositoryState, TeamRecord } from "@/lib/types"
 import { slugify } from "@/lib/utils"
 import { normalizeStorageKey } from "@/packages/storage/provider"
+
+export function hasUniqueLegacyTeamNamespace(state: Pick<RepositoryState, "teams">, team: Pick<TeamRecord, "id" | "slug">) {
+  if (typeof team.slug !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(team.slug) || !/[A-Za-z0-9]/.test(team.slug)) return false
+  const namespace = slugify(team.slug)
+  const owners = state.teams.filter((row) => typeof row.slug === "string" && slugify(row.slug) === namespace)
+  return owners.length === 1 && owners[0].id === team.id
+}
 
 export function isOwnedLegacyUploadKey(key: string, teamSlug: string, deckId: string, publicId: string, allowSources = false) {
   try { if (key.length > 1024 || normalizeStorageKey(key) !== key) return false } catch { return false }
@@ -29,7 +36,8 @@ export function resolveLegacyFileAccess(state: RepositoryState, key: string, tok
   const user = session ? state.users.find((row) => row.id === session.userId) : null
   for (const deck of state.decks) {
     const team = state.teams.find((row) => row.id === deck.teamId)
-    if (!team || !state.workspaces.some((row) => row.id === deck.workspaceId && row.teamId === team.id)) continue
+    if (!team || !hasUniqueLegacyTeamNamespace(state, team)
+      || !state.workspaces.some((row) => row.id === deck.workspaceId && row.teamId === team.id)) continue
     if (user?.teamId === team.id && team.members.some((member) => member.userId === user.id)
       && isOwnedLegacyUploadKey(key, team.slug, deck.id, deck.publicId, true)
       && deck.assets.some((asset) => registered(asset, key))) return "private"
