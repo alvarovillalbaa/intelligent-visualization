@@ -1,6 +1,6 @@
 # Verify the real Supabase application factories
 
-Prepared 7 November 2026. Application acceptance remains pending; the eighth
+Prepared 7 November 2026. Application acceptance remains pending; the ninth
 attempt is an inactive source packet. The prerequisite
 [90-case provider packet](../results/2026/11-07/supabase-provider-attempt-8.md)
 passed at `4da1844f22a332aad8bd827a026c3a806b4a308f`, with independent
@@ -225,6 +225,80 @@ controller function ASTs, four identities and existing time/closure bounds remai
 unchanged. No cases are carried, no runtime has occurred for this candidate, and
 no pass or causal result is guaranteed.
 
+The [eighth application attempt](../results/2026/11-07/supabase-application-attempt-8.json)
+remains false: JSON 706,477 bytes, SHA-256
+`17de177b639348e28a213a13bc76f245e3675aa186c1b3103ad5a1efb4b8c2f4`, source
+`3635084b0b35d96d97470e2f3c103e106e583534`. All four journeys failed. The
+handler-bypass control did not remove actual CDP cancellation; three post-failure
+observations included direct awaited-label acknowledgement plus matching fresh
+UI/SQL/Storage evidence. No original request failure or journey is accepted, and
+the cause remains unproven.
+
+Attempt nine on `qa/supabase-application-20261107-9` is an explicit **production
+runtime control**. Build the owned export with the pinned Next 16.1.6 webpack
+builder, then run its generated `.next/standalone/server.js`, bound only to owned
+`127.0.0.1:3100`, at configured origin `http://localhost:3100`. Record loopback-only
+localhost resolution, successful connection fallback to that listener and actual
+Node HTTP readiness through localhost. Do not disable TLS checks, change Secure
+cookies, inject cookies, patch Next or fall back to development mode. Playwright
+1.57's [cookie store](https://github.com/microsoft/playwright/blob/v1.57.0/packages/playwright-core/src/server/cookieStore.ts)
+and [cookie filtering](https://github.com/microsoft/playwright/blob/v1.57.0/packages/playwright-core/src/server/network.ts)
+explicitly exempt `localhost`/`.localhost` from HTTPS-only Secure-cookie matching,
+but not numeric loopback. Context API requests use that filtering. The bundled
+Chromium 143.0.7499.4 also treats localhost as trustworthy, with a
+[Secure-cookie localhost test](https://github.com/chromium/chromium/blob/143.0.7499.4/net/cookies/cookie_store_unittest.h).
+Actual form sign-in, Secure-cookie metadata without values, authenticated API
+reads and fresh-context refusals remain required; source feasibility is not proof
+of their execution. App HTTP is not hosted HTTPS acceptance. Existing PostgreSQL
+and private Storage CA/SAN/login enforcement stays unchanged.
+
+Generate one 32-byte random `VISUALIZATION_SIGNING_SECRET` in controller memory,
+register its exact value for redaction before the build, and share it with build,
+server and fixture helpers. Never persist/export the value or generated secret
+manifests. Set `NODE_ENV=production` after dependency installation, preserving dev
+tool installation. Following the pinned [standalone instructions](https://github.com/vercel/next.js/blob/v16.1.6/docs/01-app/03-api-reference/05-config/01-next-config-js/output.mdx),
+copy owned `public` and generated `.next/static` into the standalone locations,
+verify copied bytes, and record only bounded build identity/hash metadata.
+
+Preserve focused lint, including both corrected page files. Replace the duplicate
+focused TypeScript invocation with the real unignored production build over the
+unpruned exported root tsconfig: its `**/*.ts`/`**/*.tsx` includes every focused
+entry, and the existing vendor exclusion is unchanged. Require successful build
+exit and generated configuration `typescript.ignoreBuildErrors=false`. Historical
+test suites are absent from this export; no old suite is rerun. Build time is
+bounded by the work deadline while reserving the full unchanged 720-second browser
+window plus readiness/audit margin. If it cannot fit, fail before browsers; never
+shrink or retry the four identities. Require build worker/process closure and zero
+runtime clients before the two Next-only SSL-attribution windows.
+
+Production may prefetch visible first-party links. Correct the dead links rather
+than disabling prefetch or admitting preview 404s: the workspace exposes Public
+only for a verified current published version; the server editor derives eligible
+unsigned published/nonpassword artifact URLs, rendered as ordinary anchors, and
+offers a signed current field only for an actual current published version. No
+new route, signed capability or authorization rule is added. Admit only the finite
+existing SiteHeader home/auth paths, owned workspace/editor/saved paths and actual
+published public destinations with reviewed GET/RSC query grammar. Block every
+WebSocket in production and retain unknown/foreign/model URL blocking. Initial
+preview version IDs are safe retained-history proof metadata, never URL admission.
+
+Dev request-ID headers are absent in production: passive correlation uses actual
+body SHA/bytes plus method/path/action and unique document/ordinal matches, without
+header injection; missing or ambiguous matches remain unproven. Preserve all
+original response completion, request failure, UI, SQL/Storage and cleanup gates.
+Changed existing controller functions are `bootstrap` (lint/stronger build type
+gate), `application_main` (production launch/readiness/budget) and
+`next_tls_window` (configured origin); only `build_production` is added. Other
+safety/cleanup functions remain identical to App8.
+
+The exact reviewed runtime exceptions also include the two corrected page paths
+and client, helper origin/initial-version DTO, config origin and browser spec.
+App1–3 preserve 278/286 inputs, App4–5 preserve 279/286, App6–8 preserve 280/286;
+earlier README-only exceptions remain separately labelled. QA8 preserves 290/297
+with its exact two additional page exceptions. All eight false application receipts
+and separate 90-case provider acceptance remain pinned. This candidate is
+source-only, with no local build, runtime, activation or acceptance claim.
+
 ## Source boundary
 
 [Persistence selection](../../lib/persistence/factory.ts) and
@@ -232,8 +306,9 @@ no pass or causal result is guaranteed.
 adapters. The local branches remain unchanged; Supabase initialization is shared,
 only healthy instances are cached, and a failed persistence candidate closes its
 owned pool. Among the prerequisite's 297 exported inputs, only these two factory
-TypeScript files, the exact Slides editor client and ServerActions file, and the
-explicitly reviewed provider README may differ. The other 292 inputs remain exact.
+TypeScript files, the exact Slides editor client and ServerActions file, the two
+reviewed workspace/editor page files, and the explicitly reviewed provider README
+may differ. The other 290 inputs remain exact.
 The report separates factory code, application-client code and documentation,
 with accepted/current metadata for each exact path. Exercise the new branches
 through ordinary environment selection in a fresh Next process. Neither

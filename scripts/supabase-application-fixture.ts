@@ -36,7 +36,7 @@ type FixtureCase = {
   email: string; password: string; userId: string; teamId: string; teamSlug: string;
   workspaceId: string; workspaceSlug: string; workspaceName: string;
   homeWorkspaceId: string; homeWorkspaceSlug: string; homeWorkspaceName: string; homePath: string;
-  slides: { id: string; publicId: string; title: string; publicPath: string; editorPath: string; source: Proof & { url: string } };
+  slides: { id: string; publicId: string; title: string; publicPath: string; editorPath: string; initialVersionIds: string[]; source: Proof & { url: string } };
   victim: Proof & { url: string; userId: string; teamId: string; teamSlug: string; workspaceId: string; deckId: string };
 }
 type Fixtures = { schemaVersion: 1; sourceCommit: string; appOrigin: string; cases: Record<CaseKey, FixtureCase> }
@@ -64,7 +64,7 @@ async function guardRoot() {
   requireThat(process.env.CI === "true" && process.env.IV_SUPABASE_APPLICATION_CHECKS === "disposable")
   requireThat(process.platform === "linux" && typeof process.getuid === "function" && /^[0-9a-f]{40}$/.test(sourceCommit))
   requireThat(path.isAbsolute(root) && path.dirname(root) === "/tmp" && /^ivsa-[A-Za-z0-9_-]+$/.test(path.basename(root)))
-  requireThat(/^[0-9a-f]{32,128}$/.test(nonce) && appOrigin === "http://127.0.0.1:3100")
+  requireThat(/^[0-9a-f]{32,128}$/.test(nonce) && appOrigin === "http://localhost:3100")
   const info = await lstat(root)
   requireThat(info.isDirectory() && !info.isSymbolicLink() && info.uid === process.getuid() && (info.mode & 0o077) === 0 && await realpath(root) === root)
   if (rootIdentity) requireThat(info.dev === rootIdentity.dev && info.ino === rootIdentity.ino && info.uid === rootIdentity.uid)
@@ -134,6 +134,9 @@ function fixtureCase(value: FixtureCase, key: CaseKey) {
     : value.workspaceId === value.homeWorkspaceId && value.workspaceSlug === value.homeWorkspaceSlug && value.workspaceName === value.homeWorkspaceName)
   requireThat(value.slides.editorPath === `/app/workspaces/${value.workspaceSlug}/decks/${value.slides.id}`)
   requireThat(value.slides.publicPath.startsWith(`/d/${value.teamSlug}/`) && !/[?#]/.test(value.slides.publicPath))
+  requireThat(Array.isArray(value.slides.initialVersionIds) && value.slides.initialVersionIds.length > 0 && value.slides.initialVersionIds.length <= 16
+    && value.slides.initialVersionIds.every((id) => typeof id === "string" && ID.test(id))
+    && new Set(value.slides.initialVersionIds).size === value.slides.initialVersionIds.length)
   for (const proof of [value.slides.source, value.victim]) {
     checkedKey(proof.key)
     requireThat(proof.url === `/files/${proof.key}` && HASH.test(proof.sha256) && Number.isSafeInteger(proof.bytes) && proof.bytes > 0 && proof.bytes <= 1024 * 1024)
@@ -158,6 +161,7 @@ function scopedDeck(state: RepositoryState, current: FixtureCase) {
     && homeWorkspace.slug === current.homeWorkspaceSlug && homeWorkspace.name === current.homeWorkspaceName
     && workspace?.teamId === team.id && workspace.slug === current.workspaceSlug && workspace.name === current.workspaceName
     && deck?.teamId === team.id && deck.workspaceId === workspace.id && deck.publicId === current.slides.publicId)
+  requireThat(current.slides.initialVersionIds.every((id) => deck.versions.some((version) => version.id === id)), "INITIAL_VERSIONS_NOT_RETAINED")
   return { user, team, homeWorkspace, workspace, deck }
 }
 async function proof(storage: StorageAdapter, key: string, maximum = MAX_OBJECT): Promise<Proof> {
@@ -261,6 +265,7 @@ async function seed() {
       slides: { id: actor.deck.id, publicId: actor.deck.publicId, title: actor.deck.title,
         publicPath: `/d/${actor.dashboard.team.slug}/${actor.deck.slug}`,
         editorPath: `/app/workspaces/${actor.workspace.slug}/decks/${actor.deck.id}`,
+        initialVersionIds: actor.deck.versions.map((version) => version.id),
         source: { key: actor.original.storageKey!, url: actor.original.url, bytes: original.bytes, sha256: original.sha256 } },
       victim: { userId: victim.user.id, teamId: victim.user.teamId, teamSlug: victim.dashboard.team.slug, workspaceId: victim.dashboard.workspace.id, deckId: victim.deck.id,
         key: victimKey, url: `/files/${victimKey}`, bytes: victimObject.bytes, sha256: victimObject.sha256 },

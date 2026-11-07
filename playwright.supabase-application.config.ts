@@ -6,7 +6,7 @@ const root = process.env.IV_SUPABASE_APPLICATION_ROOT
 const fixtures = process.env.IV_SUPABASE_APP_FIXTURES
 const report = process.env.IV_SUPABASE_BROWSER_REPORT
 const output = process.env.IV_SUPABASE_BROWSER_OUTPUT
-if (origin !== "http://127.0.0.1:3100" || !root || !fixtures || !report || !output
+if (origin !== "http://localhost:3100" || !root || !fixtures || !report || !output
   || [root, fixtures, report, output].some((value) => !path.isAbsolute(value))
   || [fixtures, report, output].some((value) => !path.relative(root, value) || path.relative(root, value).startsWith("..") || path.isAbsolute(path.relative(root, value)))
   || new Set([fixtures, report, output]).size !== 3) {
