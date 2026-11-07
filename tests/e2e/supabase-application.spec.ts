@@ -12,13 +12,21 @@ const HASH = /^[0-9a-f]{64}$/, UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9
 const MAX_HTML = 8 * 1024 * 1024
 type Kind = "course" | "report"
 type ObjectProof = { key: string; bytes: number; sha256: string }
-type Fixture = { email: string; password: string; workspaceSlug: string; workspaceName: string;
+type Fixture = { email: string; password: string; workspaceId: string; workspaceSlug: string; workspaceName: string;
+  homeWorkspaceId: string; homeWorkspaceSlug: string; homeWorkspaceName: string; homePath: string;
   slides: { id: string; publicId: string; title: string; editorPath: string; publicPath: string; source: ObjectProof & { url: string } };
   victim: ObjectProof & { url: string } }
 type Publication = { publicId: string; versionId: string; sourceRevision: number; documentHash: string; artifactHash: string; title: string; publicUrl: string; versionUrl: string }
 type CloneRead = { ordinal: number; path: string; method: string; requestId: string | null; startedAt: number; status: number | null; responseAt: number | null; eofAt: number | null; eof: boolean; bytes: number; sha256: string | null; body: string | null; cacheControl: string; contentType: string; error: string | null; signal: { present: boolean; initialAborted: boolean | null; abortedAtEOF: boolean | null; finalAborted: boolean | null } }
 type CloneState = { documentId: string; reads: CloneRead[]; jobs: Set<Promise<void>>; failures: string[]; stops: Array<() => void> }
 type NodeRead = { ordinal: number; path: string; method: string; stage: string; status: number | null; contentType: string; redirect: string | null; finished: boolean; failed: string | null }
+type SlidesPublishRead = {
+  index: number; stage: string; phase: string; waitLimitMs: number; events: Array<{ phase: string; at: number }>;
+  request: null | { method: string; path: string; startedAt: number; actionSha256: string; payloadBytes: number; deckId: string; labelSha256: string; sourceSha256: string };
+  response: null | { at: number; status: number; contentType: string };
+  finishedAt: number | null; failedAt: number | null; failure: string | null; finishedResolvedAt: number | null;
+  listenersRemoved: boolean; timerCleared: boolean;
+}
 
 function sha(body: Buffer | string) { return createHash("sha256").update(body).digest("hex") }
 function clean(value: unknown, secrets: string[], maximum = 384) {
@@ -58,6 +66,17 @@ async function ownedFixture(kind: Kind, profile: string): Promise<Fixture> {
   expect(fixture).toBeTruthy()
   expect(fixture.email).toMatch(/@example\.test$/); expect(fixture.password.length).toBeGreaterThanOrEqual(12)
   expect(fixture.workspaceSlug).toMatch(/^[a-z0-9-]{1,64}$/)
+  expect(fixture.homeWorkspaceSlug).toMatch(/^[a-z0-9-]{1,64}$/)
+  expect(local(fixture.homePath)).toBe(`/app/workspaces/${fixture.homeWorkspaceSlug}`)
+  expect(fixture.homeWorkspaceName.length).toBeGreaterThan(0); expect(fixture.homeWorkspaceName.length).toBeLessThanOrEqual(160)
+  for (const value of [fixture.workspaceId, fixture.homeWorkspaceId]) expect(value).toMatch(/^[A-Za-z0-9_-]{1,128}$/)
+  if (kind === "report" && profile === "desktop-chromium") {
+    expect(fixture.workspaceId).not.toBe(fixture.homeWorkspaceId)
+    expect(fixture.homeWorkspaceSlug).toBe("hq"); expect(fixture.workspaceSlug).toBe("secondary-reports")
+    expect(fixture.workspaceName).toBe("Secondary reports")
+  } else {
+    expect(fixture.workspaceId).toBe(fixture.homeWorkspaceId); expect(fixture.workspaceSlug).toBe(fixture.homeWorkspaceSlug)
+  }
   for (const value of [fixture.slides.id, fixture.slides.publicId]) expect(value).toMatch(/^[A-Za-z0-9_-]{1,128}$/)
   expect(local(fixture.slides.editorPath)).toBe(`/app/workspaces/${fixture.workspaceSlug}/decks/${fixture.slides.id}`)
   expect(local(fixture.slides.publicPath)).toMatch(/^\/d\/[A-Za-z0-9_-]+\/[A-Za-z0-9_-]+$/)
@@ -141,7 +160,7 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
   if (document.kind === "course") document.course.modules[0].lessons[0].explanation = marker
   else document.summary = marker
   const auth = page.context(), contexts: BrowserContext[] = [auth]
-  const pages = new Set(["/", "/auth", "/app", workspace, savedPath, fixture.slides.editorPath])
+  const pages = new Set(["/", "/auth", "/app", fixture.homePath, workspace, savedPath, fixture.slides.editorPath])
   const publicPages = new Set<string>(), legacyVersions = new Set<string>(), completed = new Set<string>()
   let stage = "setup", target = "/auth", actionPath: string | null = null, primary: unknown
   let publicContext: BrowserContext | undefined, publicPage: Page | undefined
@@ -152,7 +171,9 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
   const requests = new WeakMap<BrowserRequest, NodeRead>(), permissions = new WeakMap<BrowserRequest, { target: string; stage: string; action: boolean }>()
   const cancellations: Array<{ stage: string; method: string; path: string; status: number; contentType: string; redirect: string | null; target: string }> = []
   const publications: Publication[] = [], snapshots: Array<Record<string, unknown>> = [], negatives: Array<Record<string, unknown>> = []
+  const slidesPublishDiagnostics: SlidesPublishRead[] = []
   const responseProofs: Array<Record<string, unknown>> = [], observations: Record<string, unknown> = { layout: [], publications, snapshots, negatives, responseProofs }
+  observations.slidesPublishDiagnostics = slidesPublishDiagnostics
   function problem(key: keyof typeof counts, detail: unknown) {
     counts[key]++; if (diagnostics.length < 32) diagnostics.push({ stage, kind: key, detail: clean(detail, secrets) })
   }
@@ -386,11 +407,17 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
     }
   }
   async function signIn(fresh: boolean) {
-    stage = fresh ? "fresh-sign-in" : "sign-in"; actionPath = "/auth"; target = workspace
+    stage = fresh ? "fresh-sign-in" : "sign-in"; actionPath = "/auth"; target = fixture.homePath
     await page.goto("/auth", { waitUntil: "load" })
     await page.locator("#sign-in-email").fill(fixture.email); await page.locator("#sign-in-password").fill(fixture.password)
     await page.getByRole("button", { name: "Sign in", exact: true }).click()
-    await expect(page).toHaveURL(ORIGIN + workspace); await page.waitForLoadState("load")
+    await expect(page).toHaveURL(ORIGIN + fixture.homePath); await page.waitForLoadState("load")
+    await expect(page.getByRole("heading", { name: fixture.homeWorkspaceName, level: 1, exact: true })).toBeVisible()
+    if (fixture.homePath !== workspace) {
+      target = workspace
+      await page.goto(workspace, { waitUntil: "load" })
+    }
+    await expect(page).toHaveURL(ORIGIN + workspace)
     await expect(page.getByRole("heading", { name: fixture.workspaceName, level: 1, exact: true })).toBeVisible()
     const cookie = (await auth.cookies(ORIGIN)).find((value) => value.name === "slides_session")
     expect(cookie?.httpOnly).toBe(true)
@@ -510,10 +537,69 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
     observations.foreignRegistrationAndReadRefused = true; completed.add(stage)
     async function publishSlides(protectedVersion: boolean, index: number) {
       stage = `slides-publish-${index}`; actionPath = fixture.slides.editorPath; target = fixture.slides.editorPath
-      await page.getByPlaceholder("Optional password", { exact: true }).fill(protectedVersion ? password : "")
-      const [response] = await Promise.all([page.waitForResponse((response) => response.url() === ORIGIN + fixture.slides.editorPath && response.request().method() === "POST" && Boolean(response.request().headers()["next-action"])), page.getByRole("button", { name: "Publish version", exact: true }).click()])
-      expect(response.status()).toBe(200); expect(await response.finished()).toBeNull()
-      await expect(page.getByRole("button", { name: "Publish version", exact: true })).toBeEnabled()
+      expect(slidesPublishDiagnostics.length).toBeLessThan(3)
+      const diagnostic: SlidesPublishRead = { index, stage, phase: "prepare", waitLimitMs: 10000, events: [], request: null, response: null,
+        finishedAt: null, failedAt: null, failure: null, finishedResolvedAt: null, listenersRemoved: false, timerCleared: false }
+      slidesPublishDiagnostics.push(diagnostic)
+      const phase = (value: string) => { diagnostic.phase = value; diagnostic.events.push({ phase: value, at: Date.now() }) }
+      const deadline = Date.now() + 10000, remaining = () => Math.max(1, deadline - Date.now())
+      phase("prepare")
+      await page.getByPlaceholder("Optional password", { exact: true }).fill(protectedVersion ? password : "", { timeout: remaining() })
+      const expectedLabel = await page.getByText("Publishing", { exact: true }).locator("..").getByRole("textbox").inputValue({ timeout: remaining() })
+      function matches(request: BrowserRequest) {
+        if (request.url() !== ORIGIN + fixture.slides.editorPath || request.method() !== "POST" || !request.headers()["next-action"]) return false
+        try {
+          const args = request.postDataJSON()
+          return Array.isArray(args) && args.length === 1 && args[0]?.deckId === fixture.slides.id && args[0]?.label === expectedLabel
+            && args[0]?.source && typeof args[0].source === "object" && args[0].source.title === fixture.slides.title && Array.isArray(args[0].source.slides)
+        } catch { return false }
+      }
+      let selected: BrowserRequest | null = null, rejectFailure: (error: Error) => void = () => {}
+      const failure = new Promise<never>((_resolve, reject) => { rejectFailure = reject })
+      const onRequest = (request: BrowserRequest) => {
+        if (!matches(request)) return
+        if (selected && selected !== request) { rejectFailure(new Error("Multiple publish requests matched the reviewed action.")); return }
+        if (selected) return
+        selected = request
+        const payload = request.postDataJSON()[0]
+        diagnostic.request = { method: request.method(), path: new URL(request.url()).pathname, startedAt: Date.now(),
+          actionSha256: sha(request.headers()["next-action"]), payloadBytes: request.postDataBuffer()?.length ?? 0, deckId: payload.deckId,
+          labelSha256: sha(payload.label), sourceSha256: sha(canonicalSerialize(payload.source)) }
+      }
+      const onFailed = (request: BrowserRequest) => {
+        if (request !== selected) return
+        diagnostic.failedAt = Date.now(); diagnostic.failure = clean(request.failure()?.errorText ?? "unknown", secrets)
+        rejectFailure(new Error("The exact Slides publish request failed: " + diagnostic.failure))
+      }
+      const onFinished = (request: BrowserRequest) => { if (request === selected) diagnostic.finishedAt = Date.now() }
+      auth.on("request", onRequest); auth.on("requestfailed", onFailed); auth.on("requestfinished", onFinished)
+      let timer: ReturnType<typeof setTimeout> | undefined
+      const expired = new Promise<never>((_resolve, reject) => {
+        timer = setTimeout(() => reject(new Error("Slides publication deadline exceeded at " + diagnostic.phase)), remaining())
+      })
+      try {
+        phase("request-and-response")
+        const [request, response] = await Promise.race([Promise.all([
+          page.waitForRequest(matches, { timeout: remaining() }),
+          page.waitForResponse((response) => matches(response.request()), { timeout: remaining() }),
+          page.getByRole("button", { name: "Publish version", exact: true }).click({ timeout: remaining() }),
+        ]), failure, expired])
+        expect(request).toBe(selected); expect(response.request()).toBe(request)
+        diagnostic.response = { at: Date.now(), status: response.status(), contentType: response.headers()["content-type"] ?? "" }
+        expect(response.status()).toBe(200)
+        phase("response-finished")
+        if (request.failure()) onFailed(request)
+        expect(await Promise.race([response.finished(), failure, expired])).toBeNull()
+        diagnostic.finishedResolvedAt = Date.now()
+        expect(diagnostic.finishedAt).not.toBeNull(); expect(diagnostic.failedAt).toBeNull(); expect(request.failure()).toBeNull()
+        phase("button-ready")
+        await Promise.race([expect(page.getByRole("button", { name: "Publish version", exact: true })).toBeEnabled({ timeout: remaining() }), failure, expired])
+      } finally {
+        clearTimeout(timer); diagnostic.timerCleared = true
+        auth.off("request", onRequest); auth.off("requestfailed", onFailed); auth.off("requestfinished", onFinished)
+        diagnostic.listenersRemoved = true
+      }
+      phase("snapshot")
       const value = await snapshot("slides"), current = value.versions.find((row: { id: string }) => row.id === value.deck.publishedVersionId)
       expect(current).toBeTruthy(); expect(current.status).toBe("published"); expect(current.passwordProtected).toBe(protectedVersion)
       expect(value.deck.passwordProtected).toBe(protectedVersion)
@@ -524,6 +610,7 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
       const original = value.assets.find((row: { url: string }) => row.url === fixture.slides.source.url)
       expect(original).toBeTruthy(); expect(original.publicInVersions).toEqual([])
       expect(value.assets.some((row: { url: string }) => row.url === fixture.victim.url)).toBe(false)
+      phase("complete")
       completed.add(stage); return { current, artifactPath }
     }
     const firstSlides = await publishSlides(false, 1)

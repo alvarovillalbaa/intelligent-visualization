@@ -34,6 +34,7 @@ type Proof = { key: string; bytes: number; sha256: string }
 type FixtureCase = {
   email: string; password: string; userId: string; teamId: string; teamSlug: string;
   workspaceId: string; workspaceSlug: string; workspaceName: string;
+  homeWorkspaceId: string; homeWorkspaceSlug: string; homeWorkspaceName: string; homePath: string;
   slides: { id: string; publicId: string; title: string; publicPath: string; editorPath: string; source: Proof & { url: string } };
   victim: Proof & { url: string; userId: string; teamId: string; teamSlug: string; workspaceId: string; deckId: string };
 }
@@ -121,9 +122,15 @@ function checkedKey(key: string) {
 }
 function fixtureCase(value: FixtureCase, key: CaseKey) {
   requireThat(object(value) && value.email === `iv-${sourceCommit.slice(0, 12)}-${key}@example.test` && typeof value.password === "string" && value.password.length >= 24)
-  requireThat([value.userId, value.teamId, value.workspaceId, value.slides?.id, value.slides?.publicId,
+  requireThat([value.userId, value.teamId, value.workspaceId, value.homeWorkspaceId, value.slides?.id, value.slides?.publicId,
     value.victim?.userId, value.victim?.teamId, value.victim?.workspaceId, value.victim?.deckId].every((id) => typeof id === "string" && ID.test(id)))
-  requireThat(/^[a-z0-9-]{1,64}$/.test(value.workspaceSlug) && ID.test(value.teamSlug) && ID.test(value.victim.teamSlug))
+  requireThat(/^[a-z0-9-]{1,64}$/.test(value.workspaceSlug) && value.homeWorkspaceSlug === "hq"
+    && [value.workspaceName, value.homeWorkspaceName].every((name) => typeof name === "string" && name.length > 0 && name.length <= 128 && !/[\u0000-\u001f\u007f]/.test(name))
+    && ID.test(value.teamSlug) && ID.test(value.victim.teamSlug))
+  requireThat(value.homePath === `/app/workspaces/${value.homeWorkspaceSlug}`)
+  requireThat(key === "report-desktop"
+    ? value.workspaceId !== value.homeWorkspaceId && value.workspaceSlug === "secondary-reports" && value.workspaceName === "Secondary reports"
+    : value.workspaceId === value.homeWorkspaceId && value.workspaceSlug === value.homeWorkspaceSlug && value.workspaceName === value.homeWorkspaceName)
   requireThat(value.slides.editorPath === `/app/workspaces/${value.workspaceSlug}/decks/${value.slides.id}`)
   requireThat(value.slides.publicPath.startsWith(`/d/${value.teamSlug}/`) && !/[?#]/.test(value.slides.publicPath))
   for (const proof of [value.slides.source, value.victim]) {
@@ -143,11 +150,14 @@ async function fixtures() {
 }
 function scopedDeck(state: RepositoryState, current: FixtureCase) {
   const user = state.users.find((row) => row.id === current.userId), team = state.teams.find((row) => row.id === current.teamId)
+  const homeWorkspace = state.workspaces.find((row) => row.id === current.homeWorkspaceId)
   const workspace = state.workspaces.find((row) => row.id === current.workspaceId), deck = state.decks.find((row) => row.id === current.slides.id)
-  requireThat(user?.email === current.email && user.teamId === team?.id && user.workspaceId === workspace?.id
-    && team?.members.some((row) => row.userId === user.id) && workspace?.teamId === team.id
+  requireThat(user?.email === current.email && user.teamId === team?.id && user.workspaceId === homeWorkspace?.id
+    && team?.members.some((row) => row.userId === user.id) && homeWorkspace?.teamId === team.id
+    && homeWorkspace.slug === current.homeWorkspaceSlug && homeWorkspace.name === current.homeWorkspaceName
+    && workspace?.teamId === team.id && workspace.slug === current.workspaceSlug && workspace.name === current.workspaceName
     && deck?.teamId === team.id && deck.workspaceId === workspace.id && deck.publicId === current.slides.publicId)
-  return { user, team, workspace, deck }
+  return { user, team, homeWorkspace, workspace, deck }
 }
 async function proof(storage: StorageAdapter, key: string, maximum = MAX_OBJECT): Promise<Proof> {
   checkedKey(key)
@@ -207,15 +217,23 @@ async function createActor(key: CaseKey, victim: boolean) {
   const email = `iv-${sourceCommit.slice(0, 12)}-${suffix}@example.test`
   const user = await repository.createUser({ name: `Authored ${suffix}`, email, passwordHash: hashSecret(password), teamName: `Fixture ${sourceCommit.slice(0, 12)} ${suffix}` })
   const dashboard = await repository.getDashboard(user.id)
-  requireThat(dashboard && dashboard.sessionUser.id === user.id && dashboard.team.id === user.teamId && dashboard.workspace.id === user.workspaceId)
+  requireThat(dashboard && dashboard.sessionUser.id === user.id && dashboard.team.id === user.teamId
+    && dashboard.workspace.id === user.workspaceId && dashboard.workspace.slug === "hq")
+  const secondary = key === "report-desktop" && !victim
+  const workspace = secondary
+    ? await repository.createWorkspace(user.id, { name: "Secondary reports", description: "Authored same-team secondary workspace; the actor's primary HQ remains unchanged." })
+    : dashboard.workspace
+  requireThat(workspace.teamId === dashboard.team.id && (secondary
+    ? workspace.id !== dashboard.workspace.id && workspace.slug === "secondary-reports"
+    : workspace.id === dashboard.workspace.id))
   const sourceText = `Authored private original for ${suffix}.\n`, title = `Authored Slides ${suffix}`
-  const deck = await repository.createDeckFromGeneration(user.id, dashboard.workspace.id, {
+  const deck = await repository.createDeckFromGeneration(user.id, workspace.id, {
     inputKind: "files", rawText: sourceText, prompt: "Static authored fixture; no model request", themeMode: "brand",
     files: [{ name: "authored-original.txt", type: "text/plain", content: sourceText }],
   }, authoredSource(title))
   const originals = deck.assets.filter((asset) => asset.storageKey?.includes("/sources/"))
   requireThat(originals.length === 1 && originals[0].storageKey)
-  return { user, dashboard, deck, password, original: originals[0] }
+  return { user, dashboard, workspace, deck, password, original: originals[0] }
 }
 async function seed() {
   const chosen = await selected()
@@ -236,23 +254,31 @@ async function seed() {
     const victimObject = await proof(chosen.storage, `legacy-slides/${victimKey}`, 1024 * 1024)
     document.cases[key] = {
       email: actor.user.email, password: actor.password, userId: actor.user.id, teamId: actor.user.teamId, teamSlug: actor.dashboard.team.slug,
-      workspaceId: actor.dashboard.workspace.id, workspaceSlug: actor.dashboard.workspace.slug, workspaceName: actor.dashboard.workspace.name,
+      workspaceId: actor.workspace.id, workspaceSlug: actor.workspace.slug, workspaceName: actor.workspace.name,
+      homeWorkspaceId: actor.dashboard.workspace.id, homeWorkspaceSlug: actor.dashboard.workspace.slug,
+      homeWorkspaceName: actor.dashboard.workspace.name, homePath: `/app/workspaces/${actor.dashboard.workspace.slug}`,
       slides: { id: actor.deck.id, publicId: actor.deck.publicId, title: actor.deck.title,
         publicPath: `/d/${actor.dashboard.team.slug}/${actor.deck.slug}`,
-        editorPath: `/app/workspaces/${actor.dashboard.workspace.slug}/decks/${actor.deck.id}`,
+        editorPath: `/app/workspaces/${actor.workspace.slug}/decks/${actor.deck.id}`,
         source: { key: actor.original.storageKey!, url: actor.original.url, bytes: original.bytes, sha256: original.sha256 } },
       victim: { userId: victim.user.id, teamId: victim.user.teamId, teamSlug: victim.dashboard.team.slug, workspaceId: victim.dashboard.workspace.id, deckId: victim.deck.id,
         key: victimKey, url: `/files/${victimKey}`, bytes: victimObject.bytes, sha256: victimObject.sha256 },
     }
     fixtureCase(document.cases[key], key)
   }
+  const counts = await chosen.provider.legacy.withState((state) => {
+    for (const key of CASES) scopedDeck(state, document.cases[key])
+    requireThat(state.users.length === 8 && state.teams.length === 8 && state.workspaces.length === 9 && state.decks.length === 8)
+    return { users: state.users.length, workspaces: state.workspaces.length, slides: state.decks.length }
+  })
   const saved = await writeExclusive(fixturePath, document)
-  return { schemaVersion: 1, sourceCommit, command: "seed", cases: CASES, users: 8, slides: 8, fixtureBytes: saved.bytes.length, fixtureSha256: sha(saved.bytes), ssl: chosen.ssl }
+  return { schemaVersion: 1, sourceCommit, command: "seed", cases: CASES, ...counts, fixtureBytes: saved.bytes.length, fixtureSha256: sha(saved.bytes), ssl: chosen.ssl }
 }
 async function snapshot(key: CaseKey, kind: string, versionId?: string) {
   const chosen = await selected(), loaded = await fixtures(), current = loaded.value.cases[key]
   if (kind === "canonical") {
     requireThat(versionId && UUID.test(versionId))
+    await chosen.provider.legacy.withState((state) => { scopedDeck(state, current) })
     const version = await chosen.provider.versions.get(versionId), record = version ? await chosen.provider.visualizations.get(version.visualizationId) : null
     requireThat(version && record && record.workspaceId === `legacy-workspace:${current.workspaceId}`
       && record.teamId === `legacy-team:${current.teamId}` && record.createdBy === `legacy-user:${current.userId}`
