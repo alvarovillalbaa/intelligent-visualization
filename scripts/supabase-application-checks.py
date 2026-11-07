@@ -23,7 +23,7 @@ import traceback
 from urllib.parse import urlsplit
 
 repo, source = Path.cwd(), os.environ["SOURCE_COMMIT"]
-BRANCH = "qa/supabase-application-20261107-1"
+BRANCH = "qa/supabase-application-20261107-2"
 LOCK_SHA = "b18dd278e6eded698e269d2e8400b0359083a8ba34de4721227a70b5e27c0d59"
 ASSET = "supabase_3.0.0_linux_amd64.tar.gz"
 ARCHIVE_SHA = "eeb61edcd59a4735fcb5e58596574f25d03d420efca779f43ddb307e1cc5c754"
@@ -40,6 +40,10 @@ PREREQUISITE_PATH = "docs/results/2026/11-07/supabase-provider-attempt-8.json"
 PREREQUISITE_SOURCE = "4da1844f22a332aad8bd827a026c3a806b4a308f"
 PREREQUISITE_SHA256 = "24e75dfa95b776210d369129d2a592f231e7dca8c78741910f1ab18e5ab74441"
 PREREQUISITE_BYTES = 369374
+APPLICATION_PRIOR_PATH = "docs/results/2026/11-07/supabase-application-attempt-1.json"
+APPLICATION_PRIOR_SOURCE = "0d9ebd2f6c4bf4d7271d91443b015ed9cfd9edcb"
+APPLICATION_PRIOR_SHA256 = "b72f64992213cdc3277ba52c916418d6266bd6871727545a66b3e37b24d54806"
+APPLICATION_PRIOR_BYTES = 188352
 assert re.fullmatch(r"[0-9a-f]{40}", source)
 assert os.environ.get("CI") == os.environ.get("IV_SUPABASE_APPLICATION_PUBLIC_REPOSITORY") == "true"
 assert os.environ.get("GITHUB_REPOSITORY") == "alvarovillalbaa/intelligent-visualization"
@@ -102,6 +106,23 @@ report["providerPrerequisite"] = {"receipt": PREREQUISITE_PATH, "bytes": len(pri
     "protectedInputs": len(protected), "preservedExactInputs": len(protected) - len(reviewed_changes),
     "allowedFactoryCodeInputs": sorted(allowed_factory_changes), "allowedDocumentationOnlyInputs": sorted(allowed_documentation_changes),
     "reviewedInputs": [{"path": name, "accepted": protected[name], "current": before[name], "reason": "Reviewed real factory selection/health integration" if name in allowed_factory_changes else "Documentation-only correction of selection and disposable-service acceptance status; no runtime code"} for name in sorted(reviewed_changes)]}
+application_prior_bytes = (repo / APPLICATION_PRIOR_PATH).read_bytes()
+assert len(application_prior_bytes) == APPLICATION_PRIOR_BYTES and sha(application_prior_bytes) == APPLICATION_PRIOR_SHA256
+application_prior = json.loads(application_prior_bytes)
+assert application_prior["sourceCommit"] == APPLICATION_PRIOR_SOURCE and application_prior["passed"] is False
+assert application_prior["providerCasesExecutedThisAttempt"] == 0 and not application_prior.get("freshBrowserCasesPassed")
+assert len(application_prior["commands"]) == 4 and [row["exitCode"] for row in application_prior["commands"]] == [0, 0, 0, 2]
+application_protected = application_prior["sourceExport"]["inputs"]
+application_changed = "tests/e2e/supabase-application.spec.ts"
+assert len(application_protected) == 286 and application_changed in application_protected and application_changed in before
+assert application_protected[application_changed]["mode"] == before[application_changed]["mode"] == "100644"
+assert all(before.get(name) == row for name, row in application_protected.items() if name != application_changed), "First application attempt inputs changed outside the exact two-line browser-spec correction"
+report["previousApplicationAttempts"] = [{"receipt": APPLICATION_PRIOR_PATH, "bytes": len(application_prior_bytes), "sha256": sha(application_prior_bytes),
+    "sourceCommit": APPLICATION_PRIOR_SOURCE, "passed": False, "providerCasesExecuted": 0, "browserCasesExecuted": 0,
+    "failurePhase": "Semantic TypeScript before CLI setup, TLS probes, Next or browsers", "carriedCases": 0,
+    "protectedInputs": 286, "preservedExactInputs": 285,
+    "reviewedInput": {"path": application_changed, "previous": application_protected[application_changed], "current": before[application_changed],
+        "reason": "Catch callback returns void; layout reads globalThis.document rather than the shadowing visualization document. Assertions and runtime limits unchanged."}}]
 
 
 def guard(label):

@@ -10,6 +10,18 @@ All earlier failed/nonacceptance receipts retain their original verdicts. This
 prerequisite does not establish application factories, TLS, browsers or hosted
 acceptance; those require the fresh checks below.
 
+The [first application attempt](../results/2026/11-07/supabase-application-attempt-1.md)
+failed semantic TypeScript checking before CLI setup, TLS probes, Next or browsers.
+Its immutable JSON is 188,352 bytes, SHA-256
+`b72f64992213cdc3277ba52c916418d6266bd6871727545a66b3e37b24d54806`, at
+`0d9ebd2f6c4bf4d7271d91443b015ed9cfd9edcb`. Four commands ran: three exited
+zero and TypeScript exited two; zero provider or browser cases ran. Retry two on
+`qa/supabase-application-20261107-2` pins that failed receipt and permits only the
+two-line spec correction: a catch callback returns void, and layout reads
+`globalThis.document` instead of the shadowing visualization document. All other
+285 of its 286 exported inputs remain byte-identical. It carries no cases and
+retains the same four identities, probes, time limits, strict guards and cleanup.
+
 ## Source boundary
 
 [Persistence selection](../../lib/persistence/factory.ts) and
