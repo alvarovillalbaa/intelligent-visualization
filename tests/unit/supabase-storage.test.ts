@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest"
 import { createSupabaseStorageAdapter, SUPABASE_OBJECT_LIMIT, SUPABASE_STORAGE_TIMEOUT_MS } from "@/packages/provider-supabase/storage"
 import { isOwnedLegacyUploadKey, resolveLegacyFileAccess } from "@/lib/legacy-file-access"
 import { createSeedState } from "@/lib/seed"
+import { slugify } from "@/lib/utils"
 import type { AssetRecord, DeckVersion } from "@/lib/types"
 
 const config = { url: "https://authored-storage.example.invalid", bucket: "private-fixture", serviceRoleKey: "sb_secret_authored_server_only_key" }
@@ -184,10 +185,11 @@ function legacyFixture() {
   const state = createSeedState(), user = state.users[0]
   const deck = state.decks.find((row) => row.teamId === user.teamId)!
   const team = state.teams.find((row) => row.id === user.teamId)!
+  deck.id = "AuThored_Deck42"; deck.publicId = "PuBlic_Id9"; team.slug = "Authored_Team-X"
   state.decks = [deck]
   const now = 1000000, tokenHash = "authored-session-hash"
   state.sessions = [{ id: "authored-session", userId: user.id, tokenHash, createdAt: now - 100, expiresAt: now + 1000 }]
-  const key = `uploads/${team.slug}/${deck.id}/authored-image.png`
+  const key = `uploads/${slugify(team.slug)}/${slugify(deck.id)}/authored-image.png`
   const asset: AssetRecord = { id: "authored-image", kind: "image", title: "Authored image", description: "Explicit attachment", storageKey: key, url: "/files/" + key, contentType: "image/png", sizeBytes: 3 }
   deck.assets = [asset]
   deck.status = "published"; deck.passwordProtected = false; delete deck.passwordHash
@@ -199,16 +201,21 @@ function legacyFixture() {
 
 describe("legacy file metadata authorization", () => {
   it("requires a live session current membership owned namespace and registered exact key for private originals", () => {
-    const f = legacyFixture(), sourceKey = `uploads/${f.team.slug}/${f.deck.publicId}/sources/authored.txt`
+    const f = legacyFixture(), sourceKey = `uploads/${slugify(f.team.slug)}/${slugify(f.deck.publicId)}/sources/authored.txt`
+    expect(f.key).toBe("uploads/authored-team-x/authored-deck42/authored-image.png")
     f.deck.assets.push({ ...f.asset, id: "source", kind: "document", storageKey: sourceKey, url: "/files/" + sourceKey })
     expect(resolveLegacyFileAccess(f.state, sourceKey, f.tokenHash, f.now)).toBe("private")
     expect(resolveLegacyFileAccess(f.state, sourceKey, null, f.now)).toBeNull()
     expect(resolveLegacyFileAccess(f.state, sourceKey, f.tokenHash, f.now + 1000)).toBeNull()
     f.team.members = f.team.members.filter((member) => member.userId !== f.user.id)
     expect(resolveLegacyFileAccess(f.state, sourceKey, f.tokenHash, f.now)).toBeNull()
-    expect(resolveLegacyFileAccess(f.state, `uploads/${f.team.slug}/library/unregistered.txt`, f.tokenHash, f.now)).toBeNull()
+    expect(resolveLegacyFileAccess(f.state, `uploads/${slugify(f.team.slug)}/library/unregistered.txt`, f.tokenHash, f.now)).toBeNull()
     for (const invalid of ["../secret", "published/public/version/index.html", "canonical-publications/id/object.json", "uploads/other-team/library/secret.txt"]) {
       expect(isOwnedLegacyUploadKey(invalid, f.team.slug, f.deck.id, f.deck.publicId, true)).toBe(false)
+    }
+    for (const invalidId of ["", "___", "---", "../outside", "nested/id", "id with spaces"]) {
+      expect(isOwnedLegacyUploadKey(f.key, f.team.slug, invalidId, f.deck.publicId)).toBe(false)
+      expect(isOwnedLegacyUploadKey(sourceKey, f.team.slug, f.deck.id, invalidId, true)).toBe(false)
     }
   })
 
@@ -217,12 +224,18 @@ describe("legacy file metadata authorization", () => {
     expect(resolveLegacyFileAccess(f.state, f.key, null, f.now)).toBe("public")
     f.deck.assets = []
     expect(resolveLegacyFileAccess(f.state, f.key, null, f.now)).toBe("public")
-    const added = `uploads/${f.team.slug}/${f.deck.id}/draft-only.png`
+    const added = `uploads/${slugify(f.team.slug)}/${slugify(f.deck.id)}/draft-only.png`
     f.deck.assets.push({ ...f.asset, storageKey: added, url: "/files/" + added })
     expect(resolveLegacyFileAccess(f.state, added, null, f.now)).toBeNull()
     delete f.version.publicAssets
     expect(resolveLegacyFileAccess(f.state, f.key, null, f.now)).toBeNull()
     expect(resolveLegacyFileAccess(f.state, added, f.tokenHash, f.now)).toBe("private")
+    for (const foreign of ["uploads/other-team/authored-deck42/foreign.png", "uploads/authored-team-x/other-deck/foreign.png"]) {
+      const wrong = { ...f.asset, storageKey: foreign, url: "/files/" + foreign }
+      f.deck.assets.push(wrong); f.version.publicAssets = [wrong]
+      expect(resolveLegacyFileAccess(f.state, foreign, f.tokenHash, f.now)).toBeNull()
+      expect(resolveLegacyFileAccess(f.state, foreign, null, f.now)).toBeNull()
+    }
   })
 
   it("refuses password protected preview stale mismatched and original-source public references", () => {
@@ -238,7 +251,7 @@ describe("legacy file metadata authorization", () => {
       const f = legacyFixture(); change(f)
       expect(resolveLegacyFileAccess(f.state, f.key, null, f.now)).toBeNull()
     }
-    const f = legacyFixture(), original = `uploads/${f.team.slug}/${f.deck.publicId}/sources/private.txt`
+    const f = legacyFixture(), original = `uploads/${slugify(f.team.slug)}/${slugify(f.deck.publicId)}/sources/private.txt`
     f.version.publicAssets = [{ ...f.asset, storageKey: original, url: "/files/" + original }]
     expect(resolveLegacyFileAccess(f.state, original, null, f.now)).toBeNull()
   })

@@ -1,12 +1,18 @@
 import type { AssetRecord, RepositoryState } from "@/lib/types"
+import { slugify } from "@/lib/utils"
 import { normalizeStorageKey } from "@/packages/storage/provider"
 
 export function isOwnedLegacyUploadKey(key: string, teamSlug: string, deckId: string, publicId: string, allowSources = false) {
   try { if (key.length > 1024 || normalizeStorageKey(key) !== key) return false } catch { return false }
+  // Match the existing writer's namespace spelling, not the raw nanoid. Reject
+  // invalid identities before slugify can replace them with its fallback name.
+  const identities = [teamSlug, deckId, publicId]
+  if (identities.some((value) => typeof value !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(value) || !/[A-Za-z0-9]/.test(value))) return false
+  const [teamNamespace, deckNamespace, publicNamespace] = identities.map(slugify)
   const parts = key.split("/")
-  if (parts.length < 4 || parts[0] !== "uploads" || parts[1] !== teamSlug || !["library", deckId, publicId].includes(parts[2])) return false
+  if (parts.length < 4 || parts[0] !== "uploads" || parts[1] !== teamNamespace || !["library", deckNamespace, publicNamespace].includes(parts[2])) return false
   if (parts.slice(3).some((part) => part.toLowerCase() === "sources")) {
-    return allowSources && parts[2] === publicId && parts[3] === "sources" && parts.length >= 5
+    return allowSources && parts[2] === publicNamespace && parts[3] === "sources" && parts.length >= 5
   }
   return true
 }
