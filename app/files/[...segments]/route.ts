@@ -58,7 +58,7 @@ export async function GET(
     const content = await readStoredFile(storageKey)
     if (!content) return NextResponse.json({ error: "File not found." }, { status: 404, headers: { "Cache-Control": "private, no-store" } })
     const contentType = getContentType(storageKey)
-    return new NextResponse(content, {
+    return new NextResponse(new Uint8Array(content), {
       headers: {
         "content-type": contentType,
         "cache-control": "private, no-store",

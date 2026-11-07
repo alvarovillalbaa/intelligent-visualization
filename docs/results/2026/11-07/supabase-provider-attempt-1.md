@@ -64,3 +64,11 @@ Actions endpoint. A fresh read returned **`disabled_manually`**, updated
 **01:01:31 UTC**. Branch retirement and commits are separate owner actions and
 were not performed by this audit. There was no retry, local runtime execution or
 factory activation.
+
+Owner follow-up: the QA branch was retired at
+`4a456fd43282cbe635375d136344244afdd46985`, with the exact tree of receipt
+commit `533da8ee352c47ce322f755e9951a46c227ab84d`. Remote ref readback confirmed
+that retirement, and the active temporary workflow is absent from its tree.
+The two response bodies were then changed to copied `Uint8Array` values for the
+web response API. That correction does not change this failed verdict or run
+the selected tests; a fresh source must pass the focused checks.

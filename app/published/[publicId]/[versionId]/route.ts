@@ -38,7 +38,7 @@ export async function GET(
     return NextResponse.json({ error: "Published artifact not found." }, { status: 404, headers: { "Cache-Control": "private, no-store" } })
   }
 
-  return new NextResponse(html, {
+  return new NextResponse(new Uint8Array(html), {
     headers: {
       "content-type": "text/html; charset=utf-8",
       "cache-control": "private, no-store",
