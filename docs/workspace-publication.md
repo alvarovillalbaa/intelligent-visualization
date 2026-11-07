@@ -1,6 +1,6 @@
 # Publish a Course or Report
 
-Last updated: 2026-11-06
+Last updated: 2026-11-07
 
 The local candidate adds explicit public snapshots for saved Course and Report
 drafts. Its [focused receipt](results/2026/11-06/workspace-publications-checks.md)
@@ -21,8 +21,8 @@ Publish another saved revision explicitly to update the live link; the earlier
 version's URL remains public and its content stays unchanged.
 
 Workspace viewers can inspect publication status but cannot publish or unpublish.
-The local candidate now adds separate [Unpublish controls](workspace-unpublication.md)
-with focused acceptance pending; deletion is not included. Public
+The local candidate now adds separate [accepted Unpublish controls](workspace-unpublication.md);
+deletion is not included. Public
 Course/Report passwords, embeds, review/experiment flows and analytics are not
 added by this slice. The public reader excludes protected or unavailable records.
 

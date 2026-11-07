@@ -1,6 +1,6 @@
 # Testing
 
-Last updated: 2026-11-06
+Last updated: 2026-11-07
 
 Current executable tests:
 
@@ -66,3 +66,13 @@ readers. HTTP failure-path fixtures use mocked provider/storage dependencies;
 PostgreSQL cases use trusted artifact metadata. These boundaries are distinct.
 No single 44-case invocation, current broad suite/build, hosted acceptance,
 unpublish/delete behavior or touch/device proof is claimed.
+
+The separate [Unpublish receipt](results/2026/11-07/workspace-unpublications-checks.md)
+accepts thirteen HTTP, six client and twenty real PostgreSQL cases from the first
+execution, plus four actual browser journeys from the second. It validates all
+38 original captures and 269 protected runtime inputs rather than rerunning the
+39 core identities. Current browser checks include eighty anonymous GET/HEAD/
+conditional refusals, twenty-four retained-object observations and twenty status
+GET clone EOFs/finished-request observations. The first overall verdict remains
+false; diagnostic readiness/observation changes do not establish its old abort
+causes or a product fix. No single 43-case run or current broad build is claimed.

@@ -1,6 +1,6 @@
 # PostgreSQL migration
 
-Last updated: 2026-11-06
+Last updated: 2026-11-07
 
 The owner's [All projects brief](https://app.notion.com/p/3b6a1ee8bd06803e99d1cf6b0218c207)
 requires PostgreSQL for local persistence and removal of alternative database
@@ -45,6 +45,12 @@ remain. Authentication hashes and legacy business bearer links are private backu
 data, flagged in the manifest. Active sessions and idempotency records are omitted.
 After restoring, establish a new session and reopen saved drafts; an old pending
 save cannot rely on an omitted request receipt.
+
+An export taken after Unpublish retains `revoked` version eligibility and the
+draft record's last published pointer. The focused local round trip verifies
+that later publication does not reopen those revoked versions. Request receipts
+remain omitted, so refresh state after establishing a new session. Restoring an
+older backup restores that backup's policy state. This is not object erasure.
 
 Media/artifact objects are not copied: back up `LOCAL_STORAGE_DIR` and legacy
 `.slides-storage` separately. Export/import is not a complete hosted cutover.
