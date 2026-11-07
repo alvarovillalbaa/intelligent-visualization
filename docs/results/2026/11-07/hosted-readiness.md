@@ -52,3 +52,15 @@ Later result: that [application diagnostic](supabase-application-attempt-6.md)
 finished with all four journeys failed at 04:31:16 UTC. Its native-reader observations
 do not establish network or application completion. The exact-source READY Preview
 metadata above therefore remains distinct from application acceptance.
+
+## Publishing-feedback Preview metadata
+
+At approximately 05:01 UTC, two read-only metadata calls (exact commit-filtered
+deployment list and fresh detail) reported `dpl_FxwJRcTPCbAjcTmWNC3vWhGgihNT`
+READY, nonproduction `target: null`, for feedback source
+`2ca24133bdb154321638a9950793ed34e45545fa`:
+[Preview URL](https://intelligent-visualization-5ooj7ti60-my-team-4f230354.vercel.app).
+This confirms metadata/build readiness only. The feedback has source review,
+without a runtime result; attempt 7 tested an earlier source. No page, environment,
+secret, production alias, configuration or billing request was made, and the
+environment 403 was not retried.
