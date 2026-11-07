@@ -15,6 +15,11 @@ Current status:
   headers, then Chromium reported an abort before successful response completion.
   Its qualified first Next-only TLS window and outer cleanup passed; the second
   window was unrun. The abort cause remains unproven, and no full identity is accepted.
+- [Application attempt 6](results/2026/11-07/supabase-application-attempt-6.md)
+  also failed all four journeys. Exact correlated action readers reached native
+  `done` before the recorded abort callbacks, without observed read rejection or
+  reader cancellation. This establishes neither network EOF nor UI acknowledgement;
+  the original failure rules remain unchanged and no journey is accepted.
 
 Portable auth remains the default for Supabase persistence.
 
