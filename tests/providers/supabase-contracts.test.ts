@@ -330,10 +330,10 @@ describe("Supabase persistence provider shared contracts", () => {
       await exportPortableDatabase(context, backup)
       await resetApplication()
       await importPortableDatabase(context, backup)
+      await checkPortableDatabase(context, backup)
       expect((await provider.users.findByEmail("portable@authored.invalid"))?.id).toBe(registration.user.id)
       expect((await database.query(`SELECT count(*)::int AS n FROM ${SUPABASE_SCHEMA}.sessions`)).rows[0].n).toBe(0)
       expect(await provider.legacy.withState((state) => ({ users: state.users.length, sessions: state.sessions.length }))).toEqual({ users: 1, sessions: 0 })
-      await checkPortableDatabase(context, backup)
       await database.query(`UPDATE ${SUPABASE_SCHEMA}.users SET name='Retained changed owner' WHERE id=$1`, [registration.user.id])
       await expect(importPortableDatabase(context, backup)).rejects.toThrow()
       expect((await provider.users.findByEmail("portable@authored.invalid"))?.name).toBe("Retained changed owner")
@@ -348,14 +348,16 @@ describe("Supabase persistence provider shared contracts", () => {
     if (cleanup) throw cleanup
   }))
 
-  it("rejects privileged and SET ROLE database injection rather than silently initializing or bypassing runtime policy", async () => withSupabaseFixture(async () => {
+  it("rejects privileged provider access and denies administrator SET ROLE at the database boundary", async () => withSupabaseFixture(async ({ admin }) => {
     const adminDatabase = createPostgresDatabase({ connectionString: process.env.IV_SUPABASE_ADMIN_URL, max: 1 })
     try {
       await expect(createSupabasePersistenceProviderForDatabase(adminDatabase).health()).rejects.toThrow()
-      await adminDatabase.transaction(async (transaction) => {
-        await transaction.query("SET LOCAL ROLE iv_runtime")
-        await expect(createSupabasePersistenceProviderForDatabase(adminDatabase).health()).rejects.toThrow()
-      })
+      const client = await admin.connect()
+      try {
+        await client.query("BEGIN")
+        try { await expect(client.query("SET LOCAL ROLE iv_runtime")).rejects.toMatchObject({ code: "42501" }) }
+        finally { await client.query("ROLLBACK") }
+      } finally { client.release() }
     } finally { await adminDatabase.close() }
   }))
 
