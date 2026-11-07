@@ -1,6 +1,6 @@
 # Verify the real Supabase application factories
 
-Prepared 7 November 2026. Application acceptance remains pending; the fifth
+Prepared 7 November 2026. Application acceptance remains pending; the sixth
 attempt is an inactive source packet. The prerequisite
 [90-case provider packet](../results/2026/11-07/supabase-provider-attempt-8.md)
 passed at `4da1844f22a332aad8bd827a026c3a806b4a308f`, with independent
@@ -97,6 +97,42 @@ three retain their four exact exceptions and 282/286 preservation; QA8 retains
 its five exact exceptions and 292/297 preservation. All 37 controller function
 ASTs, diagnostics, assertions, failures, time limits and cleanup remain unchanged.
 No case is carried; the new packet has no runtime or publication acceptance yet.
+
+The [fifth application attempt](../results/2026/11-07/supabase-application-attempt-5.md)
+remains false: JSON 604,336 bytes, SHA-256
+`605c4ee76b2fe4d745ea4bb7d97b69cc7307aa1accc97cd1ed55b93617254805`, source
+`edb2a5df9820248b4263285608ef7b60a7365194`. All four journeys failed. Four
+exact matched Slides POSTs received 200 `text/x-component`, then reported
+`net::ERR_ABORTED` while awaiting response completion. Narrow Course's first
+publication separately returned null from `response.finished()` and has a private
+Slides snapshot; its second publication failed. This partial control accepts no
+journey and does not establish the cause of other cancellations. The actual
+React consumer's reader EOF/cancel/error was not observed in that packet.
+The pinned [Next 16.1.6 ServerAction reducer](https://github.com/vercel/next.js/blob/v16.1.6/packages/next/src/client/components/router-reducer/reducers/server-action-reducer.ts)
+passes the POST response to React Flight decoding and processes revalidation as
+navigation. That source alone does not establish who canceled a particular request.
+
+Attempt six on `qa/supabase-application-20261107-6` adds diagnostic observation of
+that actual reader and its native promise/results alongside the exact Playwright
+request lifecycle. It adds no Slides clone, tee or extra read, changes no Auth,
+responses or payloads, and waives no cancellation or failure. EOF/cancel evidence
+is sought, not presumed; no fix or pass is guaranteed. Product, helper, runtime,
+all 37 controller function ASTs, four identities, timers and closure stay unchanged.
+Development mode and current WebSocket rules remain; there is no production build.
+Work remains bounded to 1,020 seconds plus 90-second cleanup in one 20-minute
+public job, with the same 180-second cases and 720-second browser cap. No provider
+cases are rerun, and the accepted 90-case prerequisite remains separate.
+Bounded WebSocket and `/api/events` lifecycle metadata also records existing failures;
+request type alone identifies neither their transport nor an allowed exception.
+
+Only the spec is a new runtime exception against App5. An additional exact
+`packages/provider-supabase/README.md` exception records documentation-only status
+correction/linkage to the failed evidence, separately from runtime inputs. Thus
+App5 preserves 284/286 inputs; App4 preserves 283/286 with UI/spec plus that doc;
+App1–3 preserve 281/286 with their prior four runtime paths plus that doc. All
+other bytes, Git blobs, modes and hashes must match. QA8 keeps its same five
+exceptions and 292/297 preservation. Every prior receipt retains its original
+bytes, source and false verdict; no browser case is carried or accepted.
 
 ## Source boundary
 
