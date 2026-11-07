@@ -6,6 +6,7 @@ import { TeamInviteForm } from "@/components/slides/team-invite-form"
 import { Button } from "@/components/ui/button"
 import { Composer } from "@/components/visualizations/composer"
 import { repository } from "@/lib/repository"
+import { currentPublicDeckVersion } from "@/lib/public-deck-access"
 import { requireSessionUser } from "@/lib/server-auth"
 import type { DeckRecord } from "@/lib/types"
 import { formatRelativeDate } from "@/lib/utils"
@@ -193,6 +194,7 @@ function VisualizationRow({
   teamSlug: string
   workspaceSlug: string
 }) {
+  const publishedVersion = currentPublicDeckVersion(deck)
   return (
     <article className="flex flex-wrap items-center justify-between gap-4 rounded-xl bg-white px-5 py-4 shadow-sm">
       <div className="min-w-0">
@@ -212,12 +214,14 @@ function VisualizationRow({
         >
           Open
         </Link>
-        <Link
-          href={`/d/${teamSlug}/${deck.slug}`}
-          className="inline-flex h-9 items-center rounded-full bg-muted px-4 text-sm font-medium transition-colors hover:bg-muted/70"
-        >
-          Public
-        </Link>
+        {publishedVersion ? (
+          <Link
+            href={`/d/${teamSlug}/${deck.slug}`}
+            className="inline-flex h-9 items-center rounded-full bg-muted px-4 text-sm font-medium transition-colors hover:bg-muted/70"
+          >
+            Public
+          </Link>
+        ) : null}
       </div>
     </article>
   )

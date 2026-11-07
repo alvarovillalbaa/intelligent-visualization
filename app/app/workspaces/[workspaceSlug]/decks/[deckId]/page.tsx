@@ -4,7 +4,9 @@ import { DeckEditorClient } from "@/components/slides/deck-editor-client"
 import { createSignedAccessUrl } from "@/lib/access-tokens"
 import { getBaseUrl } from "@/lib/env"
 import { repository } from "@/lib/repository"
+import { currentPublicDeckVersion, publicDeckRequiresPassword } from "@/lib/public-deck-access"
 import { requireSessionUser } from "@/lib/server-auth"
+import { getPublishedArtifactUrl } from "@/lib/storage"
 
 export default async function DeckEditorPage({
   params,
@@ -19,13 +21,18 @@ export default async function DeckEditorPage({
     notFound()
   }
 
-  const currentVersion =
-    editorData.deck.versions.find((version) => version.id === editorData.deck.publishedVersionId) ??
-    editorData.deck.versions[0]
+  const currentVersion = currentPublicDeckVersion(editorData.deck)
+  const publicArtifactUrls = Object.fromEntries(
+    currentVersion && !publicDeckRequiresPassword(editorData.deck)
+      ? editorData.deck.versions
+          .filter((version) => version.status === "published" && !version.passwordHash && Boolean(version.artifactUrl) && /^[A-Za-z0-9_-]{1,128}$/.test(version.id))
+          .map((version): [string, string] => [version.id, getPublishedArtifactUrl(editorData.deck.publicId, version.id)])
+      : [],
+  )
   const artifactUrl = currentVersion?.artifactUrl
     ? `${getBaseUrl()}${createSignedAccessUrl({
         scope: "artifact",
-        path: currentVersion.artifactUrl,
+        path: getPublishedArtifactUrl(editorData.deck.publicId, currentVersion.id),
         publicId: editorData.deck.publicId,
         versionId: currentVersion.id,
       })}`
@@ -46,13 +53,14 @@ export default async function DeckEditorPage({
         sessionUser={editorData.sessionUser}
         deck={editorData.deck}
         shareUrls={{
-          publicUrl: `${getBaseUrl()}/d/${editorData.team.slug}/${editorData.deck.slug}`,
-          embedUrl: `${getBaseUrl()}${createSignedAccessUrl({
+          publicUrl: currentVersion ? `${getBaseUrl()}/d/${editorData.team.slug}/${editorData.deck.slug}` : null,
+          embedUrl: currentVersion ? `${getBaseUrl()}${createSignedAccessUrl({
             scope: "embed",
             path: `/embed/${editorData.deck.publicId}`,
             publicId: editorData.deck.publicId,
-          })}`,
+          })}` : null,
           artifactUrl,
+          publicArtifactUrls,
         }}
       />
     </div>

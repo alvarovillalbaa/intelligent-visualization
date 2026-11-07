@@ -72,9 +72,10 @@ export function DeckEditorClient({
   sessionUser: SessionUser
   deck: DeckRecord
   shareUrls: {
-    publicUrl: string
-    embedUrl: string
+    publicUrl: string | null
+    embedUrl: string | null
     artifactUrl: string | null
+    publicArtifactUrls: Record<string, string>
   }
 }) {
   const router = useRouter()
@@ -473,13 +474,17 @@ export function DeckEditorClient({
                 <CardDescription>Every deck has a public slug URL and an embeddable iframe target.</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-3">
-                <ReadOnlyField label="Hosted URL" value={shareUrls.publicUrl} />
-                <ReadOnlyField label="Embed URL" value={shareUrls.embedUrl} />
-                {shareUrls.artifactUrl ? <ReadOnlyField label="Immutable artifact" value={shareUrls.artifactUrl} /> : null}
-                <div className="grid gap-2">
-                  <label className="text-sm font-medium">Iframe snippet</label>
-                  <Textarea readOnly value={buildEmbedCode(shareUrls.embedUrl)} className="min-h-28 bg-white" />
-                </div>
+                {shareUrls.publicUrl && shareUrls.embedUrl ? (
+                  <>
+                    <ReadOnlyField label="Hosted URL" value={shareUrls.publicUrl} />
+                    <ReadOnlyField label="Embed URL" value={shareUrls.embedUrl} />
+                    {shareUrls.artifactUrl ? <ReadOnlyField label="Immutable artifact" value={shareUrls.artifactUrl} /> : null}
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium">Iframe snippet</label>
+                      <Textarea readOnly value={buildEmbedCode(shareUrls.embedUrl)} className="min-h-28 bg-white" />
+                    </div>
+                  </>
+                ) : <p className="text-sm text-muted-foreground">Publish a version to create share links.</p>}
               </CardContent>
             </Card>
 
@@ -626,10 +631,10 @@ export function DeckEditorClient({
                   {deck.publishedVersionId === version.id ? (
                     <p className="mt-3 text-xs uppercase tracking-[0.16em] text-emerald-700">Currently routed live</p>
                   ) : null}
-                  {version.artifactUrl && !deck.passwordProtected ? (
-                    <Link href={version.artifactUrl} target="_blank" className="mt-3 inline-flex text-sm text-primary underline">
+                  {Object.hasOwn(shareUrls.publicArtifactUrls, version.id) ? (
+                    <a href={shareUrls.publicArtifactUrls[version.id]} target="_blank" rel="noreferrer" className="mt-3 inline-flex text-sm text-primary underline">
                       Open immutable artifact
-                    </Link>
+                    </a>
                   ) : null}
                 </article>
               ))}
