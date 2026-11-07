@@ -24,6 +24,10 @@ const seedVersionIds: Record<VisualizationKind, string> = {
 }
 
 async function main() {
+  if ((process.env.PERSISTENCE_PROVIDER ?? "local") !== "local"
+    || !["auto", "local"].includes(process.env.STORAGE_PROVIDER ?? "auto")) {
+    throw new Error("Local setup requires local persistence and storage.")
+  }
   const provider = createLocalPersistenceProvider()
   const database = getLocalDatabase()
   try {

@@ -2,8 +2,8 @@ import "./load-local-env"
 
 import path from "node:path"
 
-import { createPostgresDatabase } from "@/packages/provider-local/database"
-import { exportPortableDatabase } from "@/packages/provider-local/portable"
+import { exportPortableDatabase } from "@/packages/provider-postgres/portable"
+import { openPortableProvider } from "./portable-provider"
 
 function getArg(name: string) {
   const index = process.argv.indexOf(name)
@@ -13,18 +13,18 @@ function getArg(name: string) {
 async function main() {
   const provider = getArg("--provider") ?? process.env.PERSISTENCE_PROVIDER ?? "local"
   const output = getArg("--output")
-  if (provider !== "local" || !output) throw new Error("Use --provider local --output <new-private-directory>.")
-  const database = createPostgresDatabase()
+  if (!output) throw new Error("Use --provider local|supabase --output <new-private-directory>.")
+  const context = await openPortableProvider(provider)
   try {
-    const entityCounts = await exportPortableDatabase(database, output)
-    console.log(JSON.stringify({ ok: true, output: path.resolve(output), entityCounts,
+    const entityCounts = await exportPortableDatabase(context, output)
+    console.log(JSON.stringify({ ok: true, provider, output: path.resolve(output), entityCounts,
       sensitiveBackup: true, containsAuthenticationHashes: true, includesSessions: false, objectCount: 0 }, null, 2))
   } finally {
-    await database.close()
+    await context.database.close()
   }
 }
 
 main().catch(() => {
-  console.error("Local PostgreSQL export failed. Check LOCAL_DATABASE_URL and use a new private output directory; an existing backup is never overwritten.")
+  console.error("PostgreSQL export failed. Check the selected provider's configuration and use a new private output directory; an existing backup is never overwritten.")
   process.exitCode = 1
 })

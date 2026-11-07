@@ -65,6 +65,8 @@ hosted credentials. This does not claim an OS-level zero-network trace; only the
 two official release downloads and the recorded local CLI commands were invoked.
 
 Workflow **409932222** was disabled through the supported GitHub Actions endpoint;
-a fresh read returned **`disabled_manually`** at **00:32:16 UTC**. Branch retirement
-and source publication remain separate owner actions; neither was performed by
-the receipt audit. No local CLI retry or permission change was made.
+a fresh read returned **`disabled_manually`** at **00:32:16 UTC**. The QA branch
+was subsequently retired at `ad42466a37cfef8707f7d620469b0d1e9d22eab4`, with the
+same tree as receipt commit `537cae1303c1cf10357062498efac02f2523f55b`. Remote ref
+readback confirmed retirement. The active workflow file is absent from that
+tree; permanent CI is unchanged. No local CLI retry or permission change was made.

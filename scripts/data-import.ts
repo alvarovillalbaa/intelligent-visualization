@@ -1,7 +1,7 @@
 import "./load-local-env"
 
-import { createPostgresDatabase } from "@/packages/provider-local/database"
-import { importPortableDatabase } from "@/packages/provider-local/portable"
+import { importPortableDatabase } from "@/packages/provider-postgres/portable"
+import { openPortableProvider } from "./portable-provider"
 
 function getArg(name: string) {
   const index = process.argv.indexOf(name)
@@ -11,17 +11,17 @@ function getArg(name: string) {
 async function main() {
   const provider = getArg("--provider") ?? process.env.PERSISTENCE_PROVIDER ?? "local"
   const input = getArg("--input")
-  if (provider !== "local" || !input) throw new Error("Use --provider local --input <verified-backup-directory>.")
-  const database = createPostgresDatabase()
+  if (!input) throw new Error("Use --provider local|supabase --input <verified-backup-directory>.")
+  const context = await openPortableProvider(provider)
   try {
-    const imported = await importPortableDatabase(database, input)
-    console.log(JSON.stringify({ ok: true, imported, existingRowsOverwritten: false, sessionsRestored: false }, null, 2))
+    const imported = await importPortableDatabase(context, input)
+    console.log(JSON.stringify({ ok: true, provider, imported, existingRowsOverwritten: false, sessionsRestored: false }, null, 2))
   } finally {
-    await database.close()
+    await context.database.close()
   }
 }
 
 main().catch(() => {
-  console.error("Portable import failed. Check backup integrity, LOCAL_DATABASE_URL and conflicting existing rows. Import data is transactional; existing rows are never overwritten.")
+  console.error("Portable import failed. Check backup integrity, selected provider configuration and conflicting rows. Import is transactional; existing user data is never overwritten.")
   process.exitCode = 1
 })
