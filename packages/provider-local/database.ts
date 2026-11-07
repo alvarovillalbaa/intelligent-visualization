@@ -1,20 +1,10 @@
-import { AsyncLocalStorage } from "node:async_hooks"
-import { Pool, type PoolClient } from "pg"
-
+import { createPostgresDatabase as createNativePostgresDatabase, type PostgresDatabase, type PostgresQueryResult } from "@/packages/provider-postgres/database"
+import type { PostgresContext } from "@/packages/provider-postgres/context"
 import { LOCAL_SCHEMA, LOCAL_SCHEMA_VERSION, localMigrations } from "./schema"
 
 export { LOCAL_SCHEMA } from "./schema"
-
-export interface LocalQueryResult {
-  rows: Record<string, unknown>[]
-  rowCount: number
-}
-
-export interface LocalDatabase {
-  query(sql: string, args?: readonly unknown[]): Promise<LocalQueryResult>
-  transaction<T>(work: (database: LocalDatabase) => Promise<T>): Promise<T>
-  close(): Promise<void>
-}
+export type LocalDatabase = PostgresDatabase
+export type LocalQueryResult = PostgresQueryResult
 
 export function localConnectionString(connectionString = process.env.LOCAL_DATABASE_URL): string {
   if (!connectionString) throw new Error("LOCAL_DATABASE_URL is required for local PostgreSQL persistence.")
@@ -34,61 +24,16 @@ export function localConnectionString(connectionString = process.env.LOCAL_DATAB
 }
 
 export function createPostgresDatabase(connectionString?: string): LocalDatabase {
-  const pool = new Pool({
+  return createNativePostgresDatabase({
     connectionString: localConnectionString(connectionString), max: 4,
     connectionTimeoutMillis: 5000, idleTimeoutMillis: 10000,
     statement_timeout: 10000, query_timeout: 15000, lock_timeout: 5000,
     application_name: "intelligent-visualization-local", options: "-c search_path=pg_catalog",
-  })
-  // Context belongs to this pool, so concurrent provider instances cannot share a client.
-  const context = new AsyncLocalStorage<PoolClient>()
-  let savepointSequence = 0
-  let closing: Promise<void> | undefined
-  const database: LocalDatabase = {
-    async query(sql, args = []) {
-      if (closing) throw new Error("The local PostgreSQL connection is closed.")
-      const executor = context.getStore() ?? pool
-      const result = await executor.query(sql, [...args])
-      return { rows: result.rows, rowCount: result.rowCount ?? 0 }
-    },
-    async transaction(work) {
-      if (closing) throw new Error("The local PostgreSQL connection is closed.")
-      const active = context.getStore()
-      if (active) {
-        const savepoint = `local_nested_${++savepointSequence}`
-        await active.query(`SAVEPOINT ${savepoint}`)
-        try {
-          const result = await work(database)
-          await active.query(`RELEASE SAVEPOINT ${savepoint}`)
-          return result
-        } catch (error) {
-          await active.query(`ROLLBACK TO SAVEPOINT ${savepoint}`)
-          await active.query(`RELEASE SAVEPOINT ${savepoint}`)
-          throw error
-        }
-      }
-      const client = await pool.connect()
-      let releaseError: Error | undefined
-      try {
-        await client.query("BEGIN")
-        const result = await context.run(client, () => work(database))
-        await client.query("COMMIT")
-        return result
-      } catch (error) {
-        try { await client.query("ROLLBACK") } catch { releaseError = new Error("Local PostgreSQL rollback failed.") }
-        throw error
-      } finally {
-        client.release(releaseError)
-      }
-    },
-    async close() {
-      if (context.getStore()) throw new Error("Cannot close local PostgreSQL during a transaction.")
-      closing ??= pool.end()
-      await closing
-    },
-  }
-  pool.on("error", () => { initialized.delete(database) })
-  return database
+  }, (database) => { initialized.delete(database) })
+}
+
+export function createLocalPostgresContext(database: LocalDatabase): PostgresContext {
+  return { kind: "local", database, schema: LOCAL_SCHEMA, ensure: () => initializeLocalDatabase(database) }
 }
 
 const initialized = new WeakMap<LocalDatabase, Promise<void>>()

@@ -1,7 +1,7 @@
 import { nanoid } from "nanoid"
 
 import { createLegacyOperations } from "@/lib/legacy-operations"
-import { withLegacyRepositoryState } from "@/packages/provider-local/legacy-state"
+import { getPersistenceProvider } from "@/lib/persistence/factory"
 import type {
   AnalyticsEvent,
   AssetRecord,
@@ -18,8 +18,9 @@ import { slugify } from "@/lib/utils"
 
 type LegacyOperations = ReturnType<typeof createLegacyOperations>
 
-function operate<T>(work: (operations: LegacyOperations) => T | Promise<T>): Promise<T> {
-  return withLegacyRepositoryState((state) => work(createLegacyOperations(state)))
+async function operate<T>(work: (operations: LegacyOperations) => T | Promise<T>): Promise<T> {
+  const provider = await getPersistenceProvider()
+  return provider.legacy.withState((state) => work(createLegacyOperations(state)))
 }
 
 export const repository = {

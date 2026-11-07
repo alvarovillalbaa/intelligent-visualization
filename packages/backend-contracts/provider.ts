@@ -421,6 +421,8 @@ export interface PersistenceProvider {
   readonly kind: PersistenceKind
   readonly capabilities: PersistenceCapabilities
 
+  legacy: import("./legacy-repository").LegacyRepository
+
   health(): Promise<ProviderHealth>
 
   workspaceDrafts: import("./workspace-drafts").WorkspaceDraftRepository
