@@ -129,6 +129,8 @@ async function installClones(context: BrowserContext, key: string, prefix: strin
 async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo) {
   const fixture = await ownedFixture(kind, info.project.name), caseKey = `${kind}-${info.project.name.replace(/-chromium$/, "")}`
   const password = fixture.password, secrets = [fixture.password, fixture.email]
+  const helperEnvironment = { ...process.env }
+  delete helperEnvironment.FORCE_COLOR
   const workspace = `/app/workspaces/${fixture.workspaceSlug}`, draftApi = `/api/workspaces/${fixture.workspaceSlug}/visualizations`
   const id = randomUUID(), savedPath = `${workspace}/visualizations/${id}`, publicationApi = `${draftApi}/${id}/publications`, unpublishApi = publicationApi + "/unpublish"
   const observerKey = "iv_supabase_observer_" + randomUUID().replaceAll("-", ""), label = kind === "course" ? "Course" : "Report"
@@ -301,7 +303,7 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
   async function snapshot(type: "canonical" | "slides", versionId?: string) {
     const args = ["--import", "tsx", "scripts/supabase-application-fixture.ts", "snapshot", "--case", caseKey, "--kind", type]
     if (versionId) args.push("--version-id", versionId)
-    const result = await promisify(execFile)(process.execPath, args, { cwd: process.cwd(), encoding: "utf8", timeout: 20000, maxBuffer: 256 * 1024 })
+    const result = await promisify(execFile)(process.execPath, args, { cwd: process.cwd(), env: helperEnvironment, encoding: "utf8", timeout: 20000, maxBuffer: 256 * 1024 })
     expect(result.stderr).toBe("")
     const value = JSON.parse(result.stdout)
     if (type === "canonical") {
@@ -528,7 +530,7 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
     stage = "slides-historical-collision"
     let collisionArmed = false
     try {
-      const arm = await promisify(execFile)(process.execPath, ["--import", "tsx", "scripts/supabase-application-fixture.ts", "collision-on", "--case", caseKey], { cwd: process.cwd(), encoding: "utf8", timeout: 20000, maxBuffer: 16384 })
+      const arm = await promisify(execFile)(process.execPath, ["--import", "tsx", "scripts/supabase-application-fixture.ts", "collision-on", "--case", caseKey], { cwd: process.cwd(), env: helperEnvironment, encoding: "utf8", timeout: 20000, maxBuffer: 16384 })
       expect(arm.stderr).toBe("")
       const armed = JSON.parse(arm.stdout)
       collisionArmed = true
@@ -539,7 +541,7 @@ async function journey(kind: Kind, browser: Browser, page: Page, info: TestInfo)
     } finally {
       // The helper owns an exact journal; attempt restoration even if the arm
       // acknowledgement was lost, and never modify metadata in browser code.
-      const off = await promisify(execFile)(process.execPath, ["--import", "tsx", "scripts/supabase-application-fixture.ts", "collision-off", "--case", caseKey], { cwd: process.cwd(), encoding: "utf8", timeout: 20000, maxBuffer: 16384 })
+      const off = await promisify(execFile)(process.execPath, ["--import", "tsx", "scripts/supabase-application-fixture.ts", "collision-off", "--case", caseKey], { cwd: process.cwd(), env: helperEnvironment, encoding: "utf8", timeout: 20000, maxBuffer: 16384 })
       expect(off.stderr).toBe("")
       const restored = JSON.parse(off.stdout)
       expect(restored.restored).toBe(true); expect(restored.caseKey).toBe(caseKey)
