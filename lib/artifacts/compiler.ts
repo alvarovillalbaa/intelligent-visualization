@@ -14,6 +14,7 @@ export interface ArtifactCompileOptions {
   createdAt?: string
   assetBaseUrl?: string
   preview?: boolean
+  analytics?: boolean
 }
 
 export interface ArtifactWarning {
@@ -164,7 +165,8 @@ function renderReport(document: Extract<VisualizationDocument, { kind: "report" 
   return `<div class="report-artifact"><main class="report">${context}<div class="${layout.placements ? "report-grid" : "report-flow"}">${blocks}</div>${renderReportSources(document)}</main></div>`
 }
 
-function runtimeScript(preview = false) {
+function runtimeScript(preview = false, analytics = true) {
+  if (!analytics) return ""
   if (preview) {
     return `<script>(()=>{const completed=new Set();document.querySelectorAll('.complete-lesson').forEach((button)=>{button.setAttribute('aria-pressed','false');button.addEventListener('click',()=>{const id=button.getAttribute('data-lesson-id');if(id&&!completed.has(id)){completed.add(id);button.textContent='Completed';button.setAttribute('aria-pressed','true')}})});document.querySelectorAll('.quiz').forEach((quiz)=>{const feedback=quiz.querySelector('.feedback');const explanation=feedback?feedback.textContent:'';quiz.addEventListener('change',()=>{const selected=quiz.querySelector('input:checked');if(feedback&&selected){feedback.hidden=false;feedback.setAttribute('role','status');feedback.textContent=(selected.value===quiz.getAttribute('data-answer')?'Correct. ':'Try again. ')+explanation}})})})();</script>`
   }
@@ -181,9 +183,10 @@ function shell(document: VisualizationDocument, body: string, options: ArtifactC
   const css = document.kind === "report" ? (baseCss(document) + REPORT_ARTIFACT_CSS + REPORT_CHART_CSS).replace(/</g, "\\3c ")
     : document.kind === "course" ? (baseCss(document) + COURSE_ARTIFACT_CSS).replace(/</g, "\\3c ") : baseCss(document)
   const subtitle = (document.kind === "report" || document.kind === "course") && document.subtitle ? `<p class="artifact-subtitle">${escapeHtml(document.subtitle)}</p>` : ""
-  const runtime = document.kind === "course" ? courseRuntimeScript(options.preview === true)
-    : document.kind === "report" && options.preview === true ? "" : runtimeScript(options.preview === true)
-  return `<!doctype html><html lang="${escapeHtml(document.locale)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(document.seo.title)}</title><meta name="description" content="${escapeHtml(document.seo.description)}"><style>${css}</style></head><body data-kind="${document.kind}" data-public-id="${escapeHtml(options.visualizationId)}"><header class="artifact-header"><p>${escapeHtml(document.brand.companyName)}</p><h1>${escapeHtml(document.title)}</h1>${subtitle}<p>${escapeHtml(document.summary)}</p></header>${body}${cta}${runtime}</body></html>`
+  const runtime = document.kind === "course" ? courseRuntimeScript(options.preview === true, options.analytics !== false)
+    : document.kind === "report" && options.preview === true ? "" : runtimeScript(options.preview === true, options.analytics !== false)
+  const version = options.analytics === false && !options.preview ? ` data-version-id="${escapeHtml(options.versionId)}"` : ""
+  return `<!doctype html><html lang="${escapeHtml(document.locale)}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(document.seo.title)}</title><meta name="description" content="${escapeHtml(document.seo.description)}"><style>${css}</style></head><body data-kind="${document.kind}" data-public-id="${escapeHtml(options.visualizationId)}"${version}><header class="artifact-header"><p>${escapeHtml(document.brand.companyName)}</p><h1>${escapeHtml(document.title)}</h1>${subtitle}<p>${escapeHtml(document.summary)}</p></header>${body}${cta}${runtime}</body></html>`
 }
 
 function baseCss(document: VisualizationDocument) {
@@ -213,14 +216,16 @@ export async function compileVisualizationArtifact(
     documentHash,
     artifactHash,
     createdAt: options.createdAt ?? new Date().toISOString(),
-    rendererVersion: document.kind === "report" ? REPORT_RENDERER_VERSION : document.kind === "course" ? COURSE_RENDERER_VERSION : RENDERER_VERSION,
+    rendererVersion: options.analytics === false && !options.preview && document.kind !== "slides"
+      ? `visualization-${document.kind}-public-v1`
+      : document.kind === "report" ? REPORT_RENDERER_VERSION : document.kind === "course" ? COURSE_RENDERER_VERSION : RENDERER_VERSION,
     sourceHashes: document.sourceManifest.map((source) => source.contentHash),
     assetReferences: document.assetIds,
     runtimeFeatures: document.kind === "report"
-      ? [reportLayout?.placements ? "responsive-report-grid" : "report-flow-fallback", "inline-svg-charts", "print-flow", ...(options.preview ? ["preview", "no-analytics"] : ["analytics-beacon"]), "no-external-js"]
+      ? [reportLayout?.placements ? "responsive-report-grid" : "report-flow-fallback", "inline-svg-charts", "print-flow", ...(options.preview ? ["preview", "no-analytics"] : [options.analytics === false ? "no-analytics" : "analytics-beacon"]), "no-external-js"]
       : options.preview
         ? ["preview", "in-memory-course-progress", "no-analytics", "no-external-js"]
-        : ["analytics-beacon", "local-course-progress", "no-external-js"],
+        : [options.analytics === false ? "no-analytics" : "analytics-beacon", "local-course-progress", "no-external-js"],
   }
 
   return {

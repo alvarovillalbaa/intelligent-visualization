@@ -6,14 +6,20 @@ import { TeamInviteForm } from "@/components/slides/team-invite-form"
 import { Button } from "@/components/ui/button"
 import { Composer } from "@/components/visualizations/composer"
 import { repository } from "@/lib/repository"
+import { currentPublicDeckVersion } from "@/lib/public-deck-access"
 import { requireSessionUser } from "@/lib/server-auth"
 import type { DeckRecord } from "@/lib/types"
 import { formatRelativeDate } from "@/lib/utils"
+import { listWorkspaceDrafts } from "@/lib/workspace-drafts"
+import { WorkspaceDraftAccessError, type WorkspaceDraftSummary } from "@/packages/backend-contracts/workspace-drafts"
+import type { Page } from "@/packages/domain/entities"
 
 export default async function WorkspacePage({
   params,
+  searchParams,
 }: {
   params: Promise<{ workspaceSlug: string }>
+  searchParams?: Promise<{ after?: string | string[] }>
 }) {
   const { workspaceSlug } = await params
   const sessionUser = await requireSessionUser()
@@ -21,6 +27,17 @@ export default async function WorkspacePage({
 
   if (!dashboard) {
     notFound()
+  }
+
+  const { after } = await (searchParams ?? Promise.resolve({ after: undefined }))
+  let savedDrafts: Page<WorkspaceDraftSummary> | null = null
+  let draftsError = false
+  try {
+    if (Array.isArray(after)) throw new Error("Choose one saved-draft page.")
+    savedDrafts = await listWorkspaceDrafts(workspaceSlug, after ?? null)
+  } catch (cause) {
+    if (cause instanceof WorkspaceDraftAccessError && cause.code !== "INVALID_INPUT") throw cause
+    draftsError = true
   }
 
   const canManageWorkspaces = sessionUser.role === "admin"
@@ -45,21 +62,30 @@ export default async function WorkspacePage({
         <h2 className="text-lg font-semibold tracking-tight">Your work</h2>
 
         <div className="grid gap-2">
-          {dashboard.decks.length ? (
-            dashboard.decks.map((deck) => (
-              <VisualizationRow
-                key={deck.id}
-                deck={deck}
-                teamSlug={dashboard.team.slug}
-                workspaceSlug={dashboard.workspace.slug}
-              />
-            ))
-          ) : (
+          {dashboard.decks.map((deck) => (
+            <VisualizationRow
+              key={deck.id}
+              deck={deck}
+              teamSlug={dashboard.team.slug}
+              workspaceSlug={dashboard.workspace.slug}
+            />
+          ))}
+          {savedDrafts?.items.map((draft) => <WorkspaceDraftRow key={draft.id} draft={draft} workspaceSlug={dashboard.workspace.slug} />)}
+          {draftsError ? (
+            <div role="alert" className="grid gap-3 rounded-xl border border-destructive/30 bg-white px-4 py-5 text-sm">
+              <p>Saved Course and Report drafts could not be loaded. Your existing work has not been changed.</p>
+              <a href={`/app/workspaces/${encodeURIComponent(workspaceSlug)}`} className="inline-flex min-h-11 w-fit items-center font-medium underline">Try loading saved drafts again</a>
+            </div>
+          ) : !dashboard.decks.length && savedDrafts?.items.length === 0 ? (
             <p className="rounded-xl bg-white px-4 py-5 text-sm text-muted-foreground shadow-sm">
-              Nothing here yet — create your first draft above.
+              {after ? "No more saved drafts on this page. Return to the first page to see your work." : "Nothing here yet — create your first draft above."}
             </p>
-          )}
+          ) : null}
         </div>
+        {after || savedDrafts?.nextCursor ? <nav aria-label="Saved draft pages" className="flex flex-wrap gap-3">
+          {after ? <Link href={`/app/workspaces/${encodeURIComponent(workspaceSlug)}`} className="inline-flex min-h-11 items-center rounded-full border border-border px-4 text-sm font-medium">First saved drafts</Link> : null}
+          {savedDrafts?.nextCursor ? <Link href={`/app/workspaces/${encodeURIComponent(workspaceSlug)}?after=${encodeURIComponent(savedDrafts.nextCursor)}`} className="inline-flex min-h-11 items-center rounded-full border border-border px-4 text-sm font-medium">Next saved drafts</Link> : null}
+        </nav> : null}
       </section>
 
       {canManageWorkspaces ? (
@@ -144,6 +170,21 @@ export default async function WorkspacePage({
   )
 }
 
+function WorkspaceDraftRow({ draft, workspaceSlug }: { draft: WorkspaceDraftSummary; workspaceSlug: string }) {
+  const kind = draft.kind === "course" ? "Course" : "Report"
+  return <article aria-label={`Saved ${kind}: ${draft.title}`} className="flex min-w-0 flex-wrap items-center justify-between gap-4 rounded-xl bg-white px-5 py-4 shadow-sm">
+    <div className="min-w-0 flex-1 basis-56">
+      <div className="flex flex-wrap items-center gap-2.5">
+        <h3 className="break-words text-base font-semibold">{draft.title}</h3>
+        <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs uppercase tracking-[0.12em] text-muted-foreground">{kind} · private draft</span>
+      </div>
+      <p className="mt-1 line-clamp-2 break-words text-sm text-muted-foreground">{draft.summary}</p>
+      <p className="mt-1 text-xs text-muted-foreground">Revision {draft.draftRevision} · updated {formatRelativeDate(Date.parse(draft.updatedAt))}</p>
+    </div>
+    <Link href={`/app/workspaces/${encodeURIComponent(workspaceSlug)}/visualizations/${draft.id}`} className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-[#111513] px-4 text-sm font-medium text-white transition-colors hover:bg-[#202820]">Open saved {kind}</Link>
+  </article>
+}
+
 function VisualizationRow({
   deck,
   teamSlug,
@@ -153,6 +194,7 @@ function VisualizationRow({
   teamSlug: string
   workspaceSlug: string
 }) {
+  const publishedVersion = currentPublicDeckVersion(deck)
   return (
     <article className="flex flex-wrap items-center justify-between gap-4 rounded-xl bg-white px-5 py-4 shadow-sm">
       <div className="min-w-0">
@@ -172,12 +214,14 @@ function VisualizationRow({
         >
           Open
         </Link>
-        <Link
-          href={`/d/${teamSlug}/${deck.slug}`}
-          className="inline-flex h-9 items-center rounded-full bg-muted px-4 text-sm font-medium transition-colors hover:bg-muted/70"
-        >
-          Public
-        </Link>
+        {publishedVersion ? (
+          <Link
+            href={`/d/${teamSlug}/${deck.slug}`}
+            className="inline-flex h-9 items-center rounded-full bg-muted px-4 text-sm font-medium transition-colors hover:bg-muted/70"
+          >
+            Public
+          </Link>
+        ) : null}
       </div>
     </article>
   )

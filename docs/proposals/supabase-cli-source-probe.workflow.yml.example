@@ -1,0 +1,24 @@
+# Inactive: root must pin the reviewed immutable source before branch creation.
+# Source generation only. No app install/build/test, database, login, or hosted call.
+name: Temporary Supabase CLI source generation probe
+on:
+  create:
+permissions:
+  contents: read
+jobs:
+  cli-source:
+    if: github.repository == 'alvarovillalbaa/intelligent-visualization' && github.event.repository.private == false && github.event.ref_type == 'branch' && github.event.ref == 'qa/supabase-cli-source-20261107-1' && github.ref == 'refs/heads/qa/supabase-cli-source-20261107-1'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    env:
+      SOURCE_COMMIT: APPROVED_SOURCE_COMMIT
+      IV_SUPABASE_SOURCE_PUBLIC_REPOSITORY: ${{ github.event.repository.private == false }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: ${{ env.SOURCE_COMMIT }}
+          persist-credentials: false
+          fetch-depth: 1
+          clean: false
+      - name: Generate one empty migration using pinned CLI 3.0.0
+        run: python3 scripts/supabase-cli-source-probe.py

@@ -16,9 +16,8 @@ Baseline repository state recorded before migration work:
 - [Vercel Workflows](https://vercel.com/docs/workflows): durable workflow and step conventions.
 - [Vercel Eve](https://vercel.com/docs/eve): beta filesystem conventions under `agent/`.
 - [Vercel Blob](https://vercel.com/docs/vercel-blob), [Sandbox](https://vercel.com/docs/sandbox), [Queues](https://vercel.com/docs/queues), [MCP](https://vercel.com/docs/mcp), and [Connect](https://vercel.com/docs/connect): optional Vercel integration boundaries.
-- [Convex self-hosting](https://docs.convex.dev/self-hosting) and [Convex file storage](https://docs.convex.dev/file-storage): hosted/self-hosted operation and storage URL behavior.
 - [Supabase local development](https://supabase.com/docs/guides/local-development), [database](https://supabase.com/docs/guides/database), [storage](https://supabase.com/docs/guides/storage), and [auth](https://supabase.com/docs/guides/auth): local stack, Postgres, storage buckets, and optional auth.
-- [Cloudflare Workers](https://developers.cloudflare.com/workers/), [D1](https://developers.cloudflare.com/d1/), [D1 local development](https://developers.cloudflare.com/d1/best-practices/local-development/), [D1 migrations](https://developers.cloudflare.com/d1/reference/migrations/), [R2](https://developers.cloudflare.com/r2/), and [Wrangler](https://developers.cloudflare.com/workers/wrangler/): Worker gateway, local D1 persistence, migrations, and object storage.
+- [node-postgres pooling](https://node-postgres.com/features/pooling) and [transactions](https://node-postgres.com/features/transactions): standard PostgreSQL pool/client ownership and transaction boundaries.
 
 ## Reference Repositories
 
@@ -52,6 +51,4 @@ Baseline repository state recorded before migration work:
 ## API Differences Discovered
 
 - The repository imports `generateObject` and `streamObject` in `lib/ai/generate-deck.ts`; AI SDK 6 marks those APIs deprecated in favor of `generateText`/`streamText` with structured `output`.
-- Convex file-storage URLs are bearer-style URLs; private artifacts and source files need application-level access checks when served.
 - Supabase local development requires Docker-compatible local services, so it cannot be the default zero-hosted setup.
-- Cloudflare D1 bindings belong inside Workers; the Vercel-hosted Next.js app should call a signed internal Worker API rather than importing D1 bindings.

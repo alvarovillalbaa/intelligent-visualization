@@ -1,16 +1,40 @@
 # Limitations
 
+Last updated: 2026-11-07
+
 This migration is not complete.
 
 - Existing product routes still use legacy deck terminology.
-- `lib/repository.ts` still imports Convex directly.
-- Convex provider-contract adapter is not implemented.
 - Supabase provider is not implemented.
-- Cloudflare Worker + D1 provider is only a skeleton.
-- Report browser-draft grid authoring and standalone HTML export are implemented; browser/download/print acceptance and hosted saving/publication remain unverified or unfinished.
-- Course browser-draft authoring is implemented; hosted Course saving/publication and browser interaction acceptance remain unverified.
+- Report browser-draft grid authoring, standalone HTML export and local saved-revision publication are implemented; standalone download/print acceptance and hosted saving/publication remain unverified or unfinished.
+- Course browser-draft authoring and its separately recorded download/file checks are implemented; hosted Course saving/publication and learner analytics remain unfinished.
 - AI SDK deprecated object APIs still exist in `lib/ai/generate-deck.ts`.
 - Eve, Workflows, Sandbox QA, and Queues are not implemented.
-- Playwright and GitHub Actions are not fully wired.
+- Focused disposable Playwright/CI scopes are recorded separately; full-product browser coverage remains incomplete.
 
-The local SQLite provider, local storage adapter, artifact compiler, setup script, and first tests are executable.
+The PostgreSQL provider and transactional legacy repository replace the previous
+database paths in this candidate. Their focused migration acceptance is recorded
+in [the migration receipt](results/2026/11-06/postgres-checks.md). Current production remains on its earlier source until a hosted
+database/storage configuration is reviewed. The JSONB legacy bridge serializes
+slide operations. Private Course/Report saving now explicitly maps legacy
+team/workspace/actor namespaces without merging accounts. Its focused
+save/reopen acceptance is recorded separately from the migration in the
+[draft receipt](results/2026/11-06/workspace-drafts-checks.md). Database exports do not
+include media/artifact objects. Private saving does not establish publication,
+hosted access/storage or automatic guest-draft transfer.
+
+Explicit local Course/Report publication now has separate
+[focused acceptance](results/2026/11-06/workspace-publications-checks.md): live and
+immutable anonymous readers, two saved revisions and preserved earlier bytes.
+Deletion controls, public passwords, Course/Report embeds, canonical
+analytics and original-asset delivery remain unfinished. Course completion is
+browser-local per published version; quiz answers are not persisted. Publication
+uncertainty retains its object and intent rather than deleting potentially
+referenced data. Backups need database and object storage separately.
+
+Local [Unpublish acceptance](results/2026/11-07/workspace-unpublications-checks.md)
+now covers durable revocation, private edit preservation, backup/restore and later
+republishing without reopening revoked version URLs. This stops subsequent reads;
+already-open/history/downloaded copies cannot be recalled. Previously admitted
+requests may finish, but no in-flight revocation race was executed. Hosted
+revocation, physical devices/touch and a production cutover remain unverified.

@@ -8,11 +8,25 @@ on:
 jobs:
   local-quality:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_USER: iv_ci
+          POSTGRES_PASSWORD: authored-ci-only
+          POSTGRES_DB: intelligent_visualization_ci
+        ports: ['54431:5432']
+        options: >-
+          --health-cmd "pg_isready -U iv_ci -d intelligent_visualization_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       PERSISTENCE_PROVIDER: local
       STORAGE_PROVIDER: local
       AI_ENABLED: "false"
       NEXT_PUBLIC_APP_URL: http://localhost:3000
+      LOCAL_DATABASE_URL: postgresql://iv_ci:authored-ci-only@127.0.0.1:54431/intelligent_visualization_ci
+      IV_POSTGRES_TEST_ADMIN_URL: postgresql://iv_ci:authored-ci-only@127.0.0.1:54431/postgres
+      IV_POSTGRES_FIXTURES: disposable
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

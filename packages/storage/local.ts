@@ -21,17 +21,15 @@ export class LocalStorageAdapter implements StorageAdapter {
 
   async put(input: PutObjectInput): Promise<StoredObject> {
     const key = normalizeStorageKey(input.key)
-    const body = Buffer.isBuffer(input.body) ? input.body : Buffer.from(input.body)
+    const body = typeof input.body === "string" ? Buffer.from(input.body, "utf8") : Buffer.from(input.body)
+    const { contentType, immutable } = input
     const absolutePath = this.absolutePath(key)
     await fs.mkdir(path.dirname(absolutePath), { recursive: true })
-    if (input.immutable && (await this.exists({ key }))) {
-      throw new Error(`Immutable object already exists: ${key}`)
-    }
-    await fs.writeFile(absolutePath, body)
+    await fs.writeFile(absolutePath, body, immutable ? { flag: "wx" } : undefined)
     return {
       key,
       body,
-      contentType: input.contentType,
+      contentType,
       sizeBytes: body.byteLength,
       contentHash: createHash("sha256").update(body).digest("hex"),
       url: this.getPublicUrl(key),

@@ -1,5 +1,7 @@
 # Architecture
 
+Last updated: 2026-11-07
+
 Intelligent Visualization is a Next.js App Router application with a provider-neutral backend contract.
 
 Current migration shape:
@@ -11,7 +13,40 @@ Current migration shape:
 - `packages/storage` owns storage contracts and local storage.
 - `lib/artifacts` compiles typed documents into standalone HTML.
 
-Legacy slide UI and Convex repository code still exist until the service refactor is complete.
+Legacy slide UI remains compatible. Its repository loads a dedicated PostgreSQL
+JSONB state row under a transaction lock, runs the existing operations in an
+instance closure, then commits before returning. Canonical visualization tables
+share the database namespace; they retain their separate domain model. Production
+requests do not initialize demo state or fall back to process memory. Setup seeds
+explicitly, only when absent. The in-memory demo store is an isolated test fixture.
+
+Private Course/Report saves use `WorkspaceDraftRepository` through server
+application services. The cookie-derived actor is reauthorized against the
+locked legacy session/membership state; canonical team/workspace/actor IDs use
+explicit legacy namespaces without merging accounts. The same connection holds
+that lock through the draft, payload-bound receipt and legacy-state commit.
+Lists and private pages read current scoped records without provisioning mirrors.
+The client keeps local Apply, explicit Save, accepted revision and unresolved
+intent separately. See [private drafts](private-workspace-drafts.md) and
+[provider architecture](provider-architecture.md).
+
+`WorkspacePublicationRepository` adds named prepare/commit/resolve operations over
+the same database. Each mutation freshly authorizes the legacy actor and binds
+the request/version IDs, saved revision/hash and original live pointer. The
+application service verifies one exclusively created artifact envelope before
+atomically committing the version, pointer and receipt. Retries preserve original
+bytes and acknowledgements; concurrent draft/pointer changes cause conflict.
+Canonical `/v/` readers resolve committed ownership before validating stored HTML,
+manifest, hashes and stored CSP. The legacy raw-file reader rejects the reserved
+publication namespace. See [publication](workspace-publication.md) and its
+[separate acceptance](results/2026/11-06/workspace-publications-checks.md).
+
+Unpublish atomically changes version eligibility to `revoked` and the record to
+draft while retaining its last published pointer. Snapshot documents/manifests and
+objects remain immutable. Prepared publication receipts compare original status
+and pointer; generic rollback cannot restore earlier canonical workspace
+Course/Report UUIDs. This prevents access revocation from making an older prepared
+publish valid again. See [the revocation flow](workspace-unpublication.md).
 
 ## Source Composer
 

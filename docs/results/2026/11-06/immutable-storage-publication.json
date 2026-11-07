@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-06T10:40:54Z",
+  "repository": "alvarovillalbaa/intelligent-visualization",
+  "candidateBranch": "work/postgres-provider-20261106",
+  "sourceCommit": "377fb7a0f2f8f6d58192878022cdc76f90c938b4",
+  "retiredQaCommit": "09620464c9533863517efe4654aa28255ecaab38",
+  "sharedTree": "7c9302a79523a8f07a85ee01f66f05dd0952689a",
+  "trackedLeaves": 514,
+  "trackedBytes": 8702338,
+  "clean": true,
+  "temporaryWorkflowFiles": [],
+  "permanentWorkflow": ".github/workflows/ci.yml",
+  "disabledTemporaryWorkflowId": 409207095,
+  "pullRequest": {
+    "url": "https://github.com/alvarovillalbaa/intelligent-visualization/pull/1",
+    "title": "Require PostgreSQL, private drafts and exclusive artifact storage",
+    "draft": true,
+    "merged": false,
+    "head": "377fb7a0f2f8f6d58192878022cdc76f90c938b4",
+    "base": "a5fa01331281ac8d38eb135a1dcc381d6adb4ecc"
+  },
+  "acceptance": {
+    "receipt": "immutable-storage-checks.json",
+    "bytes": 113179,
+    "sha256": "591e19a29bf920486c7d4a4957d0a5ad88eb3254c3a3c530ceeb034199f291c4",
+    "source": "cf460e65d3639d8747b48a489e741820b4820fbb",
+    "activation": "eff37ca4bc793b143c5165c098ab41ea45a08f17",
+    "run": 42203942610,
+    "job": 127845754714,
+    "cases": 6,
+    "executions": 1,
+    "originalCapturesVerified": 11,
+    "sourceGuards": 5,
+    "runtimeInputs": 9,
+    "runtimeBytes": 644448,
+    "allRuntimeInputsMatch": true,
+    "frozenLock": {
+      "bytes": 618662,
+      "sha256": "b18dd278e6eded698e269d2e8400b0359083a8ba34de4721227a70b5e27c0d59"
+    },
+    "cleanupVerified": true,
+    "retainedLintAdvisory": "Minimal source export has no Pages directory",
+    "laterChangedDocuments": [
+      "README.md",
+      "docs/proposals/immutable-storage-checks.md",
+      "docs/proposals/workspace-publication.md",
+      "docs/storage.md",
+      "docs/testing.md"
+    ]
+  },
+  "priorPrivateDraftAcceptance": {
+    "receipt": "workspace-drafts-checks.json",
+    "sha256": "ee74cb9ab7b9a8b8f2f11ebab2093b20941084ceae8f450d3e3d60d05c9ef4e6",
+    "publishedSource": "9088cb7a009c8d04ff594aa4fe502732f2c5af71",
+    "runtimeInputs": 257,
+    "unchangedInputs": 256,
+    "changedInputs": [
+      "packages/storage/local.ts"
+    ],
+    "changedFileBytes": 3006,
+    "changedFileSha256": "d002f03e7a49248370e112e4a328ac0aff1646fa54488c9d940d2eaf96df258e",
+    "rerun": false,
+    "relabelledAsCurrentStorageSource": false
+  },
+  "production": {
+    "deployment": "dpl_EWQArRytPB9nV2TopnkaxsS1j3Vy",
+    "state": "READY",
+    "source": "a5fa01331281ac8d38eb135a1dcc381d6adb4ecc",
+    "canonicalHost": "intelligent-visualization.vercel.app",
+    "lastObservedAt": "2026-11-06T10:21:17Z",
+    "evidence": "Earlier current-turn metadata only; no production cutover or new hosted acceptance"
+  },
+  "limits": [
+    "Candidate is draft, unmerged and held off production",
+    "Six filesystem cases use independent adapter instances, not independent processes or a browser/database fixture",
+    "Linux results do not establish Windows/macOS, network-filesystem exclusivity, power-loss durability, full symlink containment or partial-write visibility",
+    "Publication must separately reconcile raw/compiler hash contracts, uncertain object and DB commit state, canonical readers and public analytics",
+    "Hosted Supabase/Auth/RLS/storage, public Course/Report publication, original file storage and full AI/Eve remain unfinished",
+    "No local install/build/server/browser/database, account, paid plan, model call or production data",
+    "This record refers to the preceding source; adding it does not alter the nine runtime inputs"
+  ]
+}

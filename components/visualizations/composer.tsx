@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react"
+import { useRouter } from "next/navigation"
 import {
   ArrowRightIcon,
   CheckIcon,
@@ -23,6 +24,8 @@ import { CourseEditor } from "@/components/visualizations/course-editor"
 import { ReportEditor } from "@/components/visualizations/report-editor"
 import { applyCourseDraftEdit } from "@/lib/client/course-authoring"
 import { applyReportDraftEdit } from "@/lib/client/report-authoring"
+import { saveWorkspaceDraft, WorkspaceDraftRequestError } from "@/lib/client/workspace-drafts"
+import type { SaveWorkspaceDraftInput } from "@/packages/backend-contracts/workspace-drafts"
 import {
   clearGuestDraft,
   loadGuestDraft,
@@ -36,6 +39,7 @@ import {
   restoreGeneratedDraft,
   restoreGenerationBatch,
   updateGenerationResult,
+  workspaceDraftMatchesSaved,
   type GenerationBatch,
   type GenerationResult,
 } from "@/lib/client/generation-batch"
@@ -126,6 +130,7 @@ function documentCount(document: VisualizationDocument) {
 }
 
 export function Composer(props: ComposerProps) {
+  const router = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
   const textInputRef = useRef<HTMLInputElement>(null)
   const composingRef = useRef(false)
@@ -169,6 +174,13 @@ export function Composer(props: ComposerProps) {
 
   const hasInput = Boolean(rawText.trim() || files.length)
   const compatibilityDraft = batch ? batch.results.find((result) => result.draft)?.draft ?? null : draft
+
+  useEffect(() => {
+    if (props.mode !== "workspace" || !batch?.results.some((result) => result.workspaceSaveIntent)) return
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = "" }
+    window.addEventListener("beforeunload", warn)
+    return () => window.removeEventListener("beforeunload", warn)
+  }, [batch, props.mode])
 
   useEffect(() => {
     mountedRef.current = true
@@ -268,7 +280,10 @@ export function Composer(props: ComposerProps) {
       return "This draft changed while you were editing. Keep a copy of your changes, then reopen its editor."
     }
     try {
-      replaceBatch(applyCourseDraftEdit(current, context.resultId, context.expectedDraft, document))
+      const edited = applyCourseDraftEdit(current, context.resultId, context.expectedDraft, document)
+      const result = edited.results.find((entry) => entry.id === context.resultId)
+      replaceBatch(result?.workspaceSaveStatus === "saved"
+        ? updateGenerationResult(edited, context.resultId, { workspaceSaveStatus: "idle", workspaceSaveError: null }) : edited)
       replaceCourseEditor(null)
       setPreviewResultId(context.resultId)
       return null
@@ -305,7 +320,10 @@ export function Composer(props: ComposerProps) {
       return "This draft changed while you were editing. Keep a copy of your changes, then reopen its editor."
     }
     try {
-      replaceBatch(applyReportDraftEdit(current, context.resultId, context.expectedDraft, document))
+      const edited = applyReportDraftEdit(current, context.resultId, context.expectedDraft, document)
+      const result = edited.results.find((entry) => entry.id === context.resultId)
+      replaceBatch(result?.workspaceSaveStatus === "saved"
+        ? updateGenerationResult(edited, context.resultId, { workspaceSaveStatus: "idle", workspaceSaveError: null }) : edited)
       replaceReportEditor(null)
       setPreviewResultId(context.resultId)
       return null
@@ -541,6 +559,58 @@ export function Composer(props: ComposerProps) {
     }
   }
 
+  async function saveWorkspaceVisualization(resultId: string) {
+    if (props.mode !== "workspace" || savingRef.current.has(resultId)) return
+    const current = batchRef.current
+    const result = current?.results.find((entry) => entry.id === resultId)
+    if (!current || !result || result.status !== "completed" || !result.draft || isExampleDraft(result.draft)
+      || result.draft.document.kind === "slides" || result.workspaceSaveStatus === "conflict"
+      || (result.workspaceSaveStatus === "saved" && workspaceDraftMatchesSaved(result))) return
+
+    const intent: SaveWorkspaceDraftInput = result.workspaceSaveIntent ?? {
+      id: result.workspaceDraftId ?? crypto.randomUUID(), requestId: crypto.randomUUID(),
+      expectedRevision: result.savedVisualizationRevision ?? 0, document: structuredClone(result.draft.document),
+    }
+    savingRef.current.add(resultId)
+    patchResult(current.id, resultId, { workspaceDraftId: intent.id, workspaceSaveIntent: intent,
+      workspaceSaveStatus: "saving", workspaceSaveError: null })
+    try {
+      const ack = await saveWorkspaceDraft(props.workspaceSlug, intent)
+      const latest = batchRef.current?.results.find((entry) => entry.id === resultId)
+      if (!mountedRef.current || batchRef.current?.id !== current.id || latest?.workspaceSaveIntent?.requestId !== intent.requestId) return
+      if (ack.receipt.requestId !== intent.requestId || ack.draft.id !== intent.id
+        || ack.draft.workspaceSlug !== props.workspaceSlug || ack.draft.kind !== intent.document.kind
+        || ack.status === "saved" && (ack.receipt.status !== "saved" || ack.receipt.acceptedRevision !== intent.expectedRevision + 1)) {
+        throw new WorkspaceDraftRequestError("The save response could not be confirmed.", true)
+      }
+
+      const metadata = { savedVisualizationId: ack.draft.id, savedVisualizationRevision: ack.draft.draftRevision,
+        savedVisualizationHash: ack.draft.draftHash, workspaceSaveIntent: undefined }
+      if (ack.status === "conflict" || ack.receipt.acceptedRevision !== ack.draft.draftRevision) {
+        patchResult(current.id, resultId, { ...metadata, workspaceSaveStatus: "conflict",
+          workspaceSaveError: "The saved draft has changed. Your edits remain here. Open the saved draft to reconcile them before saving again." })
+        try { router.refresh() } catch { /* The confirmed conflict remains visible even if the list cannot refresh. */ }
+        return
+      }
+      const unchanged = JSON.stringify(latest.draft?.document) === JSON.stringify(intent.document)
+      patchResult(current.id, resultId, { ...metadata, workspaceSavedSnapshot: structuredClone(intent.document),
+        workspaceSaveStatus: unchanged ? "saved" : "idle", workspaceSaveError: null })
+      try { router.refresh() } catch {
+        patchResult(current.id, resultId, { workspaceSaveError: "The draft was saved, but the workspace list could not refresh. Reload the workspace to see it." })
+      }
+    } catch (cause) {
+      const uncertain = !(cause instanceof WorkspaceDraftRequestError) || cause.uncertain
+      const retainRecovery = uncertain || Boolean(result.workspaceSaveIntent)
+      patchResult(current.id, resultId, { workspaceSaveStatus: retainRecovery ? "uncertain" : "failed",
+        ...(retainRecovery ? {} : { workspaceSaveIntent: undefined }),
+        workspaceSaveError: retainRecovery
+          ? "Saving could not be confirmed. Retry this same save before saving newer edits. Keep this tab open to retain its recovery request."
+          : cause instanceof WorkspaceDraftRequestError ? cause.message : "The workspace draft could not be saved." })
+    } finally {
+      savingRef.current.delete(resultId)
+    }
+  }
+
   async function runGeneration(batchId: string, resultIds: string[]) {
     try {
       for (const resultId of resultIds) {
@@ -621,7 +691,7 @@ export function Composer(props: ComposerProps) {
   }
 
   function startOver() {
-    if (generationBusyRef.current) return
+    if (generationBusyRef.current || batchRef.current?.results.some((result) => result.workspaceSaveIntent)) return
     invalidateExtraction()
     importEpochRef.current++
     pendingImportsRef.current = 0
@@ -649,7 +719,8 @@ export function Composer(props: ComposerProps) {
 
   const extractionPending = style.status === "loading"
   const awaitingStyleDecision = style.status === "ready" && style.decision === null
-  const createDisabled = generating || extractionPending || awaitingStyleDecision || !hasInput || selectedKinds.length === 0
+  const workspaceSavePending = Boolean(batch?.results.some((result) => result.workspaceSaveIntent))
+  const createDisabled = generating || workspaceSavePending || extractionPending || awaitingStyleDecision || !hasInput || selectedKinds.length === 0
 
   const sourceSummary = [
     rawText.trim() ? `${rawText.trim().length.toLocaleString()} characters` : null,
@@ -661,7 +732,7 @@ export function Composer(props: ComposerProps) {
 
   const previewResult = batch?.results.find((result) => result.id === previewResultId)
   const previewDraft = previewResult?.draft ?? (previewOpen ? draft : null)
-  const retentionNote = previewResult?.savedDeckId ? "Saved to this workspace." : props.mode === "workspace"
+  const retentionNote = previewResult?.savedDeckId || previewResult?.workspaceSaveStatus === "saved" ? "Saved to this workspace." : props.mode === "workspace"
     ? "This draft remains in this tab until workspace saving is confirmed."
     : "This draft is held in this browser when storage is available; account creation does not save it automatically."
   const previewNote = `${retentionNote}${storageNotice ? ` ${storageNotice}` : ""}`
@@ -899,6 +970,7 @@ export function Composer(props: ComposerProps) {
 
       {batch ? (
         <GenerationResults batch={batch} busy={generating} workspaceSlug={props.mode === "workspace" ? props.workspaceSlug : undefined}
+          replacementBlocked={workspaceSavePending} onSaveWorkspace={saveWorkspaceVisualization}
           onPreview={(id) => { setPreviewResultId(id); setPreviewOpen(false) }} onEditCourse={editCourse} onEditReport={editReport} onRetry={retryResult} onStartOver={startOver} />
       ) : null}
 
@@ -942,7 +1014,7 @@ export function Composer(props: ComposerProps) {
       {courseEditing ? (
         <CourseEditor key={courseEditing.id} document={courseEditing.document}
           persistenceNote={props.mode === "workspace"
-            ? "Apply updates this draft in this tab. Course workspace saving and publication are not available yet."
+            ? "Apply updates this draft in this tab. Then use Save Course on its result card to save it privately to this workspace."
             : "Apply updates this browser draft for its existing four-hour retention when storage is available. Check any browser-storage notice after applying."}
           onApply={(document) => applyCourseChanges(courseEditing, document)}
           onCancel={() => closeCourseEditor(courseEditing)} />
@@ -951,7 +1023,7 @@ export function Composer(props: ComposerProps) {
       {reportEditing ? (
         <ReportEditor key={reportEditing.id} document={reportEditing.document}
           persistenceNote={props.mode === "workspace"
-            ? "Apply updates this draft in this tab. Report workspace saving and publication are not available yet."
+            ? "Apply updates this draft in this tab. Then use Save Report on its result card to save it privately to this workspace."
             : "Apply updates this browser draft for its existing four-hour retention when storage is available. Check any browser-storage notice after applying."}
           onApply={(document) => applyReportChanges(reportEditing, document)}
           onCancel={() => closeReportEditor(reportEditing)} />

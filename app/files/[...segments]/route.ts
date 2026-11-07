@@ -3,6 +3,11 @@ import path from "path"
 import { NextResponse } from "next/server"
 
 import { readStoredFile } from "@/lib/storage"
+import { resolveLegacyFileAccess } from "@/lib/legacy-file-access"
+import { createLookupHash } from "@/lib/auth"
+import { getSessionToken } from "@/lib/server-auth"
+import { getPersistenceProvider } from "@/lib/persistence/factory"
+import { WORKSPACE_PUBLICATION_NAMESPACE } from "@/packages/backend-contracts/workspace-publications"
 
 function getContentType(filePath: string) {
   switch (path.extname(filePath).toLowerCase()) {
@@ -41,17 +46,29 @@ export async function GET(
   { params }: { params: Promise<{ segments: string[] }> },
 ) {
   const { segments } = await params
-  const storageKey = segments.join("/")
-  const content = await readStoredFile(storageKey)
-
-  if (!content) {
-    return NextResponse.json({ error: "File not found." }, { status: 404 })
+  if (!Array.isArray(segments) || !segments.length || segments.some((segment) => !segment || segment === "." || segment === ".."
+    || /[\\/\0]/.test(segment) || [WORKSPACE_PUBLICATION_NAMESPACE, "published", "legacy-slides"].includes(segment.toLowerCase()))) {
+    return NextResponse.json({ error: "File not found." }, { status: 404, headers: { "Cache-Control": "private, no-store" } })
   }
-
-  return new NextResponse(content, {
-    headers: {
-      "content-type": getContentType(storageKey),
-      "cache-control": "public, max-age=31536000, immutable",
-    },
-  })
+  const storageKey = segments.join("/")
+  try {
+    const token = await getSessionToken()
+    const access = await (await getPersistenceProvider()).legacy.withState((state) => resolveLegacyFileAccess(state, storageKey, token ? createLookupHash(token) : null))
+    if (!access) return NextResponse.json({ error: "File not found." }, { status: 404, headers: { "Cache-Control": "private, no-store" } })
+    const content = await readStoredFile(storageKey)
+    if (!content) return NextResponse.json({ error: "File not found." }, { status: 404, headers: { "Cache-Control": "private, no-store" } })
+    const contentType = getContentType(storageKey)
+    return new NextResponse(new Uint8Array(content), {
+      headers: {
+        "content-type": contentType,
+        "cache-control": "private, no-store",
+        "x-content-type-options": "nosniff",
+        "content-security-policy": "sandbox; default-src 'none'; base-uri 'none'; form-action 'none'",
+        "referrer-policy": "no-referrer",
+        ...(/\.(?:html?|svg|xml)$/i.test(storageKey) ? { "content-disposition": "attachment" } : {}),
+      },
+    })
+  } catch {
+    return NextResponse.json({ error: "File storage is unavailable." }, { status: 503, headers: { "Cache-Control": "private, no-store" } })
+  }
 }

@@ -1,6 +1,7 @@
 # Implementation Plan
 
-This repository is being migrated from a Convex-coupled slide-deck app into `Intelligent Visualization`.
+This repository is being migrated into `Intelligent Visualization` under the
+owner's PostgreSQL/Supabase/Vercel provider direction.
 
 ## Current Completed Slice
 
@@ -8,7 +9,7 @@ This repository is being migrated from a Convex-coupled slide-deck app into `Int
 - Zod validation and legacy `DeckSource` to slides migration helper.
 - Deterministic canonical serialization and SHA-256 content hashing.
 - Provider-neutral persistence contract with explicit atomic domain commands.
-- Durable local SQLite provider with schema migrations, seed path, idempotency, revisions, publish, rollback, analytics, leads, reviews, experiments, and workflow run records.
+- Local PostgreSQL provider with isolated schema, explicit seed, transactional idempotency/revisions/publication, analytics, reviews, experiments and workflows.
 - Provider-neutral storage contract plus local filesystem storage adapter.
 - Deterministic standalone artifact compiler for all three visualization kinds.
 - `/api/system/capabilities` endpoint for provider health and capabilities.
@@ -19,9 +20,9 @@ This repository is being migrated from a Convex-coupled slide-deck app into `Int
 
 1. Add regression coverage around current slide routes before deeper UI refactors.
 2. Replace `lib/repository.ts` callers with application services backed by `getPersistenceProvider`.
-3. Port Convex into `packages/provider-convex` and migrate `convex/schema.ts`.
+3. Complete and verify the canonical saving/publication service while preserving legacy slide records and permissions.
 4. Add Supabase Postgres, Storage, and optional Auth adapters.
-5. Complete Cloudflare Worker + D1 RPC, signed requests, D1 migrations, and R2 storage.
+5. Add and verify Vercel Blob storage through the storage contract.
 6. Replace deck-facing product UI and APIs with visualization terminology.
 7. Complete browser acceptance for the implemented Course editor, Report grid editor and Report HTML download/print flow. Hosted saving/publication remains gated separately.
 8. Migrate AI SDK structured generation to `generateText`/`streamText` with `Output.object`.
