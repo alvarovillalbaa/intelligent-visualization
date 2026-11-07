@@ -23,7 +23,7 @@ import traceback
 from urllib.parse import urlsplit
 
 repo, source = Path.cwd(), os.environ["SOURCE_COMMIT"]
-BRANCH = "qa/supabase-application-20261107-4"
+BRANCH = "qa/supabase-application-20261107-5"
 LOCK_SHA = "b18dd278e6eded698e269d2e8400b0359083a8ba34de4721227a70b5e27c0d59"
 ASSET = "supabase_3.0.0_linux_amd64.tar.gz"
 ARCHIVE_SHA = "eeb61edcd59a4735fcb5e58596574f25d03d420efca779f43ddb307e1cc5c754"
@@ -52,6 +52,10 @@ APPLICATION_THIRD_PATH = "docs/results/2026/11-07/supabase-application-attempt-3
 APPLICATION_THIRD_SOURCE = "22ff1a18d6d5c81dca39ff77279dbaca0496ab4c"
 APPLICATION_THIRD_SHA256 = "b37fc6d143e6e8600206be36307e34e2d0d07591ca4ef48a643640f9e289d310"
 APPLICATION_THIRD_BYTES = 537338
+APPLICATION_FOURTH_PATH = "docs/results/2026/11-07/supabase-application-attempt-4.json"
+APPLICATION_FOURTH_SOURCE = "15916d462e966679fd17e3a4a46c3742d590f354"
+APPLICATION_FOURTH_SHA256 = "3750fc2f07db1f6df19b454543c81af8b4ab6413035a0b0447d45083a7644acd"
+APPLICATION_FOURTH_BYTES = 611577
 assert re.fullmatch(r"[0-9a-f]{40}", source)
 assert os.environ.get("CI") == os.environ.get("IV_SUPABASE_APPLICATION_PUBLIC_REPOSITORY") == "true"
 assert os.environ.get("GITHUB_REPOSITORY") == "alvarovillalbaa/intelligent-visualization"
@@ -170,6 +174,27 @@ report["previousApplicationAttempts"].append({"receipt": APPLICATION_THIRD_PATH,
     "unprovenRequestFailures": [3, 5, 8], "protectedInputs": 286, "preservedExactInputs": 282,
     "reviewedInputs": [{"path": name, "previous": third_protected[name], "current": before[name],
         "reason": "Exact matched-request identity/bounded completion diagnostics and ordinary secondary-workspace navigation; failures remain fatal" if name.endswith(".spec.ts") else "Report-desktop actor uses an authored same-team secondary workspace while its primary workspace remains hq" if name == "scripts/supabase-application-fixture.ts" else "Resolve/validate actual authorized deck workspace before publish/add-asset mutation, then revalidate its editor path" if name == "app/actions/decks.ts" else "Three client refresh removals after revalidating Slides ServerActions; race cause remains inference pending actual verification"} for name in sorted(application_changes)]})
+application_fourth_bytes = (repo / APPLICATION_FOURTH_PATH).read_bytes()
+assert len(application_fourth_bytes) == APPLICATION_FOURTH_BYTES and sha(application_fourth_bytes) == APPLICATION_FOURTH_SHA256
+application_fourth = json.loads(application_fourth_bytes)
+assert application_fourth["sourceCommit"] == APPLICATION_FOURTH_SOURCE and application_fourth["passed"] is False
+assert application_fourth["providerCasesExecutedThisAttempt"] == 0 and not application_fourth.get("freshBrowserCasesPassed")
+assert application_fourth["playwright"]["stats"]["expected"] == 0 and application_fourth["playwright"]["stats"]["unexpected"] == 4
+assert application_fourth["playwright"]["stats"]["skipped"] == application_fourth["playwright"]["stats"]["flaky"] == 0
+fourth_protected = application_fourth["sourceExport"]["inputs"]
+fourth_changes = {"tests/e2e/supabase-application.spec.ts", "components/slides/deck-editor-client.tsx"}
+assert len(fourth_protected) == 286 and fourth_changes <= fourth_protected.keys() and fourth_changes <= before.keys()
+assert all(fourth_protected[name]["mode"] == before[name]["mode"] == "100644" for name in fourth_changes)
+assert all(before.get(name) == row for name, row in fourth_protected.items() if name not in fourth_changes), "Fourth application attempt inputs changed outside the exact version-label accessibility/locator correction"
+report["previousApplicationAttempts"].append({"receipt": APPLICATION_FOURTH_PATH, "bytes": len(application_fourth_bytes), "sha256": sha(application_fourth_bytes),
+    "sourceCommit": APPLICATION_FOURTH_SOURCE, "passed": False, "providerCasesExecuted": 0, "browserCasesExecuted": 4, "acceptedBrowserCases": 0, "carriedCases": 0,
+    "browserReport": {"expected": 0, "unexpected": 4, "skipped": 0},
+    "failurePhase": "All four failed during slides-publish-1 prepare: the unnamed textbox locator also matched the password input, before any matched publication request",
+    "slidesPublicationStreamDiagnosed": False, "diagnosticRows": {"count": 4, "phase": "prepare", "request": None, "response": None, "finishedAt": None, "failedAt": None, "failure": None, "finishedResolvedAt": None,
+        "listenersRemoved": False, "timerCleared": False, "falseFlagsAreVacuousBeforeListenerCreation": True},
+    "secondaryReportWorkspaceObserved": "secondary-reports", "unprovenRequestFailures": [5, 5, 4, 4], "protectedInputs": 286, "preservedExactInputs": 284,
+    "reviewedInputs": [{"path": name, "previous": fourth_protected[name], "current": before[name],
+        "reason": "Exact textbox name Version label inside the existing Publishing parent; two request-identity checks use the same boolean predicates to avoid private request-object assertion dumps" if name.endswith(".spec.ts") else "Version input gains the explicit accessible name Version label; no behavior or action change"} for name in sorted(fourth_changes)]})
 report["authoredFixtureDesign"] = {"users": 8, "slides": 8, "workspaces": 9, "originalAndVictimObjectProofs": 8,
     "secondaryWorkspaceCase": "report-desktop", "primaryWorkspaceUnchanged": "hq", "runtimeAcceptanceClaimedByThisMetadata": False}
 

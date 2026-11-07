@@ -1,6 +1,6 @@
 # Verify the real Supabase application factories
 
-Prepared 7 November 2026. Application acceptance remains pending; the fourth
+Prepared 7 November 2026. Application acceptance remains pending; the fifth
 attempt is an inactive source packet. The prerequisite
 [90-case provider packet](../results/2026/11-07/supabase-provider-attempt-8.md)
 passed at `4da1844f22a332aad8bd827a026c3a806b4a308f`, with independent
@@ -72,6 +72,31 @@ attempt's 286 exported inputs remains exact. Client and actions join scoped lint
 only this static-input set changes inside the controller's bootstrap function.
 Actual acceptance, runtime and closure functions, four identities, per-case/global
 limits and the 20-minute job remain unchanged. All new execution remains held.
+
+The [fourth application attempt](../results/2026/11-07/supabase-application-attempt-4.json)
+remains false: JSON 611,577 bytes, SHA-256
+`3750fc2f07db1f6df19b454543c81af8b4ab6413035a0b0447d45083a7644acd`, source
+`15916d462e966679fd17e3a4a46c3742d590f354`. All four results are unexpected
+failures, with zero expected passes or skips. Each Slides diagnostic stopped in
+`prepare`: the unnamed textbox locator resolved to both version and password
+inputs, before a publication request or response was matched. Null request,
+response, finished and failed fields therefore diagnose no publication stream;
+false listener/timer flags are vacuous before their creation. The Report-desktop
+boundary does show its authored secondary workspace, without accepting the
+unfinished journey or establishing the earlier refresh-race explanation.
+Fatal request failures (5/5/4/4) remain failures, without a cancellation waiver.
+
+Retry five on `qa/supabase-application-20261107-5` pins all four failures and the
+separate provider acceptance. Only two inputs may change from attempt four:
+the version input gains accessible name **Version label**, and the existing
+Publishing-parent spec locator uses that exact textbox name. Two request-identity
+assertions use identical boolean predicates so failure diffs cannot dump private
+request objects, headers, bodies or cookies. The other 284/286
+inputs, including actions and secondary fixture, remain exact. Attempts one to
+three retain their four exact exceptions and 282/286 preservation; QA8 retains
+its five exact exceptions and 292/297 preservation. All 37 controller function
+ASTs, diagnostics, assertions, failures, time limits and cleanup remain unchanged.
+No case is carried; the new packet has no runtime or publication acceptance yet.
 
 ## Source boundary
 
