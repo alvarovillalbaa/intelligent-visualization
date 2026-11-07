@@ -1,14 +1,26 @@
 # Inactive until reviewed source is pinned and the exact QA branch is created.
-name: Temporary Supabase Storage diagnostics 6
+name: Temporary Supabase provider contracts 7
 on:
   create:
 permissions:
   contents: read
 jobs:
-  supabase-storage-diagnostics:
-    if: github.repository == 'alvarovillalbaa/intelligent-visualization' && github.event.repository.private == false && github.event.ref_type == 'branch' && github.event.ref == 'qa/supabase-provider-20261107-6' && github.ref == 'refs/heads/qa/supabase-provider-20261107-6'
+  supabase-contracts:
+    if: github.repository == 'alvarovillalbaa/intelligent-visualization' && github.event.repository.private == false && github.event.ref_type == 'branch' && github.event.ref == 'qa/supabase-provider-20261107-7' && github.ref == 'refs/heads/qa/supabase-provider-20261107-7'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:17.6
+        env:
+          POSTGRES_USER: iv_ci
+          POSTGRES_PASSWORD: authored-ci-only
+          POSTGRES_DB: intelligent_visualization_ci
+        ports:
+          - 54431:5432
+        options: >-
+          --health-cmd "pg_isready -U iv_ci -d intelligent_visualization_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 10
     env:
       SOURCE_COMMIT: APPROVED_SOURCE_COMMIT
       IV_SUPABASE_PUBLIC_REPOSITORY: ${{ github.event.repository.private == false }}
@@ -23,5 +35,5 @@ jobs:
         with:
           node-version: 24.21.0
           cache: ''
-      - name: Observe actual private Storage responses only (zero tests)
+      - name: Check isolated Supabase and affected PostgreSQL contracts
         run: python3 scripts/supabase-provider-checks.py

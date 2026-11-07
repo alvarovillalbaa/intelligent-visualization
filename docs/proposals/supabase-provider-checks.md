@@ -1,109 +1,90 @@
-# Disposable Supabase Storage diagnostic packet
+# Fresh Supabase contracts after observed Storage interoperability fixes
 
-Prepared 7 November 2026. Inactive QA6 source only. Review and pin the candidate
-before creating `qa/supabase-provider-20261107-6`; permanent CI and application
-factory selection remain untouched. This packet does not rerun tests or accept
-the provider.
+Prepared 7 November 2026. Inactive QA7 packet: review and pin its source before
+creating `qa/supabase-provider-20261107-7`. Permanent CI and application factories
+remain untouched. No local runtime, installation or deployment is authorized here.
 
-QA5 at `f14d82a179277b2d742f0b79309286027c4676ca` executed all 90 cases:
-88 passed and two native Storage cases failed. Preserve its
-[exact failed receipt](../results/2026/11-07/supabase-provider-attempt-5.json),
-366,433 bytes, SHA-256
-`220187b7525e1b7eac9920a7a4471aa6425bf475889f1e5c8f4122ae59c62537`.
-The immutable race loser's public error was not EEXIST; an anonymous-operation
-response was 200 before the test reached its target-retention assertion. The
-specific HTTP responses and side effects require observation. No duplicate-error
-mapping or status-200 exception is introduced before that evidence.
+## Evidence and bounded change
 
-## Scope and unchanged inputs
+[QA5](../results/2026/11-07/supabase-provider-attempt-5.json) executed all 90 cases,
+with 88 passed and two native Storage failures; its overall verdict remains false.
+[QA6](../results/2026/11-07/supabase-storage-diagnostic-6.md) completed observation
+only, with zero tests and provider acceptance/passed false. Its exact JSON is
+306,883 bytes, SHA-256
+`0988205dcd19177cfb513f67ae35578705d850527c17936f649804710cbe42e1`.
 
-All five earlier receipts remain hash-pinned: attempts one, two, diagnostic three,
-attempt four and attempt five. Their failed/nonacceptance verdicts remain intact.
-All 296 QA5 exported runtime inputs must remain byte-identical, including the
-Storage adapter, tests, schema and migration. The new
-`scripts/supabase-storage-diagnostic.ts` is an additional observation source,
-not a change to any tested input. No prior passed case is carried forward.
+The actual losing immutable POST returned HTTP 400 with code
+`KeyAlreadyExists`, error `Duplicate` and body statusCode `409`; the winner's
+authored bytes remained exact. Anonymous list and DELETE returned exact EOF
+`[]` with HTTP 200, while independent service reads after every operation
+confirmed the target's exact original size/hash. Both original and well-formed
+binary anonymous writes were denied and their candidate keys remained absent.
+These are observed request-specific outcomes, not a generic error/200 waiver.
 
-One public Ubuntu 24.04 job uses Node 24.21.0, the frozen package lock and
-`npm ci --ignore-scripts`. Reuse the accepted pinned CLI 3.0.0 archive and its
-checksum, exclusive scratch HOME/config/cache/temp directories, exact fresh
-project/container/volume/network ownership, positive DB/Kong running-port checks,
-single generated JSON configuration and explicit fresh migration/runtime LOGIN/
-private-bucket provisioning. Five native/index/source guards and unchanged
-export hashes remain mandatory. There is no separate regression PostgreSQL
-service, repeated lint/type suite, test collector, Vitest, browser or build.
+Only these three prior runtime inputs may differ from QA5:
 
-The standalone program checks the owned scratch nonce/identity, exact loopback
-endpoints and database marker before HTTP operations. It instantiates the actual
-`createSupabaseStorageAdapter`. Its fixture HTTPS origin maps only to the
-already-owned local Kong HTTP endpoint; fetch receives the original init and the
-original promise/response is returned unchanged. A bounded asynchronous
-`Response.clone()` observer records real HTTP metadata and drains all jobs.
-This transport is explicit local diagnostic context, not application factory or
-TLS/hosted verification. It fabricates no response.
+- `packages/provider-supabase/storage.ts`: recognize the observed explicit
+  `KeyAlreadyExists` code within the existing immutable duplicate-status boundary.
+- `tests/unit/supabase-storage.test.ts`: cover that exact structured code.
+- `tests/integration/supabase-storage.test.ts`: permit only the exact list/DELETE
+  method/path empty-array response, with independent target byte/size/hash
+  retention after every operation; retain strict denial and absence checks for
+  both write candidates, including the well-formed binary control.
 
-## Observations, not acceptance decisions
+The other 293 of QA5's 296 inputs must match byte-for-byte. The diagnostic script
+is an additional exported/static-checked source; the protected schema, migration,
+lineage, application auth and factory behavior do not change. All six prior
+failed/nonacceptance JSON receipts are byte/hash pinned by the controller. No
+prior passed case or diagnostic exit is carried into acceptance.
 
-1. Two independent adapters race immutable writes with different authored bytes
-   to one exclusively named fresh key. Record both outcomes/public error codes,
-   each real HTTP error's bounded structural fields, and the service readback
-   size/hash and which authored input it matches. Preserve the object until final
-   owned cleanup; do not compensate a failed/uncertain write.
-2. Create a separate private object containing an authored marker. Execute each
-   anonymous request independently: GET raw, authenticated and public object
-   routes; POST list; POST an unauthorized candidate write; DELETE the target.
-   For every operation record method, owned path, actual status, content type,
-   bounded body bytes/hash/shape, array length, permitted error fields and whether
-   the response contains the own marker. Never retain a private object body.
-3. Preserve the original malformed text-with-JSON-content-type write probe, then
-   separately attempt a well-formed binary anonymous upload to another owned key.
-   This prevents mistaking a parse rejection for an authorization decision.
-   After **every** anonymous operation, service-read the target and record
-   existence, size/hash and whether its bytes still match the original, before
-   sending the next operation. Independently service-read the unauthorized-write
-   key after that POST to observe whether it was created. No status, including
-   200, is asserted or whitelisted as safe. A 200 empty array is not interpreted
-   as a harmless RLS no-op without the actual per-operation retention evidence.
-4. Decode only the anonymous/service JWT role labels and record whether the keys
-   differ; retain no raw JWT, header or complete claim set. Error JSON may retain
-   only code/error/statusCode and a short sanitized message or duplicate-database
-   flag. Read at most 64 KiB per observer with actual EOF; no response-body or
-   exception-message shortcut changes the caller's response.
+## Full fresh execution
 
-Verify initial absence and track all four owned keys **before** any write: the
-race, marker, original unauthorized-write and binary-write candidates. A collision
-is refused without deleting pre-existing data. Delete only these keys in final cleanup, verify
-their absence via service reads, drain clone jobs and close database clients.
-Before normal CLI stop require zero Storage objects, Auth users, runtime clients
-and temporary roles in the fresh owned stack. Unexpected objects are reported,
-not broadly deleted.
+One public Ubuntu 24.04 job uses Node 24.21.0, the frozen dependency lock and
+`npm ci --ignore-scripts`. It runs scoped ESLint and semantic TypeScript checking,
+then all 90 cases in eleven explicit files, in this order:
 
-## Receipt and lifecycle
+1. Local PostgreSQL regressions: 28 (3 + 11 + 8 + 6).
+2. Focused unit cases: 40 (14 + 4 + 6 + 12 + 4).
+3. Supabase shared contracts: 14.
+4. Native Storage/Auth contracts: 8.
 
-The controller retains the Node JSON before its completion gate, including
-partial observations on a failed program exit. Prefix:
-`IV_SUPABASE_STORAGE_DIAGNOSTIC_RESULT`. Top-level `providerAccepted` and
-`passed` are always false. Only `diagnosticComplete` can become true after the
-scheduled observations, observer EOF/drain, owned-key cleanup, source/export
-guards, command EOF/reaping/groups, process ownership, Docker/port and scratch
-closure pass. Workflow exit zero means diagnostic collection completed; it never
-means a test or provider was accepted. The program observes unsafe outcomes too;
-it does not turn them into passing security assertions.
+Source-derived literal identities, exact per-file counts, ordinary Vitest JSON,
+CLI zero exit, no duplicate/skip/todo/retry and all-pass results remain required.
+Failure JSON is retained before its success gate. No historical full suite,
+browser, generation or build is run. All 90 cases execute freshly across eleven
+file invocations; the four application browser identities remain separate and unaccepted.
+
+The actual disposable CLI stack keeps PostgreSQL, Auth, Storage, Kong and
+PostgREST. Its CLI 3.0.0 archive/checksum pins, help discovery, single owned JSON
+configuration, fresh project, exact Docker labels/identities and positive DB/Kong
+running port mappings are retained. Only after ownership verification may setup
+apply the existing migration, enable LOGIN/password on its fresh restricted role,
+mark the database and create the private bucket. Real actual runtime LOGIN and
+private service operations are used; explicit database injection and facade
+transport remain local contract-test seams, not application/TLS/hosted proof.
+The separate PostgreSQL 17.6 service supports only the affected local fixtures.
+
+## Integrity and cleanup
+
+All source, dependencies, HOME/cache/config/temp files and reports remain under
+one exclusive owned scratch root. Five native/index/source guards, index/tree
+identity, source export hashes and frozen-lock checks stay mandatory. Source
+and exported runtime inputs cannot change during execution.
 
 Keep the 20-minute job, 1,020-second work budget and 90-second cleanup reserve.
-Normal stop uses only the positively identified fresh project with
-`--no-backup`. No outside client is terminated and no unknown database/resource
-is removed. Forced or uncertain cleanup fails completion.
+No unknown database is dropped or outside client terminated. Local fixture DBs,
+owned objects/Auth users/runtime clients/test roles, command EOF/reaping/groups,
+descendants, Docker containers/networks/volumes, ports and scratch identity/removal
+must close normally. Forced or uncertain cleanup fails; the workflow-owned
+separate PostgreSQL service is left to GitHub Actions.
 
-Original stdout/stderr exists only in memory. The receipt retains observed
-original byte counts/hashes and explicitly sanitized gzip bytes/hashes, using
-actual parsed disposable status keys and byte-preserving JWT/key/credential-URL
-substitution. These are not independently replayable original captures. Withhold
-payloads after incomplete capture or missing key inventory. Retain no raw key,
-config/dotenv, private body or credential-bearing browser state.
+Original streams exist only in memory. Retain observed original byte counts/hashes
+plus explicitly sanitized gzip bytes/hashes using actual parsed local status keys
+and byte-preserving credential/JWT/URL substitution. They are not independently
+replayable original captures. No raw service key, config/dotenv or credential file
+is uploaded. Preserve all failures.
 
-No hosted account/settings, paid resource, model, native application Auth,
-production factory or deployment operation occurs. The application browser/TLS
-packet remains paused behind a complete provider acceptance gate. Choose any
-future mapping or test correction only after reviewing this actual response and
-post-operation state evidence.
+Provider selection stays fail-closed until the full candidate passes. Actual
+application factory/TLS/DNS/proxy/browser verification, hosted Supabase/pooler,
+native application Auth, Vercel environment/deployment and full AI acceptance
+remain pending. No hosted account/settings, paid resource or model call occurs.

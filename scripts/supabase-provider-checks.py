@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bounded public CI Storage observation only; never provider/test acceptance."""
+"""Bounded public CI only: real disposable Supabase plus affected PG contracts."""
 import base64
 import gzip
 import hashlib
@@ -21,16 +21,24 @@ import traceback
 from urllib.parse import urlsplit
 
 repo, source = Path.cwd(), os.environ["SOURCE_COMMIT"]
-BRANCH = "qa/supabase-provider-20261107-6"
+BRANCH = "qa/supabase-provider-20261107-7"
 LOCK_SHA = "b18dd278e6eded698e269d2e8400b0359083a8ba34de4721227a70b5e27c0d59"
 ASSET = "supabase_3.0.0_linux_amd64.tar.gz"
 ARCHIVE_SHA = "eeb61edcd59a4735fcb5e58596574f25d03d420efca779f43ddb307e1cc5c754"
 CHECKSUM_SHA = "23763f31f1d3251c71cad4fd27577303f306514e2b99da91427a619d1800301f"
 BASE = "https://github.com/supabase/cli/releases/download/v3.0.0/"
 MIGRATION = "supabase/migrations/20261107002755_intelligent_visualization_hosted.sql"
-DIAGNOSTIC_SOURCE = "scripts/supabase-storage-diagnostic.ts"
 ADMIN = "postgresql://postgres:postgres@127.0.0.1:54322/postgres"
 RUNTIME = "postgresql://iv_runtime:authored-ci-runtime@127.0.0.1:54322/postgres"
+PG_ADMIN = "postgresql://iv_ci:authored-ci-only@127.0.0.1:54431/postgres"
+TESTS = {
+    "tests/providers/local-provider.test.ts": 3, "tests/providers/postgres-invariants.test.ts": 11,
+    "tests/providers/legacy-postgres.test.ts": 8, "tests/providers/portable-postgres.test.ts": 6,
+    "tests/unit/supabase-storage.test.ts": 14, "tests/unit/legacy-public-assets.test.ts": 4,
+    "tests/unit/public-deck-access.test.ts": 6, "tests/unit/supabase-database.test.ts": 12,
+    "tests/unit/legacy-upload-ownership.test.ts": 4,
+    "tests/providers/supabase-contracts.test.ts": 14, "tests/integration/supabase-storage.test.ts": 8,
+}
 assert re.fullmatch(r"[0-9a-f]{40}", source)
 assert os.environ.get("CI") == os.environ.get("IV_SUPABASE_PUBLIC_REPOSITORY") == "true"
 assert os.environ.get("GITHUB_REPOSITORY") == "alvarovillalbaa/intelligent-visualization"
@@ -74,7 +82,7 @@ def vector():
 
 before = vector()
 report = {"schemaVersion": 1, "sourceCommit": source, "startedAt": time.time(), "commands": [], "sourceFiles": before, "sourceGuards": [],
-    "scope": "STORAGE DIAGNOSTICS ONLY: zero tests. Observe real immutable race responses and six anonymous operations plus independent service object reads on an owned disposable local stack. No response mappings, status-code waivers, app/factory/TLS/hosted or provider acceptance.",
+    "scope": "90 fresh cases in eleven explicit files, in order: 28 affected local PostgreSQL regressions,40 focused unit cases,14 Supabase provider,8 native Storage/Auth. Actual disposable local services, not hosted TLS/pooler/Vercel/native application Auth acceptance. No browser/build/model/hosted account/settings calls; selection remains disabled.",
     "capturePolicy": "Original streams exist only in controller memory. Original observed byte counts/SHA-256 are retained, but all retained text/JSON/errors are retrospectively sanitized using parsed disposable status keys and credential patterns. Sanitized gzip captures are not original independently replayable streams. No raw status/config/dotenv artifact is retained."}
 
 prior_specs = [
@@ -83,21 +91,25 @@ prior_specs = [
     ("docs/results/2026/11-07/supabase-provider-diagnostic-3.json", 266607, "150464cbaaece4dcd6ba28bf411ebc35187b8ca7127d1c3f3717513e02321e49", "b2b404de76c6933fddb20823da53f93896d4f492"),
     ("docs/results/2026/11-07/supabase-provider-attempt-4.json", 317657, "358576029ce7ec2a29dfd082e5ec2cea6ecae341a21635da4ff7b593ca08d035", "63a74b393063a5addfc412f14a75474ffcfa5372"),
     ("docs/results/2026/11-07/supabase-provider-attempt-5.json", 366433, "220187b7525e1b7eac9920a7a4471aa6425bf475889f1e5c8f4122ae59c62537", "f14d82a179277b2d742f0b79309286027c4676ca"),
+    ("docs/results/2026/11-07/supabase-storage-diagnostic-6.json", 306883, "0988205dcd19177cfb513f67ae35578705d850527c17936f649804710cbe42e1", "26a141d06c9ae835fde59548650b6832a77a0e0a"),
 ]
 report["priorReceipts"] = []
 for file, count, digest, commit in prior_specs:
     raw = (repo / file).read_bytes()
     assert len(raw) == count and sha(raw) == digest
-    prior = json.loads(raw)
-    assert prior["sourceCommit"] == commit and prior["passed"] is False
-    report["priorReceipts"].append({"receipt": file, "bytes": count, "sha256": digest, "sourceCommit": commit, "passed": False, "carriedCases": 0,
-        "diagnosticComplete": prior.get("diagnosticComplete"), "providerAccepted": prior.get("providerAccepted")})
-protected = prior["sourceExport"]["inputs"]
-assert len(protected) == 296 and all(before.get(name) == row for name, row in protected.items()), "A QA5 runtime input changed before observation"
-report["protectedPriorRuntime"] = {"inputs": len(protected), "unchangedInputs": len(protected), "allowedChangedInputs": [],
-    "reason": "All QA5 product/test inputs unchanged; only new observation source and controller/workflow/docs are added. No response mappings or status waivers."}
+    value = json.loads(raw)
+    assert value["sourceCommit"] == commit and value["passed"] is False
+    report["priorReceipts"].append({"receipt": file, "bytes": count, "sha256": digest, "sourceCommit": commit, "passed": False,
+        "diagnosticComplete": value.get("diagnosticComplete"), "providerAccepted": value.get("providerAccepted"), "carriedCases": 0})
+qa5 = json.loads((repo / prior_specs[4][0]).read_bytes())
+protected = qa5["sourceExport"]["inputs"]
+allowed_changes = {"packages/provider-supabase/storage.ts", "tests/unit/supabase-storage.test.ts", "tests/integration/supabase-storage.test.ts"}
+assert len(protected) == 296 and allowed_changes <= protected.keys()
+assert all(before.get(name) == row for name, row in protected.items() if name not in allowed_changes), "Unapproved QA5 runtime input changed"
 report["priorAttempt5Outcomes"] = {"passed": 88, "failed": 2, "unrun": 0, "carried": 0}
-report.update({"testsExecuted": 0, "providerAccepted": False, "passed": False, "diagnosticComplete": False})
+report["protectedPriorRuntime"] = {"inputs": len(protected), "unchangedInputs": len(protected) - len(allowed_changes),
+    "allowedChangedInputs": {name: {"before": protected[name], "current": before[name]} for name in sorted(allowed_changes)},
+    "reason": "Observed KeyAlreadyExists translation and exact empty list/DELETE plus per-operation retention/binary-write checks. All 90 cases execute freshly; no cases are carried."}
 
 
 def guard(label):
@@ -110,14 +122,13 @@ guard("before")
 root = Path(tempfile.mkdtemp(prefix="ivsb-", dir="/tmp")); os.chmod(root, 0o700)
 identity = (root.stat().st_dev, root.stat().st_ino, root.stat().st_uid)
 nonce = os.urandom(16).hex(); (root / ".owner").write_text(nonce)
-os.chmod(root / ".owner", 0o600)
 assert root.resolve() == root
 app, stack = root / "app", root / "stack"
 for name in ["app", "stack", "home", "supabase-home", "cache", "config", "tmp", "docker"]: (root / name).mkdir(mode=0o700)
 for name in ["npm-user", "npm-global"]: (root / name).write_text("")
 project = "iv-supabase-" + source[:12]
 groups, export, observed, raw_captures = [], {}, {}, []
-docker_before, cli, stack_attempted, stack_ready, status = None, None, False, False, 1
+docker_before, cli, stack_attempted, stack_ready, installed, status = None, None, False, False, False, 1
 secrets, keys_known = {"authored-ci-runtime"}, False
 env = {"PATH": os.environ["PATH"], "CI": "true", "LANG": "C.UTF-8", "TZ": "UTC", "NO_COLOR": "1",
     "HOME": str(root / "home"), "SUPABASE_HOME": str(root / "supabase-home"), "TMPDIR": str(root / "tmp"),
@@ -126,9 +137,9 @@ env = {"PATH": os.environ["PATH"], "CI": "true", "LANG": "C.UTF-8", "TZ": "UTC",
     "SUPABASE_TELEMETRY_DISABLED": "1", "SUPABASE_NO_KEYRING": "1", "SUPABASE_EXPERIMENTAL_STACK": "0", "DO_NOT_TRACK": "1",
     "NEXT_TELEMETRY_DISABLED": "1", "PERSISTENCE_PROVIDER": "local", "STORAGE_PROVIDER": "local", "AUTH_PROVIDER": "portable",
     "AI_ENABLED": "false", "EVE_ENABLED": "false", "WORKFLOWS_ENABLED": "false", "QUEUES_ENABLED": "false", "SANDBOX_QA_ENABLED": "false",
-    "LOCAL_STORAGE_DIR": str(root / "storage"),
-    "IV_SUPABASE_CHECKS": "disposable", "IV_SUPABASE_CHECK_ROOT": str(root), "IV_SUPABASE_CHECK_NONCE": nonce, "IV_SUPABASE_ADMIN_URL": ADMIN, "IV_SUPABASE_RUNTIME_URL": RUNTIME,
-    "IV_SUPABASE_API_URL": "http://127.0.0.1:54321", "SOURCE_COMMIT": source}
+    "LOCAL_STORAGE_DIR": str(root / "storage"), "IV_POSTGRES_FIXTURES": "disposable", "IV_POSTGRES_TEST_ADMIN_URL": PG_ADMIN,
+    "IV_SUPABASE_CHECKS": "disposable", "IV_SUPABASE_ADMIN_URL": ADMIN, "IV_SUPABASE_RUNTIME_URL": RUNTIME,
+    "IV_SUPABASE_API_URL": "http://127.0.0.1:54321", "IV_SUPABASE_CHECK_ROOT": str(root), "SOURCE_COMMIT": source}
 
 
 def process_stat(entry):
@@ -228,7 +239,7 @@ def docker_snapshot():
     for kind, listing, id_field, labels in [("container", ["ps", "-aq", "--no-trunc"], ".Id", ".Config.Labels"),
             ("network", ["network", "ls", "-q", "--no-trunc"], ".Id", ".Labels"), ("volume", ["volume", "ls", "-q"], ".Name", ".Labels")]:
         ids = run(["docker", *listing], 15).decode().split()
-        extra = ',"state":{{json .State.Status}},"ports":{{json .NetworkSettings.Ports}},"imageId":{{json .Image}},"image":{{json .Config.Image}}' if kind == "container" else ""
+        extra = ',"state":{{json .State.Status}},"ports":{{json .NetworkSettings.Ports}}' if kind == "container" else ""
         template = '{"id":{{json ' + id_field + '}},"name":{{json .Name}},"labels":{{json ' + labels + '}}' + extra + '}'
         rows = [json.loads(line) for line in run(["docker", "inspect", "--type", kind, "--format", template, *ids], 20).decode().splitlines()] if ids else []
         result[kind] = {row["id"]: row for row in rows}
@@ -254,6 +265,12 @@ def node(code, timeout=25):
     return json.loads(run(["node", "--input-type=module", "-e", code], timeout))
 
 
+def fixture_audit():
+    return node("""import pg from 'pg';
+const p=new pg.Pool({connectionString:process.env.IV_POSTGRES_TEST_ADMIN_URL,max:1,connectionTimeoutMillis:5000,statement_timeout:10000});
+try{const names=(await p.query(\"SELECT datname FROM pg_database WHERE datname ~ '^iv_check_' ORDER BY datname\")).rows.map(r=>r.datname);if(names.length)throw Error('Unreleased local fixtures');console.log(JSON.stringify({fixtureDatabases:names}));}finally{await p.end();}""")
+
+
 def interrupted(number, _frame):
     global interruption
     interruption = "Interrupted by signal " + str(number)
@@ -261,20 +278,30 @@ def interrupted(number, _frame):
 
 signal.signal(signal.SIGTERM, interrupted); signal.signal(signal.SIGINT, interrupted)
 try:
-    configs = {"package.json", "package-lock.json", "tsconfig.json", "next.config.ts", "postcss.config.mjs"}
+    configs = {"package.json", "package-lock.json", "tsconfig.json", "eslint.config.mjs", "next.config.ts", "postcss.config.mjs", "vitest.supabase.config.ts"}
+    fixtures = {"tests/providers/postgres-fixture.ts", "tests/providers/supabase-fixture.ts"}
     selected = [name for name in before if name.startswith(("app/", "components/", "hooks/", "lib/", "packages/", "public/"))
-        or name in configs or name == MIGRATION or name.startswith("scripts/") and name.endswith(".ts")]
+        or name in configs | fixtures | TESTS.keys() or name == MIGRATION or name.startswith("scripts/") and name.endswith(".ts")]
     for name in selected:
         assert before[name]["mode"] != "120000"
         destination = app / name; destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(repo / name, destination); os.chmod(destination, 0o755 if before[name]["mode"] == "100755" else 0o644)
         export[name] = before[name]
-    assert configs | {MIGRATION, DIAGNOSTIC_SOURCE} <= export.keys()
+    assert configs | fixtures | TESTS.keys() | {MIGRATION} <= export.keys()
     report["sourceExport"] = {"files": len(export), "bytes": sum(row["bytes"] for row in export.values()), "inputs": export}
     assert run(["node", "--version"]).strip() == b"v24.21.0"
     lock = (app / "package-lock.json").read_bytes(); assert len(lock) == 618662 and sha(lock) == LOCK_SHA
     report["frozenLock"] = {"bytes": len(lock), "sha256": LOCK_SHA}
-    run(["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"], 240); guard("after-install")
+    run(["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"], 240); installed = True; guard("after-install")
+    explicit = {"lib/env.ts", "lib/legacy-operations.ts", "lib/repository.ts", "lib/storage.ts", "lib/types.ts", "lib/legacy-file-access.ts", "lib/legacy-public-assets.ts", "lib/public-deck-access.ts",
+        "app/actions/decks.ts", "app/d/[teamSlug]/[deckSlug]/opengraph-image.tsx", "app/d/[teamSlug]/[deckSlug]/page.tsx", "app/files/[...segments]/route.ts", "app/published/[publicId]/[versionId]/route.ts",
+        "components/slides/deck-player.tsx", "components/slides/published-attachments.tsx", "scripts/setup-local.ts", "scripts/data-export.ts", "scripts/data-import.ts", "scripts/data-cutover-check.ts", "scripts/portable-provider.ts", "scripts/supabase-storage-diagnostic.ts", "vitest.supabase.config.ts"}
+    scoped = sorted(name for name in selected if name in explicit | fixtures | TESTS.keys() or name.startswith(("packages/provider-local/", "packages/provider-postgres/", "packages/provider-supabase/", "packages/backend-contracts/")) and name.endswith(".ts"))
+    assert explicit <= set(scoped); report["focusedStaticInputs"] = scoped
+    run(["node_modules/.bin/eslint", *scoped], 60)
+    (app / "tsconfig.supabase-checks.json").write_text(json.dumps({"extends": "./tsconfig.json", "include": scoped, "exclude": ["node_modules", "components/ai-elements"], "compilerOptions": {"incremental": False, "plugins": []}}))
+    run(["node_modules/.bin/tsc", "--noEmit", "-p", "tsconfig.supabase-checks.json"], 60)
+    report["fixtureAuditBefore"] = fixture_audit()
     for port in [54321, 54322]:
         with socket.socket() as sock:
             sock.bind(("127.0.0.1", port))
@@ -344,21 +371,36 @@ try{const role=(await p.query(\"SELECT rolcanlogin FROM pg_roles WHERE rolname='
 await p.query(\"ALTER ROLE iv_runtime LOGIN PASSWORD 'authored-ci-runtime'\");await p.query(\"COMMENT ON DATABASE postgres IS 'iv-supabase-provider-ci:\"+process.env.SOURCE_COMMIT+\"'\");console.log(JSON.stringify({freshRoleProvisioned:true,markerInstalled:true}));}finally{await p.end();}""")
     report["bucketProvision"] = node("""const r=await fetch(process.env.IV_SUPABASE_API_URL+'/storage/v1/bucket',{method:'POST',redirect:'error',signal:AbortSignal.timeout(10000),headers:{apikey:process.env.IV_SUPABASE_SERVICE_KEY,Authorization:'Bearer '+process.env.IV_SUPABASE_SERVICE_KEY,'content-type':'application/json'},body:JSON.stringify({id:'iv-private-checks',name:'iv-private-checks',public:false})});if(![200,201].includes(r.status))throw Error('Private bucket create failed');await r.arrayBuffer();console.log(JSON.stringify({privateBucketCreated:true}));""")
     stack_ready = True
-    diagnostic_argv = ["node", "--import", "tsx", DIAGNOSTIC_SOURCE]
-    diagnostic_stdout = run(diagnostic_argv, 180, accepted=(0, 1))
-    report["storageObservation"] = json.loads(diagnostic_stdout)
-    report["storageObservationCapture"] = capture(diagnostic_stdout)
-    assert report["commands"][-1]["exitCode"] == 0
-    observed_storage = report["storageObservation"]
-    assert observed_storage["schemaVersion"] == 1 and observed_storage["sourceCommit"] == source and observed_storage["diagnosticComplete"] is True
-    assert observed_storage["testsExecuted"] == 0 and observed_storage["passed"] is False and observed_storage["providerAccepted"] is False
-    assert observed_storage["observer"]["pendingJobs"] == 0 and observed_storage["observer"]["failures"] == [] and observed_storage["observer"]["allEOF"] is True
-    assert len(observed_storage["anonymousOperations"]) == 6
-    assert observed_storage["cleanup"]["remainingKeys"] == [] and observed_storage["cleanup"]["failures"] == []
-    assert len(observed_storage["cleanup"]["trackedKeys"]) == len(observed_storage["cleanup"]["checkedAbsent"]) == 4
-    assert set(observed_storage["cleanup"]["trackedKeys"]) == set(observed_storage["cleanup"]["checkedAbsent"])
-    assert observed_storage["cleanup"]["poolClosed"] is True and observed_storage["cleanup"]["rootIdentityVerified"] is True
-    guard("after-diagnostics")
+    # Parse syntax only: never import/execute a test module to discover its scope.
+    collector = r'''import ts from 'typescript';import fs from 'node:fs';
+const files=JSON.parse(process.argv[1]),result={};
+for(const file of files){const source=ts.createSourceFile(file,fs.readFileSync(file,'utf8'),ts.ScriptTarget.Latest,true),names=[];
+ const walk=(node,parents=[])=>{if(ts.isCallExpression(node)){
+  const e=node.expression,plain=ts.isIdentifier(e)?e.text:null,sequential=ts.isPropertyAccessExpression(e)&&ts.isIdentifier(e.expression)&&e.expression.text==='describe'&&e.name.text==='sequential';
+  if(plain==='describe'||sequential){const [title,body]=node.arguments;if(!title||!ts.isStringLiteral(title)||!body||!ts.isArrowFunction(body))throw Error('Nonliteral suite');walk(body.body,[...parents,title.text]);return;}
+  if(plain==='it'||plain==='test'){const [title]=node.arguments;if(!parents.length||!title||!ts.isStringLiteral(title))throw Error('Nonliteral case');names.push([...parents,title.text].join(' '));return;}}
+ ts.forEachChild(node,child=>walk(child,parents));};walk(source);result[file]=names;}
+console.log(JSON.stringify(result));'''
+    expected = json.loads(run(["node", "--input-type=module", "-e", collector, json.dumps(list(TESTS))], 30))
+    report["expectedIdentities"], report["vitest"] = {}, {}
+    all_names = []
+    for index, (file, count) in enumerate(TESTS.items()):
+        content = (app / file).read_text(); assert not re.search(r"\b(?:it|test|describe)\.(?:only|skip|todo|each|retry)\b", content)
+        names = expected[file]
+        assert len(names) == len(set(names)) == count; report["expectedIdentities"][file] = sorted(names); all_names.extend(names)
+        output = root / ("vitest-" + str(index) + ".json")
+        run(["node_modules/.bin/vitest", "run", "--config", "vitest.supabase.config.ts", file, "--reporter=json", "--outputFile=" + str(output)], 90, accepted=(0, 1))
+        info = output.lstat(); assert stat.S_ISREG(info.st_mode) and not output.is_symlink() and info.st_uid == os.getuid() and info.st_size <= MAX
+        raw = output.read_bytes(); value = json.loads(raw)
+        report["vitest"][file] = {"report": value, "sanitizedJson": capture(raw)}
+        command = report["commands"][-1]; assert command["exitCode"] == 0
+        assert value["success"] is True and value["numTotalTests"] == value["numPassedTests"] == count
+        assert all(value[key] == 0 for key in ["numFailedTests", "numPendingTests", "numTodoTests", "numFailedTestSuites", "numPendingTestSuites"])
+        rows = [row for suite in value["testResults"] for row in suite["assertionResults"]]
+        assert len(rows) == count and sorted(row["fullName"] for row in rows) == sorted(names)
+        assert all(row["status"] == "passed" and not row.get("failureMessages") for row in rows)
+    assert len(all_names) == len(set(all_names)) == 90
+    report["freshCasesPassed"] = 90; report["fixtureAuditAfter"] = fixture_audit(); guard("after-focused-checks")
     report["serviceCleanupAudit"] = node("""import pg from 'pg';const p=new pg.Pool({connectionString:process.env.IV_SUPABASE_ADMIN_URL,max:1,statement_timeout:10000});try{
 const q=async sql=>(await p.query(sql)).rows[0].n;const result={runtimeClients:await q(\"SELECT count(*)::int AS n FROM pg_stat_activity WHERE usename='iv_runtime'\"),authUsers:await q('SELECT count(*)::int AS n FROM auth.users'),storageObjects:await q('SELECT count(*)::int AS n FROM storage.objects'),testRoles:await q(\"SELECT count(*)::int AS n FROM pg_roles WHERE rolname LIKE 'iv_test_%'\")};if(Object.values(result).some(x=>x!==0))throw Error('Owned fixture service residue remains');console.log(JSON.stringify(result));}finally{await p.end();}""")
     status = 0
@@ -376,6 +418,9 @@ finally:
             report["stackRemoved"] = True
         except BaseException as error: report["stackCleanupError"] = type(error).__name__ + ": " + str(error); status = 1
     else: report["stackRemoved"] = True
+    if installed:
+        try: report["fixtureAuditFinal"] = fixture_audit()
+        except BaseException as error: report["fixtureCleanupError"] = type(error).__name__ + ": " + str(error); status = 1
     try:
         for port in [54321, 54322]:
             with socket.socket() as sock:
@@ -430,7 +475,6 @@ finally:
             value.update({"sanitization": "byte-preserving-credential-substitution-v1", "sanitizedBytes": len(sanitized), "sanitizedSha256": sha(sanitized), "sanitizedGzipBase64": base64.b64encode(gzip.compress(sanitized, mtime=0)).decode()})
     report["finishedAt"] = time.time()
     report["interruption"] = interruption
-    report["providerAccepted"] = report["passed"] = False
-    report["diagnosticComplete"] = status == 0 and interruption is None and report.get("storageObservation", {}).get("diagnosticComplete") is True and len(report["sourceGuards"]) == 5 and report.get("portsReleased") is True and report.get("stackRemoved") is True and report["scratchRemoved"] and safe_root and all(value["complete"] for value, _raw in raw_captures)
-    print("IV_SUPABASE_STORAGE_DIAGNOSTIC_RESULT=" + json.dumps(sanitize(report), separators=(",", ":")), flush=True)
-raise SystemExit(0 if report["diagnosticComplete"] else 1)
+    report["passed"] = status == 0 and interruption is None and report.get("freshCasesPassed") == 90 and len(report["sourceGuards"]) == 5 and report.get("portsReleased") is True and report.get("stackRemoved") is True and report["scratchRemoved"] and safe_root and all(value["complete"] for value, _raw in raw_captures)
+    print("IV_SUPABASE_PROVIDER_RESULT=" + json.dumps(sanitize(report), separators=(",", ":")), flush=True)
+raise SystemExit(0 if report["passed"] else 1)
