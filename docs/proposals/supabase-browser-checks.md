@@ -1,7 +1,7 @@
 # Verify the real Supabase application factories
 
-Prepared 7 November 2026. Inactive application packet: no application process,
-TLS/DNS fixture, browser or deployment has run in this scope. The prerequisite
+Prepared 7 November 2026. Application acceptance remains pending; the third
+attempt is an inactive source packet. The prerequisite
 [90-case provider packet](../results/2026/11-07/supabase-provider-attempt-8.md)
 passed at `4da1844f22a332aad8bd827a026c3a806b4a308f`, with independent
 capture/source/cleanup verification. Its exact JSON is 369,374 bytes, SHA-256
@@ -21,6 +21,26 @@ two-line spec correction: a catch callback returns void, and layout reads
 `globalThis.document` instead of the shadowing visualization document. All other
 285 of its 286 exported inputs remain byte-identical. It carries no cases and
 retains the same four identities, probes, time limits, strict guards and cleanup.
+
+The [second application attempt](../results/2026/11-07/supabase-application-attempt-2.json)
+remains failed: JSON 487,084 bytes, SHA-256
+`eb238d75543631f369f3849730439ca708e940898c5369e38f70c817cc33e326`, source
+`380d56020fd13977d35a61a78a7ee3a93f98dc13`. All four browser identities failed
+at publish revision two because strict helper stderr contained Node's
+`NO_COLOR`/`FORCE_COLOR` warning. Their unproven navigation cancellations
+(1/2/2/2) also remain fatal; none is classified harmless. Each created and closed
+two contexts before exiting, rather than completing the required four. Positive
+factory/TLS, wrong CA, wrong SAN, wrong password and restored-positive probes
+passed in the owned fixture. Only the first of two Next-only TLS windows ran;
+later journey phases remain unexecuted. This is zero accepted browser cases.
+
+Retry three on `qa/supabase-application-20261107-3` preserves both failed receipts
+and the accepted provider prerequisite. Only the browser spec may differ from
+attempt two's 286 exported inputs; the other 285 remain byte-identical. Its three
+helper `execFile` calls clone the child environment and remove only `FORCE_COLOR`.
+`NO_COLOR`, strict empty stderr, every assertion, cancellation failure, all 35
+controller functions, probes, four identities, time limits and cleanup remain
+unchanged. No cases are carried or accepted by this correction.
 
 ## Source boundary
 
