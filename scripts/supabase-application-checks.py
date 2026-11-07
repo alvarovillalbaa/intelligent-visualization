@@ -23,7 +23,7 @@ import traceback
 from urllib.parse import urlsplit
 
 repo, source = Path.cwd(), os.environ["SOURCE_COMMIT"]
-BRANCH = "qa/supabase-application-20261107-6"
+BRANCH = "qa/supabase-application-20261107-7"
 LOCK_SHA = "b18dd278e6eded698e269d2e8400b0359083a8ba34de4721227a70b5e27c0d59"
 ASSET = "supabase_3.0.0_linux_amd64.tar.gz"
 ARCHIVE_SHA = "eeb61edcd59a4735fcb5e58596574f25d03d420efca779f43ddb307e1cc5c754"
@@ -60,6 +60,10 @@ APPLICATION_FIFTH_PATH = "docs/results/2026/11-07/supabase-application-attempt-5
 APPLICATION_FIFTH_SOURCE = "edb2a5df9820248b4263285608ef7b60a7365194"
 APPLICATION_FIFTH_SHA256 = "605c4ee76b2fe4d745ea4bb7d97b69cc7307aa1accc97cd1ed55b93617254805"
 APPLICATION_FIFTH_BYTES = 604336
+APPLICATION_SIXTH_PATH = "docs/results/2026/11-07/supabase-application-attempt-6.json"
+APPLICATION_SIXTH_SOURCE = "f7d39323af22a7eada88b4bd5bfd7d6c116b9b74"
+APPLICATION_SIXTH_SHA256 = "cb0171a830e112020da97c21f0a27990404f2dd9a86f93407415f18805cd8f1c"
+APPLICATION_SIXTH_BYTES = 643901
 assert re.fullmatch(r"[0-9a-f]{40}", source)
 assert os.environ.get("CI") == os.environ.get("IV_SUPABASE_APPLICATION_PUBLIC_REPOSITORY") == "true"
 assert os.environ.get("GITHUB_REPOSITORY") == "alvarovillalbaa/intelligent-visualization"
@@ -188,20 +192,20 @@ assert application_fourth["providerCasesExecutedThisAttempt"] == 0 and not appli
 assert application_fourth["playwright"]["stats"]["expected"] == 0 and application_fourth["playwright"]["stats"]["unexpected"] == 4
 assert application_fourth["playwright"]["stats"]["skipped"] == application_fourth["playwright"]["stats"]["flaky"] == 0
 fourth_protected = application_fourth["sourceExport"]["inputs"]
-fourth_changes = {"tests/e2e/supabase-application.spec.ts", "components/slides/deck-editor-client.tsx"}
+fourth_changes = {"tests/e2e/supabase-application.spec.ts", "components/slides/deck-editor-client.tsx", "scripts/supabase-application-fixture.ts"}
 fourth_reviewed_changes = fourth_changes | application_documentation_changes
 assert len(fourth_protected) == 286 and fourth_reviewed_changes <= fourth_protected.keys() and fourth_reviewed_changes <= before.keys()
 assert all(fourth_protected[name]["mode"] == before[name]["mode"] == "100644" for name in fourth_reviewed_changes)
-assert all(before.get(name) == row for name, row in fourth_protected.items() if name not in fourth_reviewed_changes), "Fourth application attempt inputs changed outside the exact UI/spec paths and separately reviewed documentation path"
+assert all(before.get(name) == row for name, row in fourth_protected.items() if name not in fourth_reviewed_changes), "Fourth application attempt inputs changed outside the exact UI/spec/snapshot-helper paths and separately reviewed documentation path"
 report["previousApplicationAttempts"].append({"receipt": APPLICATION_FOURTH_PATH, "bytes": len(application_fourth_bytes), "sha256": sha(application_fourth_bytes),
     "sourceCommit": APPLICATION_FOURTH_SOURCE, "passed": False, "providerCasesExecuted": 0, "browserCasesExecuted": 4, "acceptedBrowserCases": 0, "carriedCases": 0,
     "browserReport": {"expected": 0, "unexpected": 4, "skipped": 0},
     "failurePhase": "All four failed during slides-publish-1 prepare: the unnamed textbox locator also matched the password input, before any matched publication request",
     "slidesPublicationStreamDiagnosed": False, "diagnosticRows": {"count": 4, "phase": "prepare", "request": None, "response": None, "finishedAt": None, "failedAt": None, "failure": None, "finishedResolvedAt": None,
         "listenersRemoved": False, "timerCleared": False, "falseFlagsAreVacuousBeforeListenerCreation": True},
-    "secondaryReportWorkspaceObserved": "secondary-reports", "unprovenRequestFailures": [5, 5, 4, 4], "protectedInputs": 286, "preservedExactInputs": 283,
+    "secondaryReportWorkspaceObserved": "secondary-reports", "unprovenRequestFailures": [5, 5, 4, 4], "protectedInputs": 286, "preservedExactInputs": 282,
     "reviewedInputs": [{"path": name, "previous": fourth_protected[name], "current": before[name],
-        "reason": "Exact textbox name Version label inside the existing Publishing parent; two request-identity checks use the same boolean predicates to avoid private request-object assertion dumps" if name.endswith(".spec.ts") else "Version input gains the explicit accessible name Version label; no behavior or action change"} for name in sorted(fourth_changes)]})
+        "reason": "Exact named version field and native-reader/post-failure UI diagnostics; original failures and deadlines retained" if name.endswith(".spec.ts") else "Snapshot-only hashed label/source/database-HTML metadata; existing fields and all fixture setup/guards retained" if name == "scripts/supabase-application-fixture.ts" else "Version input gains the explicit accessible name Version label; no behavior or action change"} for name in sorted(fourth_changes)]})
 for previous_attempt, previous_inputs in zip(report["previousApplicationAttempts"], [application_protected, second_protected, third_protected, fourth_protected], strict=True):
     previous_attempt["allowedRuntimeInputs"] = [row["path"] for row in previous_attempt["reviewedInputs"]]
     previous_attempt["allowedDocumentationOnlyInputs"] = sorted(application_documentation_changes)
@@ -216,20 +220,41 @@ assert application_fifth["providerCasesExecutedThisAttempt"] == 0 and not applic
 assert application_fifth["playwright"]["stats"]["expected"] == 0 and application_fifth["playwright"]["stats"]["unexpected"] == 4
 assert application_fifth["playwright"]["stats"]["skipped"] == application_fifth["playwright"]["stats"]["flaky"] == 0
 fifth_protected = application_fifth["sourceExport"]["inputs"]
-fifth_changes = {"tests/e2e/supabase-application.spec.ts"}
+fifth_changes = {"tests/e2e/supabase-application.spec.ts", "scripts/supabase-application-fixture.ts"}
 fifth_reviewed_changes = fifth_changes | application_documentation_changes
 assert len(fifth_protected) == 286 and fifth_reviewed_changes <= fifth_protected.keys() and fifth_reviewed_changes <= before.keys()
 assert all(fifth_protected[name]["mode"] == before[name]["mode"] == "100644" for name in fifth_reviewed_changes)
-assert all(before.get(name) == row for name, row in fifth_protected.items() if name not in fifth_reviewed_changes), "Fifth application attempt inputs changed outside the exact diagnostic spec and separately reviewed documentation path"
+assert all(before.get(name) == row for name, row in fifth_protected.items() if name not in fifth_reviewed_changes), "Fifth application attempt inputs changed outside the exact diagnostic spec/snapshot helper and separately reviewed documentation path"
 report["previousApplicationAttempts"].append({"receipt": APPLICATION_FIFTH_PATH, "bytes": len(application_fifth_bytes), "sha256": sha(application_fifth_bytes),
     "sourceCommit": APPLICATION_FIFTH_SOURCE, "passed": False, "providerCasesExecuted": 0, "browserCasesExecuted": 4, "acceptedBrowserCases": 0, "carriedCases": 0,
     "browserReport": {"expected": 0, "unexpected": 4, "skipped": 0},
     "failurePhase": "Four exact Slides publication requests received 200 text/x-component then failed with net::ERR_ABORTED at response-finished; actual React-reader EOF/cancel was not observed",
     "partialControl": {"case": "course-narrow", "publicationIndex": 1, "responseFinishedReturnedNull": True, "privateSlidesSnapshotPresent": True, "laterPublicationFailed": True, "fullJourneyAccepted": False},
-    "protectedInputs": 286, "preservedExactInputs": 284, "allowedRuntimeInputs": sorted(fifth_changes), "allowedDocumentationOnlyInputs": sorted(application_documentation_changes),
+    "protectedInputs": 286, "preservedExactInputs": 283, "allowedRuntimeInputs": sorted(fifth_changes), "allowedDocumentationOnlyInputs": sorted(application_documentation_changes),
     "reviewedInputs": [{"path": name, "previous": fifth_protected[name], "current": before[name],
-        "reason": "Documentation-only status correction linking failed application evidence; no runtime allowance" if name in application_documentation_changes else "Observe actual React reader EOF/cancel/error alongside exact Playwright request lifecycle without extra Slides clone/tee/read or a failure waiver"} for name in sorted(fifth_reviewed_changes)]})
-report["diagnosticPurpose"] = {"boundary": "Actual React-reader EOF/cancel/error versus CDP ERR_ABORTED for the exact Slides ServerAction request",
+        "reason": "Documentation-only status correction linking failed application evidence; no runtime allowance" if name in application_documentation_changes else "Snapshot-only hashed label/source/database-HTML metadata; existing fields and all fixture setup/guards retained" if name == "scripts/supabase-application-fixture.ts" else "Observe actual React reader and bounded fresh server-prop UI/SQL/Storage outcome; original request failure is rethrown without extra Slides clone/tee/read"} for name in sorted(fifth_reviewed_changes)]})
+application_sixth_bytes = (repo / APPLICATION_SIXTH_PATH).read_bytes()
+assert len(application_sixth_bytes) == APPLICATION_SIXTH_BYTES and sha(application_sixth_bytes) == APPLICATION_SIXTH_SHA256
+application_sixth = json.loads(application_sixth_bytes)
+assert application_sixth["sourceCommit"] == APPLICATION_SIXTH_SOURCE and application_sixth["passed"] is False
+assert application_sixth["providerCasesExecutedThisAttempt"] == 0 and not application_sixth.get("freshBrowserCasesPassed")
+assert application_sixth["playwright"]["stats"]["expected"] == 0 and application_sixth["playwright"]["stats"]["unexpected"] == 4
+assert application_sixth["playwright"]["stats"]["skipped"] == application_sixth["playwright"]["stats"]["flaky"] == 0
+sixth_protected = application_sixth["sourceExport"]["inputs"]
+sixth_changes = {"tests/e2e/supabase-application.spec.ts", "scripts/supabase-application-fixture.ts"}
+assert len(sixth_protected) == 286 and sixth_changes <= sixth_protected.keys() and sixth_changes <= before.keys()
+assert all(sixth_protected[name]["mode"] == before[name]["mode"] == "100644" for name in sixth_changes)
+assert all(before.get(name) == row for name, row in sixth_protected.items() if name not in sixth_changes), "Sixth application attempt inputs changed outside the exact diagnostic spec/snapshot helper; its documentation must also remain exact"
+report["previousApplicationAttempts"].append({"receipt": APPLICATION_SIXTH_PATH, "bytes": len(application_sixth_bytes), "sha256": sha(application_sixth_bytes),
+    "sourceCommit": APPLICATION_SIXTH_SOURCE, "passed": False, "providerCasesExecuted": 0, "browserCasesExecuted": 4, "acceptedBrowserCases": 0, "carriedCases": 0,
+    "browserReport": {"expected": 0, "unexpected": 4, "skipped": 0},
+    "failurePhase": "All four exact Slides publication requests failed with net::ERR_ABORTED after correlated actual-reader native done; no post-failure UI or snapshot acknowledgement was collected",
+    "nativeDoneProvesNetworkEOF": False, "semanticActionCompletionProven": False,
+    "protectedInputs": 286, "preservedExactInputs": 284, "allowedRuntimeInputs": sorted(sixth_changes), "allowedDocumentationOnlyInputs": [],
+    "reviewedInputs": [{"path": name, "previous": sixth_protected[name], "current": before[name],
+        "reason": "Snapshot-only hashed label/source/database-HTML metadata; existing fields and all fixture setup/guards retained" if name == "scripts/supabase-application-fixture.ts" else "Bounded post-failure server-prop UI and SQL/Storage acknowledgement within the original deadline, followed by rethrow of the original request error"} for name in sorted(sixth_changes)]})
+report["diagnosticPurpose"] = {"boundary": "Post-failure fresh server-prop UI and SQL/Storage acknowledgement after exact Slides ServerAction reader native done versus CDP ERR_ABORTED",
+    "diagnosticOnly": True, "originalPublicationDeadlineSeconds": 10, "newPostFailureBudgetGranted": False, "originalRequestErrorRethrown": True,
     "extraSlidesCloneTeeOrRead": False, "productFixClaimed": False, "guaranteedPass": False, "acceptanceAndFailureRulesUnchanged": True}
 report["authoredFixtureDesign"] = {"users": 8, "slides": 8, "workspaces": 9, "originalAndVictimObjectProofs": 8,
     "secondaryWorkspaceCase": "report-desktop", "primaryWorkspaceUnchanged": "hq", "runtimeAcceptanceClaimedByThisMetadata": False}

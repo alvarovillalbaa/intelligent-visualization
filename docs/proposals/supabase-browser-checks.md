@@ -1,6 +1,6 @@
 # Verify the real Supabase application factories
 
-Prepared 7 November 2026. Application acceptance remains pending; the sixth
+Prepared 7 November 2026. Application acceptance remains pending; the seventh
 attempt is an inactive source packet. The prerequisite
 [90-case provider packet](../results/2026/11-07/supabase-provider-attempt-8.md)
 passed at `4da1844f22a332aad8bd827a026c3a806b4a308f`, with independent
@@ -133,6 +133,42 @@ App1–3 preserve 281/286 with their prior four runtime paths plus that doc. All
 other bytes, Git blobs, modes and hashes must match. QA8 keeps its same five
 exceptions and 292/297 preservation. Every prior receipt retains its original
 bytes, source and false verdict; no browser case is carried or accepted.
+
+The [sixth application attempt](../results/2026/11-07/supabase-application-attempt-6.json)
+remains false: JSON 643,901 bytes, SHA-256
+`cb0171a830e112020da97c21f0a27990404f2dd9a86f93407415f18805cd8f1c`, source
+`f7d39323af22a7eada88b4bd5bfd7d6c116b9b74`. All four exact Slides requests
+had uniquely correlated actual React-reader native `done`, without observed read
+rejection, cancel or release, followed by fatal `net::ERR_ABORTED`. Native `done`
+does not prove network EOF, action-promise resolution or committed UI state.
+The strict gate threw before fresh UI/snapshot acknowledgement; no journey is
+accepted, and the transport cause remains unproven.
+
+Attempt seven on `qa/supabase-application-20261107-7` is diagnostic-only: after an
+exact request failure, observe a fresh server-prop acknowledgement within that
+publication's **original shared 10-second deadline**, then rethrow the original
+error. Do not reload, navigate, add a body consumer or retry the action. Use an
+authored unique label absent before clicking, require its new Published variants
+article and live badge, and extract only the owned artifact pathname/version ID
+inside the browser, discarding the signed query before returning metadata.
+Button re-enablement alone is not acknowledgement. Match that new ID to a fresh
+scoped SQL/Storage snapshot. Each version adds only `labelSha256`, canonical
+`sourceSha256` and `databaseArtifactHtml: { bytes, sha256 }`; the existing fetched
+`artifact: { key, bytes, sha256 }` stays separate. Match the label/source hashes,
+current pointer, protection state and stored artifact bytes/hash without emitting
+raw labels, source, HTML, signed URLs or tokens. Exact diagnostic design remains
+source-only until review; no observation qualifies the original failure as a pass.
+
+Only the diagnostic spec and snapshot helper may differ from App6: 284/286 inputs
+remain exact, including its provider README. Against App5, those two runtime paths
+plus the separately labelled earlier README correction preserve 283/286; against
+App4, UI/spec/helper plus that doc preserve 282/286. App1–3 retain 281/286, and
+QA8 retains 292/297 with its existing five exceptions. All six failed receipts
+and the accepted separate provider receipt stay pinned; no cases are carried.
+All 37 controller function ASTs, probes, strict errors, original reader semantics,
+four identities, 180/720-second browser bounds, 1,020-second work budget and
+90-second cleanup remain unchanged. There is no product fix, cancellation waiver,
+production-mode change or guaranteed pass.
 
 ## Source boundary
 
