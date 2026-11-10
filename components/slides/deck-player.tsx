@@ -118,9 +118,7 @@ export function PublicAccessGate({ deck }: { deck: Pick<DeckRecord, "title" | "p
                 const result = await unlockDeckAction({ publicId: deck.publicId, password })
                 if (!result.ok) {
                   setError(result.error ?? "Incorrect password.")
-                  return
                 }
-                window.location.reload()
               })
             }
             disabled={pending}

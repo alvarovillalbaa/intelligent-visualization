@@ -43,7 +43,7 @@ Current status:
   records the remaining distinction between action resolution and network EOF.
 - The [Chromium 158 profile](results/2026/11-10/supabase-current-chromium.md)
   reached the end of all four journeys with the same application inputs. Each
-  failed the strict network assertion on one aborted public Slides GET during
+  failed the strict network assertion on one aborted protected Slides artifact GET during
   the password gate. The second Next-only TLS window was unrun. Hosted
   verification remains pending.
 

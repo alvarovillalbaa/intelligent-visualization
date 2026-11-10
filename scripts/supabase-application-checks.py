@@ -23,7 +23,7 @@ import traceback
 from urllib.parse import urlsplit
 
 repo, source = Path.cwd(), os.environ["SOURCE_COMMIT"]
-BRANCH = "qa/supabase-application-current-chromium-20261110-1"
+BRANCH = "qa/supabase-application-password-gate-20261110-1"
 LOCK_SHA = "b18dd278e6eded698e269d2e8400b0359083a8ba34de4721227a70b5e27c0d59"
 ASSET = "supabase_3.0.0_linux_amd64.tar.gz"
 ARCHIVE_SHA = "eeb61edcd59a4735fcb5e58596574f25d03d420efca779f43ddb307e1cc5c754"
@@ -80,6 +80,13 @@ APPLICATION_TENTH_PATH = "docs/results/2026/11-07/supabase-application-attempt-1
 APPLICATION_TENTH_SOURCE = "026f25ef2d621ad74b0044c4f400b4cf535a4988"
 APPLICATION_TENTH_SHA256 = "5b1c3d3e2ac431d51fa0342f64c0480af5cedc7b2919764f790149382d7c47fe"
 APPLICATION_TENTH_BYTES = 741962
+APPLICATION_CHROMIUM_PATH = "docs/results/2026/11-10/supabase-current-chromium.json"
+APPLICATION_CHROMIUM_SOURCE = "5abc47e8745c2d7fb2b35d3b74ed0f7aa6cc4c13"
+APPLICATION_CHROMIUM_SHA256 = "e4c203bf4f4022a3598f4957ccf9d63c18ed3da403cb7d2cd60479144d925fb2"
+APPLICATION_CHROMIUM_BYTES = 867990
+PASSWORD_GATE = "components/slides/deck-player.tsx"
+password_gate_change = {PASSWORD_GATE}
+password_gate_reason = "Remove the hard reload after the unlock Server Action mutates the access cookie and updates the route"
 assert re.fullmatch(r"[0-9a-f]{40}", source)
 assert os.environ.get("CI") == os.environ.get("IV_SUPABASE_APPLICATION_PUBLIC_REPOSITORY") == "true"
 assert os.environ.get("GITHUB_REPOSITORY") == "alvarovillalbaa/intelligent-visualization"
@@ -133,7 +140,7 @@ assert prior["sourceCommit"] == PREREQUISITE_SOURCE and prior["passed"] is True 
 protected = prior["sourceExport"]["inputs"]
 allowed_factory_changes = {"lib/persistence/factory.ts", "lib/storage/factory.ts"}
 public_link_changes = {"app/app/workspaces/[workspaceSlug]/page.tsx", "app/app/workspaces/[workspaceSlug]/decks/[deckId]/page.tsx"}
-allowed_application_changes = {"components/slides/deck-editor-client.tsx", "app/actions/decks.ts"} | public_link_changes
+allowed_application_changes = {"components/slides/deck-editor-client.tsx", "app/actions/decks.ts"} | public_link_changes | password_gate_change
 allowed_documentation_changes = {"packages/provider-supabase/README.md"}
 reviewed_changes = allowed_factory_changes | allowed_application_changes | allowed_documentation_changes
 assert reviewed_changes <= protected.keys() and reviewed_changes <= before.keys()
@@ -151,7 +158,7 @@ assert application_prior["sourceCommit"] == APPLICATION_PRIOR_SOURCE and applica
 assert application_prior["providerCasesExecutedThisAttempt"] == 0 and not application_prior.get("freshBrowserCasesPassed")
 assert len(application_prior["commands"]) == 4 and [row["exitCode"] for row in application_prior["commands"]] == [0, 0, 0, 2]
 application_protected = application_prior["sourceExport"]["inputs"]
-application_changes = {"tests/e2e/supabase-application.spec.ts", "components/slides/deck-editor-client.tsx", "app/actions/decks.ts", "scripts/supabase-application-fixture.ts", "playwright.supabase-application.config.ts"} | public_link_changes
+application_changes = {"tests/e2e/supabase-application.spec.ts", "components/slides/deck-editor-client.tsx", "app/actions/decks.ts", "scripts/supabase-application-fixture.ts", "playwright.supabase-application.config.ts"} | public_link_changes | password_gate_change
 application_documentation_changes = {"packages/provider-supabase/README.md"}
 application_reviewed_changes = application_changes | application_documentation_changes
 assert len(application_protected) == 286 and application_reviewed_changes <= application_protected.keys() and application_reviewed_changes <= before.keys()
@@ -160,7 +167,7 @@ assert all(before.get(name) == row for name, row in application_protected.items(
 report["previousApplicationAttempts"] = [{"receipt": APPLICATION_PRIOR_PATH, "bytes": len(application_prior_bytes), "sha256": sha(application_prior_bytes),
     "sourceCommit": APPLICATION_PRIOR_SOURCE, "passed": False, "providerCasesExecuted": 0, "browserCasesExecuted": 0,
     "failurePhase": "Semantic TypeScript before CLI setup, TLS probes, Next or browsers", "carriedCases": 0,
-    "protectedInputs": 286, "preservedExactInputs": 278,
+    "protectedInputs": 286, "preservedExactInputs": 286 - len(application_reviewed_changes),
     "reviewedInputs": [{"path": name, "previous": application_protected[name], "current": before[name],
         "reason": "Cumulative browser-spec corrections/exact-request diagnostics and ordinary navigation to the authored secondary workspace; assertions and limits retained" if name.endswith(".spec.ts") else "Report-desktop actor uses an authored same-team secondary workspace while its primary workspace remains hq" if name == "scripts/supabase-application-fixture.ts" else "Resolve/validate actual authorized deck workspace before publish/add-asset mutation, then revalidate its editor path" if name == "app/actions/decks.ts" else "Three client refresh removals after revalidating Slides ServerActions; cause unproven"} for name in sorted(application_changes)]}]
 application_second_bytes = (repo / APPLICATION_SECOND_PATH).read_bytes()
@@ -179,7 +186,7 @@ report["previousApplicationAttempts"].append({"receipt": APPLICATION_SECOND_PATH
     "sourceCommit": APPLICATION_SECOND_SOURCE, "passed": False, "providerCasesExecuted": 0, "browserCasesExecuted": 4, "acceptedBrowserCases": 0,
     "failurePhase": "All four journeys stopped at publish-2 on strict helper stderr; unproven navigation cancellations also remain fatal",
     "unprovenNavigationCancellations": [1, 2, 2, 2], "contextsEach": {"created": 2, "closed": 2}, "nextTLSWindowsObserved": 1, "carriedCases": 0,
-    "protectedInputs": 286, "preservedExactInputs": 278,
+    "protectedInputs": 286, "preservedExactInputs": 286 - len(application_reviewed_changes),
     "reviewedInputs": [{"path": name, "previous": second_protected[name], "current": before[name],
         "reason": "Helper child environment removes only FORCE_COLOR; exact-request diagnostics and ordinary secondary-workspace navigation added without failure waivers" if name.endswith(".spec.ts") else "Report-desktop actor uses an authored same-team secondary workspace while its primary workspace remains hq" if name == "scripts/supabase-application-fixture.ts" else "Resolve/validate actual authorized deck workspace before publish/add-asset mutation, then revalidate its editor path" if name == "app/actions/decks.ts" else "Three client refresh removals after revalidating Slides ServerActions; cause unproven"} for name in sorted(application_changes)]})
 application_third_bytes = (repo / APPLICATION_THIRD_PATH).read_bytes()
@@ -198,7 +205,7 @@ report["previousApplicationAttempts"].append({"receipt": APPLICATION_THIRD_PATH,
     "browserReport": {"expected": 0, "unexpected": 3, "skipped": 1, "timedOut": 3},
     "failurePhase": "Three reported journeys timed out at slides-publish-1; fourth reported skipped at global timeout, although server-side work occurred",
     "fourthFinalizedBoundaryPresent": False, "browserFixtureCleanup": "failed", "outerOwnedCleanup": "passed",
-    "unprovenRequestFailures": [3, 5, 8], "protectedInputs": 286, "preservedExactInputs": 278,
+    "unprovenRequestFailures": [3, 5, 8], "protectedInputs": 286, "preservedExactInputs": 286 - len(application_reviewed_changes),
     "reviewedInputs": [{"path": name, "previous": third_protected[name], "current": before[name],
         "reason": "Exact matched-request identity/bounded completion diagnostics and ordinary secondary-workspace navigation; failures remain fatal" if name.endswith(".spec.ts") else "Report-desktop actor uses an authored same-team secondary workspace while its primary workspace remains hq" if name == "scripts/supabase-application-fixture.ts" else "Resolve/validate actual authorized deck workspace before publish/add-asset mutation, then revalidate its editor path" if name == "app/actions/decks.ts" else "Three client refresh removals after revalidating Slides ServerActions; race cause remains inference pending actual verification"} for name in sorted(application_changes)]})
 application_fourth_bytes = (repo / APPLICATION_FOURTH_PATH).read_bytes()
@@ -209,7 +216,7 @@ assert application_fourth["providerCasesExecutedThisAttempt"] == 0 and not appli
 assert application_fourth["playwright"]["stats"]["expected"] == 0 and application_fourth["playwright"]["stats"]["unexpected"] == 4
 assert application_fourth["playwright"]["stats"]["skipped"] == application_fourth["playwright"]["stats"]["flaky"] == 0
 fourth_protected = application_fourth["sourceExport"]["inputs"]
-fourth_changes = {"tests/e2e/supabase-application.spec.ts", "components/slides/deck-editor-client.tsx", "scripts/supabase-application-fixture.ts", "playwright.supabase-application.config.ts"} | public_link_changes
+fourth_changes = {"tests/e2e/supabase-application.spec.ts", "components/slides/deck-editor-client.tsx", "scripts/supabase-application-fixture.ts", "playwright.supabase-application.config.ts"} | public_link_changes | password_gate_change
 fourth_reviewed_changes = fourth_changes | application_documentation_changes
 assert len(fourth_protected) == 286 and fourth_reviewed_changes <= fourth_protected.keys() and fourth_reviewed_changes <= before.keys()
 assert all(fourth_protected[name]["mode"] == before[name]["mode"] == "100644" for name in fourth_reviewed_changes)
@@ -220,7 +227,7 @@ report["previousApplicationAttempts"].append({"receipt": APPLICATION_FOURTH_PATH
     "failurePhase": "All four failed during slides-publish-1 prepare: the unnamed textbox locator also matched the password input, before any matched publication request",
     "slidesPublicationStreamDiagnosed": False, "diagnosticRows": {"count": 4, "phase": "prepare", "request": None, "response": None, "finishedAt": None, "failedAt": None, "failure": None, "finishedResolvedAt": None,
         "listenersRemoved": False, "timerCleared": False, "falseFlagsAreVacuousBeforeListenerCreation": True},
-    "secondaryReportWorkspaceObserved": "secondary-reports", "unprovenRequestFailures": [5, 5, 4, 4], "protectedInputs": 286, "preservedExactInputs": 279,
+    "secondaryReportWorkspaceObserved": "secondary-reports", "unprovenRequestFailures": [5, 5, 4, 4], "protectedInputs": 286, "preservedExactInputs": 286 - len(fourth_reviewed_changes),
     "reviewedInputs": [{"path": name, "previous": fourth_protected[name], "current": before[name],
         "reason": "Exact named version field and native-reader/post-failure UI diagnostics; original failures and deadlines retained" if name.endswith(".spec.ts") else "Snapshot-only hashed label/source/database-HTML metadata; existing fields and all fixture setup/guards retained" if name == "scripts/supabase-application-fixture.ts" else "Version input gains the explicit accessible name Version label; no behavior or action change"} for name in sorted(fourth_changes)]})
 for previous_attempt, previous_inputs in zip(report["previousApplicationAttempts"], [application_protected, second_protected, third_protected, fourth_protected], strict=True):
@@ -237,7 +244,7 @@ assert application_fifth["providerCasesExecutedThisAttempt"] == 0 and not applic
 assert application_fifth["playwright"]["stats"]["expected"] == 0 and application_fifth["playwright"]["stats"]["unexpected"] == 4
 assert application_fifth["playwright"]["stats"]["skipped"] == application_fifth["playwright"]["stats"]["flaky"] == 0
 fifth_protected = application_fifth["sourceExport"]["inputs"]
-fifth_changes = {"tests/e2e/supabase-application.spec.ts", "scripts/supabase-application-fixture.ts", "components/slides/deck-editor-client.tsx", "playwright.supabase-application.config.ts"} | public_link_changes
+fifth_changes = fourth_changes
 fifth_reviewed_changes = fifth_changes | application_documentation_changes
 assert len(fifth_protected) == 286 and fifth_reviewed_changes <= fifth_protected.keys() and fifth_reviewed_changes <= before.keys()
 assert all(fifth_protected[name]["mode"] == before[name]["mode"] == "100644" for name in fifth_reviewed_changes)
@@ -247,7 +254,7 @@ report["previousApplicationAttempts"].append({"receipt": APPLICATION_FIFTH_PATH,
     "browserReport": {"expected": 0, "unexpected": 4, "skipped": 0},
     "failurePhase": "Four exact Slides publication requests received 200 text/x-component then failed with net::ERR_ABORTED at response-finished; actual React-reader EOF/cancel was not observed",
     "partialControl": {"case": "course-narrow", "publicationIndex": 1, "responseFinishedReturnedNull": True, "privateSlidesSnapshotPresent": True, "laterPublicationFailed": True, "fullJourneyAccepted": False},
-    "protectedInputs": 286, "preservedExactInputs": 279, "allowedRuntimeInputs": sorted(fifth_changes), "allowedDocumentationOnlyInputs": sorted(application_documentation_changes),
+    "protectedInputs": 286, "preservedExactInputs": 286 - len(fifth_reviewed_changes), "allowedRuntimeInputs": sorted(fifth_changes), "allowedDocumentationOnlyInputs": sorted(application_documentation_changes),
     "reviewedInputs": [{"path": name, "previous": fifth_protected[name], "current": before[name],
         "reason": "Documentation-only status correction linking failed application evidence; no runtime allowance" if name in application_documentation_changes else "Snapshot-only hashed label/source/database-HTML metadata; existing fields and all fixture setup/guards retained" if name == "scripts/supabase-application-fixture.ts" else "Client activity announces Publishing, awaited returned-label success or generic uncertainty without editing inputs, authority, requests or navigation" if name == "components/slides/deck-editor-client.tsx" else "Actual-reader/post-failure outcome diagnostics plus URL-handler-bypass control; all original completion and failure gates retained"} for name in sorted(fifth_reviewed_changes)]})
 application_sixth_bytes = (repo / APPLICATION_SIXTH_PATH).read_bytes()
@@ -258,7 +265,7 @@ assert application_sixth["providerCasesExecutedThisAttempt"] == 0 and not applic
 assert application_sixth["playwright"]["stats"]["expected"] == 0 and application_sixth["playwright"]["stats"]["unexpected"] == 4
 assert application_sixth["playwright"]["stats"]["skipped"] == application_sixth["playwright"]["stats"]["flaky"] == 0
 sixth_protected = application_sixth["sourceExport"]["inputs"]
-sixth_changes = {"tests/e2e/supabase-application.spec.ts", "scripts/supabase-application-fixture.ts", "components/slides/deck-editor-client.tsx", "playwright.supabase-application.config.ts"} | public_link_changes
+sixth_changes = fourth_changes
 assert len(sixth_protected) == 286 and sixth_changes <= sixth_protected.keys() and sixth_changes <= before.keys()
 assert all(sixth_protected[name]["mode"] == before[name]["mode"] == "100644" for name in sixth_changes)
 assert all(before.get(name) == row for name, row in sixth_protected.items() if name not in sixth_changes), "Sixth application attempt inputs changed outside the exact diagnostic spec/snapshot helper/feedback client; its documentation must also remain exact"
@@ -267,7 +274,7 @@ report["previousApplicationAttempts"].append({"receipt": APPLICATION_SIXTH_PATH,
     "browserReport": {"expected": 0, "unexpected": 4, "skipped": 0},
     "failurePhase": "All four exact Slides publication requests failed with net::ERR_ABORTED after correlated actual-reader native done; no post-failure UI or snapshot acknowledgement was collected",
     "nativeDoneProvesNetworkEOF": False, "semanticActionCompletionProven": False,
-    "protectedInputs": 286, "preservedExactInputs": 280, "allowedRuntimeInputs": sorted(sixth_changes), "allowedDocumentationOnlyInputs": [],
+    "protectedInputs": 286, "preservedExactInputs": 286 - len(sixth_changes), "allowedRuntimeInputs": sorted(sixth_changes), "allowedDocumentationOnlyInputs": [],
     "reviewedInputs": [{"path": name, "previous": sixth_protected[name], "current": before[name],
         "reason": "Snapshot-only hashed label/source/database-HTML metadata; existing fields and all fixture setup/guards retained" if name == "scripts/supabase-application-fixture.ts" else "Client activity announces Publishing, awaited returned-label success or generic uncertainty without editing inputs, authority, requests or navigation" if name == "components/slides/deck-editor-client.tsx" else "Bounded post-failure outcome diagnostics and URL-handler-bypass control; all original completion and failure gates retained"} for name in sorted(sixth_changes)]})
 application_seventh_bytes = (repo / APPLICATION_SEVENTH_PATH).read_bytes()
@@ -278,7 +285,7 @@ assert application_seventh["providerCasesExecutedThisAttempt"] == 0 and not appl
 assert application_seventh["playwright"]["stats"]["expected"] == 0 and application_seventh["playwright"]["stats"]["unexpected"] == 4
 assert application_seventh["playwright"]["stats"]["skipped"] == application_seventh["playwright"]["stats"]["flaky"] == 0
 seventh_protected = application_seventh["sourceExport"]["inputs"]
-seventh_changes = {"tests/e2e/supabase-application.spec.ts", "components/slides/deck-editor-client.tsx", "scripts/supabase-application-fixture.ts", "playwright.supabase-application.config.ts"} | public_link_changes
+seventh_changes = fourth_changes
 assert len(seventh_protected) == 286 and seventh_changes <= seventh_protected.keys() and seventh_changes <= before.keys()
 assert all(seventh_protected[name]["mode"] == before[name]["mode"] == "100644" for name in seventh_changes)
 assert all(before.get(name) == row for name, row in seventh_protected.items() if name not in seventh_changes), "Seventh application attempt inputs changed outside the exact production spec/client/page/origin/fixture paths; documentation must remain exact"
@@ -287,7 +294,7 @@ report["previousApplicationAttempts"].append({"receipt": APPLICATION_SEVENTH_PAT
     "browserReport": {"expected": 0, "unexpected": 4, "skipped": 0},
     "failurePhase": "All four exact Slides requests remained fatal despite bounded post-failure fresh UI/current version and SQL/Storage acknowledgement; no complete journey was accepted",
     "postFailureAcknowledgementsObserved": 4, "nativeDoneProvesNetworkEOF": False, "transportCauseProven": False,
-    "protectedInputs": 286, "preservedExactInputs": 280, "allowedRuntimeInputs": sorted(seventh_changes), "allowedDocumentationOnlyInputs": [],
+    "protectedInputs": 286, "preservedExactInputs": 286 - len(seventh_changes), "allowedRuntimeInputs": sorted(seventh_changes), "allowedDocumentationOnlyInputs": [],
     "reviewedInputs": [{"path": name, "previous": seventh_protected[name], "current": before[name],
         "reason": "Client activity announces Publishing, awaited returned-label success or generic uncertainty without editing inputs, authority, requests or navigation" if name == "components/slides/deck-editor-client.tsx" else "URL-handler-bypass control with identical passive request validation, bounded passive CDP terminal metadata, exact owned HMR grammar and feedback acknowledgement; strict failures retained"} for name in sorted(seventh_changes)]})
 for previous_attempt in report["previousApplicationAttempts"][:4]:
@@ -302,7 +309,7 @@ assert application_eighth["providerCasesExecutedThisAttempt"] == 0 and not appli
 assert application_eighth["playwright"]["stats"]["expected"] == 0 and application_eighth["playwright"]["stats"]["unexpected"] == 4
 assert application_eighth["playwright"]["stats"]["skipped"] == application_eighth["playwright"]["stats"]["flaky"] == 0
 eighth_protected = application_eighth["sourceExport"]["inputs"]
-eighth_changes = {"tests/e2e/supabase-application.spec.ts", "scripts/supabase-application-fixture.ts", "playwright.supabase-application.config.ts", "components/slides/deck-editor-client.tsx"} | public_link_changes
+eighth_changes = fourth_changes
 assert len(eighth_protected) == 286 and eighth_changes <= eighth_protected.keys() and eighth_changes <= before.keys()
 assert all(eighth_protected[name]["mode"] == before[name]["mode"] == "100644" for name in eighth_changes)
 assert all(before.get(name) == row for name, row in eighth_protected.items() if name not in eighth_changes), "Eighth application attempt inputs changed outside the exact production spec/client/page/origin/initial-version metadata paths"
@@ -310,7 +317,7 @@ report["previousApplicationAttempts"].append({"receipt": APPLICATION_EIGHTH_PATH
     "sourceCommit": APPLICATION_EIGHTH_SOURCE, "passed": False, "providerCasesExecuted": 0, "browserCasesExecuted": 4, "acceptedBrowserCases": 0, "carriedCases": 0,
     "browserReport": {"expected": 0, "unexpected": 4, "skipped": 0}, "transportCauseProven": False,
     "failurePhase": "The route-handler-bypass control did not remove fatal Slides request aborts; no complete journey was accepted",
-    "protectedInputs": 286, "preservedExactInputs": 280, "allowedRuntimeInputs": sorted(eighth_changes), "allowedDocumentationOnlyInputs": [],
+    "protectedInputs": 286, "preservedExactInputs": 286 - len(eighth_changes), "allowedRuntimeInputs": sorted(eighth_changes), "allowedDocumentationOnlyInputs": [],
     "reviewedInputs": [{"path": name, "previous": eighth_protected[name], "current": before[name],
         "reason": "Exact localhost origin for unchanged Secure-cookie policy; no factory/TLS/fixture-authority change" if not name.endswith(".spec.ts") else "Explicit production-runtime control: finite own prefetch reads, passive body-hash request correlation without dev headers, unchanged strict completion/failure gates"} for name in sorted(eighth_changes)]})
 for previous_attempt in report["previousApplicationAttempts"]:
@@ -333,23 +340,42 @@ assert application_ninth["sourceCommit"] == APPLICATION_NINTH_SOURCE and applica
 assert application_ninth["providerCasesExecutedThisAttempt"] == 0 and not application_ninth.get("freshBrowserCasesPassed")
 assert "playwright" not in application_ninth and application_ninth["error"] == "KeyError: 'tsconfigPath'"
 ninth_protected = application_ninth["sourceExport"]["inputs"]
-assert len(ninth_protected) == 286 and all(before.get(name) == row for name, row in ninth_protected.items()), "Ninth application attempt runtime inputs must remain exact"
+def compare_password_gate_control(inputs):
+    assert len(inputs) == 286 and inputs[PASSWORD_GATE]["mode"] == before[PASSWORD_GATE]["mode"] == "100644"
+    assert {name for name, row in inputs.items() if before.get(name) != row} == password_gate_change
+    return {"protectedInputs": len(inputs), "preservedExactInputs": len(inputs) - 1, "allowedRuntimeInputs": [PASSWORD_GATE],
+        "allowedDocumentationOnlyInputs": [], "reviewedInputs": [{"path": PASSWORD_GATE, "accepted": inputs[PASSWORD_GATE],
+        "current": before[PASSWORD_GATE], "reason": password_gate_reason}]}
+
+
 report["previousApplicationAttempts"].append({"receipt": APPLICATION_NINTH_PATH, "bytes": len(application_ninth_bytes), "sha256": sha(application_ninth_bytes),
     "sourceCommit": APPLICATION_NINTH_SOURCE, "passed": False, "providerCasesExecuted": 0, "browserCasesExecuted": 0, "acceptedBrowserCases": 0, "carriedCases": 0,
     "failurePhase": "The actual production build exited zero; the controller then required a manifest tsconfigPath property that Next omits for its default, before server or browser startup",
-    "protectedInputs": 286, "preservedExactInputs": 286, "allowedRuntimeInputs": [], "allowedDocumentationOnlyInputs": [], "reviewedInputs": []})
+    **compare_password_gate_control(ninth_protected)})
 application_tenth_bytes = (repo / APPLICATION_TENTH_PATH).read_bytes()
 assert len(application_tenth_bytes) == APPLICATION_TENTH_BYTES and sha(application_tenth_bytes) == APPLICATION_TENTH_SHA256
 application_tenth = json.loads(application_tenth_bytes)
 assert application_tenth["sourceCommit"] == APPLICATION_TENTH_SOURCE and application_tenth["passed"] is False
 assert application_tenth["providerCasesExecutedThisAttempt"] == 0 and application_tenth["playwright"]["stats"]["unexpected"] == 4
 tenth_protected = application_tenth["sourceExport"]["inputs"]
-assert len(tenth_protected) == 286 and all(before.get(name) == row for name, row in tenth_protected.items()), "Tenth application inputs, including every assertion and frozen lock, must remain exact"
 report["previousApplicationAttempts"].append({"receipt": APPLICATION_TENTH_PATH, "bytes": len(application_tenth_bytes), "sha256": sha(application_tenth_bytes),
     "sourceCommit": APPLICATION_TENTH_SOURCE, "passed": False, "providerCasesExecuted": 0, "browserCasesExecuted": 4, "acceptedBrowserCases": 0, "carriedCases": 0,
     "failurePhase": "Production startup and Secure-cookie checks passed; all four exact first Slides POSTs aborted after HTTP200 RSC headers",
-    "protectedInputs": 286, "preservedExactInputs": 286, "allowedRuntimeInputs": [], "allowedDocumentationOnlyInputs": [], "reviewedInputs": []})
-report["diagnosticPurpose"] = {"boundary": "Isolated Playwright1.65/Chromium158 profile over the identical production app, Secure cookies, TLS, journeys and strict completion/failure gates",
+    **compare_password_gate_control(tenth_protected)})
+chromium_bytes = (repo / APPLICATION_CHROMIUM_PATH).read_bytes()
+assert len(chromium_bytes) == APPLICATION_CHROMIUM_BYTES and sha(chromium_bytes) == APPLICATION_CHROMIUM_SHA256
+chromium = json.loads(chromium_bytes)
+assert chromium["sourceCommit"] == APPLICATION_CHROMIUM_SOURCE and chromium["passed"] is False
+assert chromium["providerCasesExecutedThisAttempt"] == 0 and chromium["playwright"]["stats"]["unexpected"] == 4
+report["previousApplicationAttempts"].append({"receipt": APPLICATION_CHROMIUM_PATH, "bytes": len(chromium_bytes), "sha256": sha(chromium_bytes),
+    "sourceCommit": APPLICATION_CHROMIUM_SOURCE, "passed": False, "providerCasesExecuted": 0, "browserCasesExecuted": 4, "acceptedBrowserCases": 0, "carriedCases": 0,
+    "failurePhase": "All four reached complete; each failed the network boundary on an aborted GET for its protected Slides artifact",
+    **compare_password_gate_control(chromium["sourceExport"]["inputs"])})
+for prior_check in [report["providerPrerequisite"], *report["previousApplicationAttempts"]]:
+    for reviewed_input in prior_check["reviewedInputs"]:
+        if reviewed_input["path"] == PASSWORD_GATE:
+            reviewed_input["reason"] = password_gate_reason
+report["diagnosticPurpose"] = {"boundary": "Isolated Playwright1.65/Chromium158 profile with the password gate reload removed, retaining Secure cookies, TLS, journeys and strict completion/failure gates",
     "diagnosticOnly": True, "originalPublicationDeadlineSeconds": 10, "newPostFailureBudgetGranted": False, "originalRequestErrorRethrown": True,
     "extraSlidesCloneTeeOrRead": False, "abortFixClaimed": False, "guaranteedPass": False, "completionAndFailureRulesUnchanged": True,
     "cdpInterceptionStillEnabled": True, "fullyUnpausedBaselineClaimed": False,
@@ -990,7 +1016,8 @@ def verify_browser(value, fixtures):
         assert kind in titles and spec["title"] == titles[kind] == body["title"] and body["profile"] == profile
         case = fixtures["cases"][kind + "-" + profile.removesuffix("-chromium")]
         assert body["kind"] == "iv-supabase-application-boundary" and body["schemaVersion"] == 1 and body["stage"] == "complete" and body["status"] == "passed" and body["primaryError"] is None
-        assert body["fixture"] == {"workspaceSlug": case["workspaceSlug"], "slidesId": case["slides"]["id"], "slidesPublicId": case["slides"]["publicId"]}
+        assert body["fixture"] == {"workspaceSlug": case["workspaceSlug"], "slidesId": case["slides"]["id"],
+            "slidesPublicId": case["slides"]["publicId"], "initialVersionIds": case["slides"]["initialVersionIds"]}
         counts = body["boundary"]["counts"]
         assert set(counts) == {"unexpectedRequests", "unexpectedWebSockets", "requestFailures", "httpErrors", "pageErrors", "consoleErrors", "dialogs", "canonicalAnalytics"} and all(type(x) is int and x == 0 for x in counts.values())
         assert not body["boundary"]["diagnostics"] and body["boundary"]["uploads"] == 1
