@@ -41,6 +41,11 @@ Current status:
   journeys remain failed; source/capture and owned cleanup checks passed. The
   [source investigation](research/2026/11-07/slides-production-cancellation.md)
   records the remaining distinction between action resolution and network EOF.
+- The [Chromium 158 profile](results/2026/11-10/supabase-current-chromium.md)
+  reached the end of all four journeys with the same application inputs. Each
+  failed the strict network assertion on one aborted public Slides GET during
+  the password gate. The second Next-only TLS window was unrun. Hosted
+  verification remains pending.
 
 Portable auth remains the default for Supabase persistence.
 
