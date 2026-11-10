@@ -23,7 +23,7 @@ import traceback
 from urllib.parse import urlsplit
 
 repo, source = Path.cwd(), os.environ["SOURCE_COMMIT"]
-BRANCH = "qa/supabase-application-password-gate-20261110-1"
+BRANCH = "qa/supabase-application-password-gate-20261110-2"
 LOCK_SHA = "b18dd278e6eded698e269d2e8400b0359083a8ba34de4721227a70b5e27c0d59"
 ASSET = "supabase_3.0.0_linux_amd64.tar.gz"
 ARCHIVE_SHA = "eeb61edcd59a4735fcb5e58596574f25d03d420efca779f43ddb307e1cc5c754"
@@ -85,8 +85,9 @@ APPLICATION_CHROMIUM_SOURCE = "5abc47e8745c2d7fb2b35d3b74ed0f7aa6cc4c13"
 APPLICATION_CHROMIUM_SHA256 = "e4c203bf4f4022a3598f4957ccf9d63c18ed3da403cb7d2cd60479144d925fb2"
 APPLICATION_CHROMIUM_BYTES = 867990
 PASSWORD_GATE = "components/slides/deck-player.tsx"
-password_gate_change = {PASSWORD_GATE}
-password_gate_reason = "Remove the hard reload after the unlock Server Action mutates the access cookie and updates the route"
+PASSWORD_GATE_ACTION = "app/actions/decks.ts"
+PASSWORD_GATE_TEST = "tests/unit/public-deck-access.test.ts"
+password_gate_changes = {PASSWORD_GATE, PASSWORD_GATE_ACTION}
 assert re.fullmatch(r"[0-9a-f]{40}", source)
 assert os.environ.get("CI") == os.environ.get("IV_SUPABASE_APPLICATION_PUBLIC_REPOSITORY") == "true"
 assert os.environ.get("GITHUB_REPOSITORY") == "alvarovillalbaa/intelligent-visualization"
@@ -140,16 +141,18 @@ assert prior["sourceCommit"] == PREREQUISITE_SOURCE and prior["passed"] is True 
 protected = prior["sourceExport"]["inputs"]
 allowed_factory_changes = {"lib/persistence/factory.ts", "lib/storage/factory.ts"}
 public_link_changes = {"app/app/workspaces/[workspaceSlug]/page.tsx", "app/app/workspaces/[workspaceSlug]/decks/[deckId]/page.tsx"}
-allowed_application_changes = {"components/slides/deck-editor-client.tsx", "app/actions/decks.ts"} | public_link_changes | password_gate_change
+allowed_application_changes = {"components/slides/deck-editor-client.tsx"} | public_link_changes | password_gate_changes
+allowed_verification_changes = {PASSWORD_GATE_TEST}
 allowed_documentation_changes = {"packages/provider-supabase/README.md"}
-reviewed_changes = allowed_factory_changes | allowed_application_changes | allowed_documentation_changes
+reviewed_changes = allowed_factory_changes | allowed_application_changes | allowed_documentation_changes | allowed_verification_changes
 assert reviewed_changes <= protected.keys() and reviewed_changes <= before.keys()
 assert all(before[name]["mode"] == protected[name]["mode"] == "100644" for name in reviewed_changes)
 assert all(before.get(name) == row for name, row in protected.items() if name not in reviewed_changes), "Accepted provider inputs changed outside the exact reviewed factories/Slides-client/actions/documentation paths"
 report["providerPrerequisite"] = {"receipt": PREREQUISITE_PATH, "bytes": len(prior_bytes), "sha256": sha(prior_bytes), "sourceCommit": PREREQUISITE_SOURCE,
     "passed": 90, "executedThisAttempt": False, "limit": "Separate accepted provider receipt; this is four fresh application journeys, not a fresh combined 94-case invocation.",
     "protectedInputs": len(protected), "preservedExactInputs": len(protected) - len(reviewed_changes),
-    "allowedFactoryCodeInputs": sorted(allowed_factory_changes), "allowedApplicationCodeInputs": sorted(allowed_application_changes), "allowedDocumentationOnlyInputs": sorted(allowed_documentation_changes),
+    "allowedFactoryCodeInputs": sorted(allowed_factory_changes), "allowedApplicationCodeInputs": sorted(allowed_application_changes),
+    "allowedVerificationCodeInputs": sorted(allowed_verification_changes), "allowedDocumentationOnlyInputs": sorted(allowed_documentation_changes),
     "reviewedInputs": [{"path": name, "accepted": protected[name], "current": before[name], "reason": "Reviewed real factory selection/health integration" if name in allowed_factory_changes else "Publish/add-asset actions resolve and validate the actual authorized deck workspace before mutation and revalidate that editor path" if name == "app/actions/decks.ts" else "Three client refresh removals after revalidating Slides ServerActions; race cause remains unproven" if name in allowed_application_changes else "Documentation-only correction of selection and disposable-service acceptance status; no runtime code"} for name in sorted(reviewed_changes)]}
 application_prior_bytes = (repo / APPLICATION_PRIOR_PATH).read_bytes()
 assert len(application_prior_bytes) == APPLICATION_PRIOR_BYTES and sha(application_prior_bytes) == APPLICATION_PRIOR_SHA256
@@ -158,7 +161,7 @@ assert application_prior["sourceCommit"] == APPLICATION_PRIOR_SOURCE and applica
 assert application_prior["providerCasesExecutedThisAttempt"] == 0 and not application_prior.get("freshBrowserCasesPassed")
 assert len(application_prior["commands"]) == 4 and [row["exitCode"] for row in application_prior["commands"]] == [0, 0, 0, 2]
 application_protected = application_prior["sourceExport"]["inputs"]
-application_changes = {"tests/e2e/supabase-application.spec.ts", "components/slides/deck-editor-client.tsx", "app/actions/decks.ts", "scripts/supabase-application-fixture.ts", "playwright.supabase-application.config.ts"} | public_link_changes | password_gate_change
+application_changes = {"tests/e2e/supabase-application.spec.ts", "components/slides/deck-editor-client.tsx", "scripts/supabase-application-fixture.ts", "playwright.supabase-application.config.ts"} | public_link_changes | password_gate_changes
 application_documentation_changes = {"packages/provider-supabase/README.md"}
 application_reviewed_changes = application_changes | application_documentation_changes
 assert len(application_protected) == 286 and application_reviewed_changes <= application_protected.keys() and application_reviewed_changes <= before.keys()
@@ -216,7 +219,7 @@ assert application_fourth["providerCasesExecutedThisAttempt"] == 0 and not appli
 assert application_fourth["playwright"]["stats"]["expected"] == 0 and application_fourth["playwright"]["stats"]["unexpected"] == 4
 assert application_fourth["playwright"]["stats"]["skipped"] == application_fourth["playwright"]["stats"]["flaky"] == 0
 fourth_protected = application_fourth["sourceExport"]["inputs"]
-fourth_changes = {"tests/e2e/supabase-application.spec.ts", "components/slides/deck-editor-client.tsx", "scripts/supabase-application-fixture.ts", "playwright.supabase-application.config.ts"} | public_link_changes | password_gate_change
+fourth_changes = application_changes
 fourth_reviewed_changes = fourth_changes | application_documentation_changes
 assert len(fourth_protected) == 286 and fourth_reviewed_changes <= fourth_protected.keys() and fourth_reviewed_changes <= before.keys()
 assert all(fourth_protected[name]["mode"] == before[name]["mode"] == "100644" for name in fourth_reviewed_changes)
@@ -341,11 +344,12 @@ assert application_ninth["providerCasesExecutedThisAttempt"] == 0 and not applic
 assert "playwright" not in application_ninth and application_ninth["error"] == "KeyError: 'tsconfigPath'"
 ninth_protected = application_ninth["sourceExport"]["inputs"]
 def compare_password_gate_control(inputs):
-    assert len(inputs) == 286 and inputs[PASSWORD_GATE]["mode"] == before[PASSWORD_GATE]["mode"] == "100644"
-    assert {name for name, row in inputs.items() if before.get(name) != row} == password_gate_change
-    return {"protectedInputs": len(inputs), "preservedExactInputs": len(inputs) - 1, "allowedRuntimeInputs": [PASSWORD_GATE],
-        "allowedDocumentationOnlyInputs": [], "reviewedInputs": [{"path": PASSWORD_GATE, "accepted": inputs[PASSWORD_GATE],
-        "current": before[PASSWORD_GATE], "reason": password_gate_reason}]}
+    assert len(inputs) == 286
+    assert all(inputs[name]["mode"] == before[name]["mode"] == "100644" for name in password_gate_changes)
+    assert {name for name, row in inputs.items() if before.get(name) != row} == password_gate_changes
+    return {"protectedInputs": len(inputs), "preservedExactInputs": len(inputs) - len(password_gate_changes),
+        "allowedRuntimeInputs": sorted(password_gate_changes), "allowedDocumentationOnlyInputs": [],
+        "reviewedInputs": [{"path": name, "previous": inputs[name], "current": before[name]} for name in sorted(password_gate_changes)]}
 
 
 report["previousApplicationAttempts"].append({"receipt": APPLICATION_NINTH_PATH, "bytes": len(application_ninth_bytes), "sha256": sha(application_ninth_bytes),
@@ -374,7 +378,12 @@ report["previousApplicationAttempts"].append({"receipt": APPLICATION_CHROMIUM_PA
 for prior_check in [report["providerPrerequisite"], *report["previousApplicationAttempts"]]:
     for reviewed_input in prior_check["reviewedInputs"]:
         if reviewed_input["path"] == PASSWORD_GATE:
-            reviewed_input["reason"] = password_gate_reason
+            reviewed_input["reason"] = "Remove the hard reload after the unlock Server Action mutates the access cookie and updates the route"
+        elif reviewed_input["path"] == PASSWORD_GATE_ACTION:
+            previous = reviewed_input.get("reason")
+            reviewed_input["reason"] = (previous + ". " if previous else "") + "Refresh the route without issuing a cookie if the deck became public"
+        elif reviewed_input["path"] == PASSWORD_GATE_TEST:
+            reviewed_input["reason"] = "Check the stale gate refresh and existing cookie behavior with authored fixtures"
 report["diagnosticPurpose"] = {"boundary": "Isolated Playwright1.65/Chromium158 profile with the password gate reload removed, retaining Secure cookies, TLS, journeys and strict completion/failure gates",
     "diagnosticOnly": True, "originalPublicationDeadlineSeconds": 10, "newPostFailureBudgetGranted": False, "originalRequestErrorRethrown": True,
     "extraSlidesCloneTeeOrRead": False, "abortFixClaimed": False, "guaranteedPass": False, "completionAndFailureRulesUnchanged": True,
@@ -840,10 +849,11 @@ console.log(JSON.stringify({version,browserClosed:true}));"""], 40, cwd=browser_
 def bootstrap():
     global installed, docker_before, cli, stack_attempted, stack_ready, keys_known
     configs = {"package.json", "package-lock.json", "tsconfig.json", "eslint.config.mjs", "next.config.ts", "postcss.config.mjs", "playwright.supabase-application.config.ts"}
-    required = configs | {MIGRATION, "scripts/supabase-application-fixture.ts", "tests/e2e/supabase-application.spec.ts"}
+    unit_inputs = {"vitest.config.ts", PASSWORD_GATE_TEST}
+    required = configs | unit_inputs | {MIGRATION, "scripts/supabase-application-fixture.ts", "tests/e2e/supabase-application.spec.ts"}
     selected = [name for name in before if name.startswith(("app/", "components/", "hooks/", "lib/", "packages/", "public/"))
         or name in required or name.startswith("scripts/") and name.endswith(".ts")]
-    assert required <= set(selected)
+    assert required <= set(selected) and set(selected) == chromium["sourceExport"]["inputs"].keys() | unit_inputs
     for name in selected:
         assert before[name]["mode"] != "120000"
         destination = app / name; destination.parent.mkdir(parents=True, exist_ok=True)
@@ -854,8 +864,21 @@ def bootstrap():
     lock = (app / "package-lock.json").read_bytes(); assert len(lock) == 618662 and sha(lock) == LOCK_SHA
     report["frozenLock"] = {"bytes": len(lock), "sha256": LOCK_SHA}
     run(["npm", "ci", "--ignore-scripts", "--no-audit", "--no-fund"], 240); installed = True; guard("after-install")
+    unit_output = root / "password-gate-unit.json"
+    run(["node_modules/.bin/vitest", "run", PASSWORD_GATE_TEST, "--reporter=json", "--outputFile=" + str(unit_output)], 45, accepted=(0, 1))
+    assert unit_output.is_file() and not unit_output.is_symlink() and 0 < unit_output.stat().st_size <= 65536
+    unit = json.loads(unit_output.read_bytes())
+    report["passwordGateUnit"] = unit
+    assert report["commands"][-1]["exitCode"] == 0 and unit["success"] is True
+    assert unit["numTotalTests"] == unit["numPassedTests"] == 7
+    assert all(unit[key] == 0 for key in ["numFailedTests", "numPendingTests", "numTodoTests"])
+    assert len(unit["testResults"]) == 1 and unit["testResults"][0]["name"] == str(app / PASSWORD_GATE_TEST)
+    cases = unit["testResults"][0]["assertionResults"]
+    assert len(cases) == 7 and len({case["fullName"] for case in cases}) == 7 and all(case["status"] == "passed" for case in cases)
+    assert any(case["title"] == "refreshes a stale gate without setting a cookie if the deck became public" for case in cases)
     scoped = sorted({"lib/persistence/factory.ts", "lib/storage/factory.ts", "scripts/supabase-application-fixture.ts",
-        "tests/e2e/supabase-application.spec.ts", "playwright.supabase-application.config.ts", "components/slides/deck-editor-client.tsx", "app/actions/decks.ts"} | public_link_changes)
+        "tests/e2e/supabase-application.spec.ts", "playwright.supabase-application.config.ts", "components/slides/deck-editor-client.tsx"}
+        | public_link_changes | password_gate_changes | unit_inputs)
     report["focusedStaticInputs"] = scoped
     run(["node_modules/.bin/eslint", *scoped], 60)
     configuration = json.loads((app / "tsconfig.json").read_text())

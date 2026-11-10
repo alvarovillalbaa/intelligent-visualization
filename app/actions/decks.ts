@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { refresh, revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 
@@ -313,7 +313,10 @@ export async function unlockDeckAction(input: { publicId: string; password: stri
     return { ok: false, error: "Deck not found." }
   }
 
-  if (!publicDeckRequiresPassword(view.deck)) return { ok: true }
+  if (!publicDeckRequiresPassword(view.deck)) {
+    refresh()
+    return { ok: true }
+  }
   const passwordHash = currentPublicDeckPasswordHash(view.deck)
   if (!passwordHash || !verifyDeckPassword(input.password, passwordHash)) {
     return { ok: false, error: "Incorrect password." }

@@ -2,12 +2,12 @@ import { createHmac } from "node:crypto"
 
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest"
 
-const boundary = vi.hoisted(() => ({ lookup: vi.fn(), read: vi.fn(), set: vi.fn(), cookie: "" }))
+const boundary = vi.hoisted(() => ({ lookup: vi.fn(), read: vi.fn(), set: vi.fn(), refresh: vi.fn(), cookie: "" }))
 vi.mock("@/lib/repository", () => ({ repository: { getPublicDeckById: boundary.lookup } }))
 vi.mock("@/lib/storage", () => ({ readPublishedArtifact: boundary.read }))
 vi.mock("@/lib/ai/generate-deck", () => ({ generateDeckSource: vi.fn() }))
 vi.mock("next/headers", () => ({ cookies: async () => ({ get: () => boundary.cookie ? { value: boundary.cookie } : undefined, set: boundary.set }) }))
-vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }))
+vi.mock("next/cache", () => ({ revalidatePath: vi.fn(), refresh: boundary.refresh }))
 
 import { GET } from "@/app/published/[publicId]/[versionId]/route"
 import { unlockDeckAction } from "@/app/actions/decks"
@@ -76,10 +76,23 @@ describe("stateless public deck password access", () => {
     const [name, token, options] = boundary.set.mock.calls[0]
     expect(name).toBe("slides_public_" + view.deck.publicId); expect(verifyPublicDeckAccessToken(token, view.deck)).toBe(true)
     expect(options).toMatchObject({ httpOnly: true, sameSite: "lax", path: "/", maxAge: PUBLIC_DECK_ACCESS_TTL_MS / 1000 })
+    expect(boundary.refresh).not.toHaveBeenCalled()
     boundary.set.mockClear(); view.deck.versions[0].status = "preview"
     expect(currentPublicDeckVersion(view.deck)).toBeNull()
     expect(await unlockDeckAction({ publicId: view.deck.publicId, password: "authored-password" })).toMatchObject({ ok: false })
     expect(await unlockDeckAction({ publicId: "../other", password: "authored-password" })).toMatchObject({ ok: false })
+    expect(boundary.set).not.toHaveBeenCalled()
+  })
+
+  it("refreshes a stale gate without setting a cookie if the deck became public", async () => {
+    const view = fixture()
+    view.deck.passwordProtected = false
+    delete view.deck.passwordHash
+    delete view.version.passwordHash
+    boundary.lookup.mockResolvedValue(view)
+
+    expect(await unlockDeckAction({ publicId: view.deck.publicId, password: "obsolete" })).toEqual({ ok: true })
+    expect(boundary.refresh).toHaveBeenCalledOnce()
     expect(boundary.set).not.toHaveBeenCalled()
   })
 
