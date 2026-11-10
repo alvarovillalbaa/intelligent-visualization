@@ -23,7 +23,7 @@ import traceback
 from urllib.parse import urlsplit
 
 repo, source = Path.cwd(), os.environ["SOURCE_COMMIT"]
-BRANCH = "qa/supabase-application-20261107-10"
+BRANCH = "qa/supabase-application-current-chromium-20261110-1"
 LOCK_SHA = "b18dd278e6eded698e269d2e8400b0359083a8ba34de4721227a70b5e27c0d59"
 ASSET = "supabase_3.0.0_linux_amd64.tar.gz"
 ARCHIVE_SHA = "eeb61edcd59a4735fcb5e58596574f25d03d420efca779f43ddb307e1cc5c754"
@@ -76,6 +76,10 @@ APPLICATION_NINTH_PATH = "docs/results/2026/11-07/supabase-application-attempt-9
 APPLICATION_NINTH_SOURCE = "0caf57b9f623d08bef1b8d919900ac4f2ccfa8cb"
 APPLICATION_NINTH_SHA256 = "f68b997132c73415d209993c806b8c512a5991dcae379b5788213fae7e215dab"
 APPLICATION_NINTH_BYTES = 379235
+APPLICATION_TENTH_PATH = "docs/results/2026/11-07/supabase-application-attempt-10.json"
+APPLICATION_TENTH_SOURCE = "026f25ef2d621ad74b0044c4f400b4cf535a4988"
+APPLICATION_TENTH_SHA256 = "5b1c3d3e2ac431d51fa0342f64c0480af5cedc7b2919764f790149382d7c47fe"
+APPLICATION_TENTH_BYTES = 741962
 assert re.fullmatch(r"[0-9a-f]{40}", source)
 assert os.environ.get("CI") == os.environ.get("IV_SUPABASE_APPLICATION_PUBLIC_REPOSITORY") == "true"
 assert os.environ.get("GITHUB_REPOSITORY") == "alvarovillalbaa/intelligent-visualization"
@@ -334,7 +338,18 @@ report["previousApplicationAttempts"].append({"receipt": APPLICATION_NINTH_PATH,
     "sourceCommit": APPLICATION_NINTH_SOURCE, "passed": False, "providerCasesExecuted": 0, "browserCasesExecuted": 0, "acceptedBrowserCases": 0, "carriedCases": 0,
     "failurePhase": "The actual production build exited zero; the controller then required a manifest tsconfigPath property that Next omits for its default, before server or browser startup",
     "protectedInputs": 286, "preservedExactInputs": 286, "allowedRuntimeInputs": [], "allowedDocumentationOnlyInputs": [], "reviewedInputs": []})
-report["diagnosticPurpose"] = {"boundary": "Actual production webpack build and standalone localhost server with unchanged Secure cookies, TLS and strict application completion/failure gates",
+application_tenth_bytes = (repo / APPLICATION_TENTH_PATH).read_bytes()
+assert len(application_tenth_bytes) == APPLICATION_TENTH_BYTES and sha(application_tenth_bytes) == APPLICATION_TENTH_SHA256
+application_tenth = json.loads(application_tenth_bytes)
+assert application_tenth["sourceCommit"] == APPLICATION_TENTH_SOURCE and application_tenth["passed"] is False
+assert application_tenth["providerCasesExecutedThisAttempt"] == 0 and application_tenth["playwright"]["stats"]["unexpected"] == 4
+tenth_protected = application_tenth["sourceExport"]["inputs"]
+assert len(tenth_protected) == 286 and all(before.get(name) == row for name, row in tenth_protected.items()), "Tenth application inputs, including every assertion and frozen lock, must remain exact"
+report["previousApplicationAttempts"].append({"receipt": APPLICATION_TENTH_PATH, "bytes": len(application_tenth_bytes), "sha256": sha(application_tenth_bytes),
+    "sourceCommit": APPLICATION_TENTH_SOURCE, "passed": False, "providerCasesExecuted": 0, "browserCasesExecuted": 4, "acceptedBrowserCases": 0, "carriedCases": 0,
+    "failurePhase": "Production startup and Secure-cookie checks passed; all four exact first Slides POSTs aborted after HTTP200 RSC headers",
+    "protectedInputs": 286, "preservedExactInputs": 286, "allowedRuntimeInputs": [], "allowedDocumentationOnlyInputs": [], "reviewedInputs": []})
+report["diagnosticPurpose"] = {"boundary": "Isolated Playwright1.65/Chromium158 profile over the identical production app, Secure cookies, TLS, journeys and strict completion/failure gates",
     "diagnosticOnly": True, "originalPublicationDeadlineSeconds": 10, "newPostFailureBudgetGranted": False, "originalRequestErrorRethrown": True,
     "extraSlidesCloneTeeOrRead": False, "abortFixClaimed": False, "guaranteedPass": False, "completionAndFailureRulesUnchanged": True,
     "cdpInterceptionStillEnabled": True, "fullyUnpausedBaselineClaimed": False,
@@ -355,8 +370,9 @@ identity = (root.stat().st_dev, root.stat().st_ino, root.stat().st_uid)
 nonce = os.urandom(16).hex(); (root / ".owner").write_text(nonce)
 os.chmod(root / ".owner", 0o600)
 assert root.resolve() == root
-app, stack = root / "app", root / "stack"
-for name in ["app", "stack", "home", "supabase-home", "cache", "config", "tmp", "docker"]: (root / name).mkdir(mode=0o700)
+app, stack, browser_tools = root / "app", root / "stack", root / "browser-tools"
+for name in ["app", "stack", "home", "supabase-home", "cache", "config", "tmp", "docker", "browser-tools"]: (root / name).mkdir(mode=0o700)
+browser_inputs, browser_links = {}, {}
 for name in ["npm-user", "npm-global"]: (root / name).write_text("")
 project = "iv-supabase-app-" + source[:12]
 groups, export, observed, raw_captures = [], {}, {}, []
@@ -427,10 +443,14 @@ def capture(data, total=None, digest=None):
 
 
 def check_export():
-    for name, row in export.items():
-        file = app / name; info = file.lstat()
-        assert stat.S_ISREG(info.st_mode) and not file.is_symlink() and sha(file.read_bytes()) == row["sha256"]
-        assert bool(info.st_mode & 0o111) == (row["mode"] == "100755")
+    for directory, inputs in [(app, export), (browser_tools, browser_inputs)]:
+        for name, row in inputs.items():
+            file = directory / name; info = file.lstat()
+            assert stat.S_ISREG(info.st_mode) and not file.is_symlink() and sha(file.read_bytes()) == row["sha256"]
+            assert bool(info.st_mode & 0o111) == (row["mode"] == "100755")
+    for name, target in browser_links.items():
+        link = browser_tools / "node_modules" / name
+        assert link.is_symlink() and link.resolve(strict=True) == target
 
 
 def run(argv, timeout=60, accepted=(0,), cwd=None):
@@ -736,6 +756,61 @@ sys.exit(0 if active==0 and not failures else 1)
     start_managed("proxy", [sys.executable, str(script), str(root / "api.pem"), str(root / "api.key")])
 
 
+def prepare_browser_tools():
+    spec, config = "tests/e2e/supabase-application.spec.ts", "playwright.supabase-application.config.ts"
+    names = [spec, config, "tsconfig.json", "lib/utils.ts", "packages/domain/canonical.ts",
+        "packages/domain/entities.ts", "packages/domain/fixtures.ts", "packages/domain/ids.ts"]
+    for name in names:
+        row, destination = export[name], browser_tools / name
+        assert row["mode"] == "100644" and not destination.exists()
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(app / name, destination); os.chmod(destination, 0o644)
+        browser_inputs[name] = row
+    (browser_tools / "package.json").write_text(json.dumps({"name": "iv-browser-check-tools", "version": "0.0.0", "private": True,
+        "devDependencies": {"@playwright/test": "1.65.0"}}) + "\n")
+    run(["npm", "install", "--ignore-scripts", "--no-audit", "--no-fund", "--omit=optional"], 90, cwd=browser_tools)
+    modules = browser_tools / "node_modules"
+    pins = {"@playwright/test": "sha512-iGURLGuKDLakSEl7Pgfv8h7f+XLT+V861Wfhz0zlEl5nyFuKUopdkFBPKqTllTUp06aOwPuH8iuUEb3yp3MpbQ==",
+        "playwright": "sha512-F3AMWcR44qMBt4kq+6Kb6mX7bjGXshktKFOPULd7reED6ZJWevjbNRqysP7q+AATE9kdPEZBibex1BYsvpVoeA==",
+        "playwright-core": "sha512-vNSKgH6YqtN7cdT/L334zo0a+YwkrpicyrHJlWWPIm/Q+Nn2SWInil01oT0mbu96U4GgoRtCYQD9CzJQgju+lA=="}
+    lock_bytes = (browser_tools / "package-lock.json").read_bytes(); assert len(lock_bytes) <= 16384
+    tool_lock = json.loads(lock_bytes); locked = tool_lock["packages"]
+    assert set(locked) == {"", *("node_modules/" + name for name in pins)}
+    for name, digest in pins.items():
+        row = locked["node_modules/" + name]; metadata = json.loads((modules / name / "package.json").read_text())
+        assert metadata["name"] == name and metadata["version"] == row["version"] == "1.65.0" and row["integrity"] == digest
+        assert urlsplit(row["resolved"]).scheme == "https" and urlsplit(row["resolved"]).netloc == "registry.npmjs.org"
+    lock = json.loads((app / "package-lock.json").read_bytes())["packages"]
+    links = []
+    for name in ["clsx", "date-fns", "tailwind-merge", "uuid"]:
+        target, link = app / "node_modules" / name, modules / name
+        assert target.is_dir() and target.resolve(strict=True) == target and not link.exists() and not link.is_symlink()
+        version = json.loads((target / "package.json").read_text())["version"]
+        assert version == lock["node_modules/" + name]["version"]
+        link.symlink_to(os.path.relpath(target, modules), target_is_directory=True); browser_links[name] = target
+        links.append({"name": name, "version": version, "appLockIntegrity": lock["node_modules/" + name]["integrity"]})
+    versions = (modules / "playwright-core/browsers.json").read_bytes()
+    shells = [row for row in json.loads(versions)["browsers"] if row["name"] == "chromium-headless-shell"]
+    assert len(shells) == 1 and shells[0]["revision"] == "1254" and shells[0]["browserVersion"] == "158.0.8127.18"
+    report["browserToolchain"] = {"version": "1.65.0", "isolatedFromAppDependencies": True, "appLockSha256": LOCK_SHA,
+        "toolLock": tool_lock, "toolLockBytes": len(lock_bytes), "toolLockSha256": sha(lock_bytes), "browserManifestSha256": sha(versions),
+        "shell": shells[0], "copiedInputs": browser_inputs, "sharedAppDependencies": links, "fixtureHelperCwd": "app"}
+    profile_tsconfig = browser_tools / "tsconfig.current-browser.json"
+    profile_tsconfig.write_text(json.dumps({"extends": "./tsconfig.json", "include": [spec, config], "exclude": ["node_modules"],
+        "compilerOptions": {"incremental": False, "plugins": [], "types": ["node"], "typeRoots": [str(app / "node_modules/@types")]}}))
+    run([str(app / "node_modules/.bin/tsc"), "--noEmit", "-p", str(profile_tsconfig)], 60, cwd=browser_tools)
+    report["browserToolchain"]["focusedTypecheck"] = True
+    cli = str(modules / ".bin/playwright")
+    run([cli, "install", "--with-deps", "--only-shell", "chromium"], 120, cwd=browser_tools)
+    probe = json.loads(run(["node", "--input-type=module", "-e", """import { chromium } from '@playwright/test';
+const browser = await chromium.launch({headless:true}); let version;
+try { version = browser.version(); } finally { await browser.close(); }
+console.log(JSON.stringify({version,browserClosed:true}));"""], 40, cwd=browser_tools))
+    assert probe == {"version": "158.0.8127.18", "browserClosed": True}
+    report["browserToolchain"]["actualBrowserProbe"] = probe
+    check_export()
+
+
 def bootstrap():
     global installed, docker_before, cli, stack_attempted, stack_ready, keys_known
     configs = {"package.json", "package-lock.json", "tsconfig.json", "eslint.config.mjs", "next.config.ts", "postcss.config.mjs", "playwright.supabase-application.config.ts"}
@@ -767,7 +842,7 @@ def bootstrap():
     report["focusedTypecheck"] = {"entries": scoped, "completed": True, "includesBrowserSpec": True}
     report["semanticTypecheck"] = {"replacement": None, "kind": "Actual Next production build over the unpruned exported root tsconfig graph",
         "testFileDiagnosticsFilteredByNext": True, "browserSpecCoveredBySeparateFocusedTypecheck": True, "completed": False}
-    run(["node_modules/.bin/playwright", "install", "--with-deps", "--only-shell", "chromium"], 100)
+    prepare_browser_tools()
     for port in [5432, 54321, 54443, 3100]:
         with socket.socket() as sock: sock.bind(("127.0.0.1", port))
     docker_before = docker_snapshot(); report["dockerBaseline"] = docker_before
@@ -1045,7 +1120,7 @@ def application_main():
     remaining = work_end - time.monotonic() - 30
     assert remaining >= 720, "The full unchanged four-identity browser window no longer fits the work budget"
     report["browserBudget"] = {"remainingWorkSeconds": round(remaining, 3), "outerSeconds": min(780, remaining), "perCaseSeconds": 180, "globalSeconds": 720, "scopeReduced": False}
-    run(["node_modules/.bin/playwright", "test", "--config", "playwright.supabase-application.config.ts"], min(780, remaining), accepted=(0, 1))
+    run([str(browser_tools / "node_modules/.bin/playwright"), "test", "--config", str(browser_tools / "playwright.supabase-application.config.ts")], min(780, remaining), accepted=(0, 1), cwd=app)
     value = read_browser()
     assert report["commands"][-1]["exitCode"] == 0
     verify_browser(value, fixtures)
@@ -1164,7 +1239,9 @@ finally:
     if dns_attempted and not report.get("dnsRestored") and not owned and not uncertain:
         try: report["dnsRestored"] = restore_dns_if_closed()
         except BaseException as error: report["dnsCleanupError"] = type(error).__name__ + ": " + str(error); status = 1
-    try: guard("after-cleanup"); check_export(); report["exportUnchanged"] = True
+    try:
+        guard("after-cleanup"); check_export(); report["exportUnchanged"] = True
+        if "browserToolchain" in report: report["browserToolchain"]["sourceCopiesAndLinksUnchanged"] = True
     except BaseException as error: report["sourceError"] = type(error).__name__ + ": " + str(error); status = 1
     try:
         current = root.lstat(); owner = root / ".owner"; owner_info = owner.lstat()
@@ -1198,7 +1275,8 @@ finally:
             sanitized = re.sub(rb"sb_(?:secret|publishable)_[A-Za-z0-9_-]+", b"[REDACTED_LOCAL_KEY]", sanitized)
             value.update({"sanitization": "byte-preserving-credential-substitution-v1", "sanitizedBytes": len(sanitized), "sanitizedSha256": sha(sanitized), "sanitizedGzipBase64": base64.b64encode(gzip.compress(sanitized, mtime=0)).decode()})
     report["finishedAt"] = time.time(); report["interruption"] = interruption
-    report["passed"] = status == 0 and interruption is None and not report.get("exportViolations") and report.get("freshBrowserCasesPassed") == 4 and len(report.get("nextTLSWindows", [])) == 2 and len(report["sourceGuards"]) == 5 and report.get("portsReleased") is True and report.get("stackRemoved") is True and report.get("dnsRestored") is True and report.get("journalsRestored") is True and report["scratchRemoved"] and safe_root and credentials_inventoried and all(value["complete"] for value, _raw in raw_captures)
+    browser_proof = report.get("browserToolchain", {})
+    report["passed"] = status == 0 and interruption is None and not report.get("exportViolations") and report.get("freshBrowserCasesPassed") == 4 and len(report.get("nextTLSWindows", [])) == 2 and len(report["sourceGuards"]) == 5 and report.get("portsReleased") is True and report.get("stackRemoved") is True and report.get("dnsRestored") is True and report.get("journalsRestored") is True and report["scratchRemoved"] and safe_root and credentials_inventoried and all(value["complete"] for value, _raw in raw_captures) and browser_proof.get("sourceCopiesAndLinksUnchanged") is True and browser_proof.get("focusedTypecheck") is True and browser_proof.get("actualBrowserProbe", {}).get("version") == "158.0.8127.18"
     report["providerCasesExecutedThisAttempt"] = 0
     print("IV_SUPABASE_APPLICATION_RESULT=" + json.dumps(sanitize(report), separators=(",", ":")), flush=True)
 raise SystemExit(0 if report["passed"] else 1)
