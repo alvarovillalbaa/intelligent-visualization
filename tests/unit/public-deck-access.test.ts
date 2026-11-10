@@ -88,7 +88,7 @@ describe("stateless public deck password access", () => {
     const view = fixture()
     view.deck.passwordProtected = false
     delete view.deck.passwordHash
-    delete view.version.passwordHash
+    delete view.deck.versions[0].passwordHash
     boundary.lookup.mockResolvedValue(view)
 
     expect(await unlockDeckAction({ publicId: view.deck.publicId, password: "obsolete" })).toEqual({ ok: true })
