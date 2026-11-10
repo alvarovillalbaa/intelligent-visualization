@@ -8,8 +8,8 @@ Current status:
 - The [fresh 90-case provider packet](results/2026/11-07/supabase-provider-attempt-8.json)
   passed, including local regressions, Supabase SQL and actual private Storage/Auth.
 - Real database/private Storage selection is implemented with healthy-only
-  caching and failed persistence initialization cleanup. Application TLS/browser
-  verification and actual hosted acceptance remain pending.
+  caching and failed persistence initialization cleanup. The disposable
+  application TLS and browser checks have passed. Hosted acceptance remains pending.
 - [Application attempt 5](results/2026/11-07/supabase-application-attempt-5.md)
   failed all four journeys: exact Slides action responses received HTTP 200 RSC
   headers, then Chromium reported an abort before successful response completion.
@@ -46,6 +46,9 @@ Current status:
   failed the strict network assertion on one aborted protected Slides artifact GET during
   the password gate. The second Next-only TLS window was unrun. Hosted
   verification remains pending.
+- The [password gate repair](results/2026/11-10/supabase-password-gate.md)
+  passed seven access unit checks, four desktop and narrow Chromium journeys,
+  and both Next-only TLS windows. The application audit and cleanup passed.
 
 Portable auth remains the default for Supabase persistence.
 
