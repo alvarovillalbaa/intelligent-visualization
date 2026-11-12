@@ -17,7 +17,7 @@ import traceback
 
 repo = Path.cwd()
 source = os.environ["SOURCE_COMMIT"]
-branch = "qa/workspace-removals-20261112-4"
+branch = "qa/workspace-removals-20261112-5"
 assert os.environ.get("CI") == "true"
 assert os.environ.get("GITHUB_REPOSITORY") == "alvarovillalbaa/intelligent-visualization"
 assert os.environ.get("GITHUB_EVENT_NAME") == "create" and os.environ.get("GITHUB_REF") == "refs/heads/" + branch
@@ -50,6 +50,22 @@ def vector():
 
 before = vector()
 report["sourceFiles"] = before
+carry_path = "docs/results/2026/11-12/workspace-removals-attempt-4.json"
+carry_bytes = (repo / carry_path).read_bytes()
+assert sha(carry_bytes) == "59a982134fa7f5b1ac56ad2f20744e9c99e2129a89369b5d882a6bdc450f6eda"
+carry = json.loads(carry_bytes)
+assert carry["sourceCommit"] == "bbc6f6391539dbec8a783f0d5b75fae8e9a5c1c1" and carry["exitCode"] == 1
+assert (carry["core"]["numTotalTests"], carry["core"]["numPassedTests"], carry["core"]["numFailedTests"], carry["core"]["numPendingTests"]) == (34, 32, 2, 0)
+failed_titles = ["terminal workspace removal in PostgreSQL makes a direct SQL child write waiting on a removal observe the committed tombstone",
+    "terminal workspace removal in PostgreSQL protects every retained child from inserts updates deletes retargets and truncation"]
+assert [test["fullName"] for file in carry["core"]["testResults"] for test in file["assertionResults"] if test["status"] == "failed"] == failed_titles
+mutable = {"scripts/workspace-removal-checks.py", "tests/integration/workspace-removals-postgres.test.ts"}
+runtime_names = lambda files: {name for name in files if not name.startswith(("docs/", ".github/", ".claude/")) and name not in mutable}
+assert runtime_names(before) == runtime_names(carry["sourceFiles"])
+assert all(before[name] == carry["sourceFiles"][name] for name in runtime_names(before))
+report["acceptedCoreProvenance"] = {"path": carry_path, "sha256": sha(carry_bytes), "sourceCommit": carry["sourceCommit"],
+    "passed": [test["fullName"] for file in carry["core"]["testResults"] for test in file["assertionResults"] if test["status"] == "passed"],
+    "runtimeFilesExact": len(runtime_names(before)), "notANewSingle34CaseRun": True}
 
 def guard(label):
     assert vector() == before
@@ -121,6 +137,30 @@ def run(argv, seconds=60):
     row.update({"exitCode": process.returncode, "elapsedSeconds": round(time.monotonic() - start, 3), "stdout": packed(out.read_bytes()), "stderr": packed(err.read_bytes())})
     print("IV_REMOVAL_COMMAND", json.dumps({k: v for k, v in row.items() if k not in ["stdout", "stderr"]}), flush=True)
     if process.returncode or row.get("timedOut"): raise RuntimeError("Focused command failed: " + argv[0])
+    return out.read_bytes()
+
+def database_guard(action):
+    marker = "iv-removal:" + source
+    script = r'''
+import pg from 'pg';
+const action=process.argv[1],marker=process.argv[2],expected=JSON.parse(process.argv[3]);
+const pool=new pg.Pool({connectionString:process.env.IV_POSTGRES_TEST_ADMIN_URL,max:1,connectionTimeoutMillis:5000,query_timeout:10000});
+try {
+ const row=(await pool.query(`SELECT oid::text AS oid,datdba::text AS owner,pg_get_userbyid(datdba) AS owner_name,shobj_description(oid,'pg_database') AS marker,
+ (SELECT count(*)::int FROM pg_stat_activity WHERE datid=pg_database.oid) AS clients FROM pg_database WHERE datname='intelligent_visualization_ci'`)).rows[0];
+ if(!row||row.owner_name!=='iv_ci'||row.clients!==0)throw Error('Owned application database or pool boundary changed');
+ const fixtures=(await pool.query("SELECT datname FROM pg_database WHERE datname LIKE 'iv_check_%'")).rows;
+ const roles=(await pool.query("SELECT rolname FROM pg_roles WHERE rolname IN ('anon','authenticated','iv_runtime')")).rows;
+ if(fixtures.length||roles.length)throw Error('Disposable fixtures or roles remain');
+ if(action==='mark'){
+   if(row.marker!==null)throw Error('Existing app database marker cannot be adopted');
+   await pool.query("COMMENT ON DATABASE intelligent_visualization_ci IS '"+marker+"'");
+ }else if(row.oid!==expected.oid||row.owner!==expected.owner||row.marker!==marker)throw Error('Owned app database identity changed');
+ if(action==='drop')await pool.query('DROP DATABASE intelligent_visualization_ci');
+ console.log(JSON.stringify({action,oid:row.oid,owner:row.owner,marker,clients:row.clients,fixturesAbsent:true,rolesAbsent:true,dropped:action==='drop'}));
+}finally{await pool.end()}
+'''
+    return json.loads(run(["node", "--input-type=module", "-e", script, action, marker, json.dumps(report.get("databaseOwnership", {}))], 20))
 
 status = 1
 try:
@@ -135,8 +175,11 @@ try:
     (app / "tsconfig.removal-checks.json").write_text(json.dumps({"extends": "./tsconfig.json", "include": scoped,
         "exclude": ["node_modules", "components/ai-elements"], "compilerOptions": {"incremental": False, "plugins": []}}))
     run(["node_modules/.bin/tsc", "--noEmit", "-p", "tsconfig.removal-checks.json"], 90)
-    run(["node_modules/.bin/vitest", "run", "--config", "vitest.workspace-removals.config.ts", "--reporter=json", "--outputFile=" + str(root / "core.json")], 150)
+    report["databaseOwnership"] = database_guard("mark")
+    run(["node_modules/.bin/vitest", "run", "--config", "vitest.workspace-removals.config.ts", "--testNamePattern=makes a direct SQL child write waiting|protects every retained child", "--reporter=default", "--reporter=json", "--outputFile=" + str(root / "core.json")], 90)
     report["core"] = json.loads((root / "core.json").read_text())
+    assert report["core"]["numPassedTests"] == 2 and report["core"]["numFailedTests"] == 0
+    report["fixtureAuditAfterCore"] = database_guard("audit")
     guard("after-core")
     run(["npm", "run", "setup:local"], 75)
     run(["node_modules/.bin/playwright", "install", "--only-shell", "chromium"], 150)
@@ -164,6 +207,9 @@ finally:
     if server:
         server_out.close(); server_err.close()
         report["server"] = {"stdout": packed((root / "server.out").read_bytes()), "stderr": packed((root / "server.err").read_bytes())}
+    if "databaseOwnership" in report:
+        try: report["cleanup"]["database"] = database_guard("drop")
+        except BaseException: report["cleanup"]["databaseError"] = traceback.format_exc(); status = 1
     for name in ["core", "browser"]:
         file = root / (name + ".json")
         if file.exists() and name not in report: report[name] = json.loads(file.read_text())

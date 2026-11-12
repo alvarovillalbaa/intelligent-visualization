@@ -35,3 +35,11 @@ The controller records exact tracked source vectors, scoped command arguments,
 stdout/stderr, core/browser reports, screenshots, owned server shutdown and final
 source parity. Retain failures before correcting source. Retire the temporary
 workflow and QA branch after the bounded qualification.
+
+After [attempt 4](../results/2026/11-12/workspace-removals-attempt-4.md), 32 accepted
+core identities stay at their original source. The next run checks identical
+production/runtime inputs, carries their receipt provenance, and executes only
+the two corrected fixture cases plus four unrun browser identities. It also
+records fixture console drains, a direct no-leftover-database/role audit, and
+owned application database identity/drop after server shutdown. There is no
+synthetic merged 34-case invocation.

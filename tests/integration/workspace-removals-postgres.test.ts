@@ -7,11 +7,12 @@ import { describe, expect, it } from "vitest"
 import { createStarterCourseDocument, createStarterReportDocument } from "@/packages/domain/fixtures"
 import type { RemoveWorkspaceDraftInput } from "@/packages/backend-contracts/workspace-removals"
 import { createLocalPersistenceProvider } from "@/packages/provider-local/adapter"
-import { createPostgresDatabase, initializeLocalDatabase, upgradeLocalLifecycle } from "@/packages/provider-local/database"
+import { createPostgresDatabase, createLocalPostgresContext, initializeLocalDatabase, upgradeLocalLifecycle } from "@/packages/provider-local/database"
 import { seedLegacyRepository, withLegacyRepositoryState } from "@/packages/provider-local/legacy-state"
 import { localMigrations, LOCAL_SCHEMA as S } from "@/packages/provider-local/schema"
 import { checkPortableDatabase, exportPortableDatabase, importPortableDatabase, PORTABLE_COLUMNS, readPortableBackup } from "@/packages/provider-local/portable"
 import { LIFECYCLE_CHILD_TABLES } from "@/packages/provider-postgres/lifecycle-v2"
+import { createWorkspaceRemovalRepository } from "@/packages/provider-postgres/workspace-removals"
 import { createPostgresDatabase as nativeDatabase } from "@/packages/provider-postgres/database"
 import { hostedLifecycleUpgradeSql } from "@/packages/provider-supabase/lifecycle-upgrade"
 import { createSupabasePersistenceProviderForDatabase } from "@/packages/provider-supabase/adapter"
@@ -47,7 +48,7 @@ async function role(v: Context, next: "viewer" | "editor") {
     state.teams.find((t) => t.id === v.user.teamId)!.members.find((m) => m.userId === v.user.id)!.role = next
   }, v.database)
 }
-async function graph(v: Context, id: string) {
+async function graph(v: Context, id: string, tokenHash = "authored-token_hash") {
   const parent = (await v.database.query(`SELECT * FROM ${S}.visualizations WHERE id=$1`, [id])).rows[0]
   const ids = Object.fromEntries(LIFECYCLE_CHILD_TABLES.map((table) => [table, randomUUID()]))
   const rows: Record<string, Record<string, unknown>> = {}
@@ -58,7 +59,7 @@ async function graph(v: Context, id: string) {
       experiment_id: ids.experiments, variant_id: ids.experiment_variants, created_by: parent.created_by,
       document_json: JSON.stringify(parent.draft_document_json), document_hash: parent.draft_hash, schema_version: 1, revision: 1,
       weight: 100, size_bytes: 4, duration_ms: 2, parent_comment_id: null, applied_at: null, output_json: null, error: null,
-      suggested_patch_json: null, artifact_url: null, password_hash: null, status: table === "visualization_versions" ? "published" : "draft" }
+      suggested_patch_json: null, artifact_url: null, password_hash: null, token_hash: tokenHash, status: table === "visualization_versions" ? "published" : "draft" }
     const row = Object.fromEntries(columns.map((column) => [column, Object.hasOwn(values, column) ? values[column]
       : column.endsWith("_at") ? new Date().toISOString() : column.endsWith("_json") ? "[]" : `authored-${column}`]))
     await v.database.query(`INSERT INTO ${S}.${table} (${columns.join(",")}) VALUES (${columns.map((_, i) => `$${i + 1}`).join(",")})`, columns.map((c) => row[c]))
@@ -134,11 +135,12 @@ describe("terminal workspace removal in PostgreSQL", () => {
   }))
   it("makes a direct SQL child write waiting on a removal observe the committed tombstone", () => check(async (v) => {
     const d = await draft(v), { ids } = await graph(v, d.id), request = await intent(v, d.id), writer = createPostgresDatabase(v.connectionString)
+    const transactionalRemovals = createWorkspaceRemovalRepository(createLocalPostgresContext(v.database))
     let pending: Promise<unknown> | undefined
     try {
       const pid = (await writer.query("SELECT pg_backend_pid() AS pid")).rows[0].pid
       await v.database.transaction(async () => {
-        expect((await v.removals.remove(v.access, request)).status).toBe("removed")
+        expect((await transactionalRemovals.remove(v.access, request)).status).toBe("removed")
         pending = writer.query(`UPDATE ${S}.visualization_checkpoints SET title='racing overwrite' WHERE id=$1`, [ids.visualization_checkpoints])
         // Attach rejection handling before intentionally holding the other side.
         void pending.catch(() => {})
@@ -155,7 +157,7 @@ describe("terminal workspace removal in PostgreSQL", () => {
     } finally { await pending?.catch(() => {}); await writer.close() }
   }))
   it("protects every retained child from inserts updates deletes retargets and truncation", () => check(async (v) => {
-    const d = await draft(v), first = await graph(v, d.id), other = await draft(v), active = await graph(v, other.id)
+    const d = await draft(v), first = await graph(v, d.id), other = await draft(v), active = await graph(v, other.id, `second-graph-${randomUUID()}`)
     await v.removals.remove(v.access, await intent(v, d.id)); const before = await retained(v)
     for (const table of LIFECYCLE_CHILD_TABLES) {
       const id = first.ids[table]
