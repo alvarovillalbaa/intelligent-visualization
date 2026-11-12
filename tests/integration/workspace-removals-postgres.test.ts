@@ -31,7 +31,7 @@ async function context(f: Fixture) {
   return { ...f, user, access: { tokenHash, workspaceSlug: "core-growth" }, removals: f.provider.workspaceRemovals }
 }
 type Context = Awaited<ReturnType<typeof context>>
-function check(work: (value: Context) => Promise<unknown>) { return withPostgresFixture(async (f) => work(await context(f))) }
+function check(work: (value: Context) => Promise<void>) { return withPostgresFixture(async (f) => work(await context(f))) }
 async function draft(v: Context, kind: "course" | "report" = "course") {
   return (await v.provider.workspaceDrafts.save(v.access, { id: randomUUID(), requestId: randomUUID(), expectedRevision: 0,
     document: kind === "course" ? createStarterCourseDocument() : createStarterReportDocument() })).draft
@@ -177,7 +177,7 @@ describe("terminal workspace removal in PostgreSQL", () => {
     expect(await v.provider.checkpoints.listByVisualization(d.id)).toEqual([])
     expect(await v.provider.sources.listByVisualization(d.id)).toEqual([])
     expect(await v.provider.assets.listByVisualization(d.id)).toEqual([])
-    expect(await v.provider.reviews.get(ids.review_requests)).toBeNull()
+    expect(await v.provider.reviews.getRequest(ids.review_requests)).toBeNull()
     expect(await v.provider.reviews.listComments(ids.review_requests)).toEqual([])
     expect(await v.provider.experiments.get(ids.experiments)).toBeNull()
     expect(await v.provider.workflowRuns.get(ids.workflow_runs)).toBeNull()

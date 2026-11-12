@@ -11,7 +11,7 @@ const ACTIVE = ["draft", "preview", "published", "archived"]
 const HASH = /^[a-f0-9]{64}$/
 const object = (value: unknown): value is Record<string, unknown> => Boolean(value && typeof value === "object" && !Array.isArray(value))
 const exact = (value: Record<string, unknown>, keys: string[]) => Object.keys(value).sort().join(",") === [...keys].sort().join(",")
-const fail = (code: WorkspaceDraftAccessError["code"]): never => { throw new WorkspaceDraftAccessError(code) }
+function fail(code: WorkspaceDraftAccessError["code"]): never { throw new WorkspaceDraftAccessError(code) }
 function normalize(value: RemoveWorkspaceDraftInput) {
   if (!object(value) || !exact(value, ["id", "requestId", "expected"]) || typeof value.id !== "string" || !isDomainId(value.id)
     || typeof value.requestId !== "string" || !isDomainId(value.requestId)
