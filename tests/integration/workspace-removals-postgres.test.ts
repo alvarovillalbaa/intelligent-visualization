@@ -14,6 +14,8 @@ import { checkPortableDatabase, exportPortableDatabase, importPortableDatabase, 
 import { LIFECYCLE_CHILD_TABLES } from "@/packages/provider-postgres/lifecycle-v2"
 import { createPostgresDatabase as nativeDatabase } from "@/packages/provider-postgres/database"
 import { hostedLifecycleUpgradeSql } from "@/packages/provider-supabase/lifecycle-upgrade"
+import { createSupabasePersistenceProviderForDatabase } from "@/packages/provider-supabase/adapter"
+import { importPortableDatabase as importPostgresBackup } from "@/packages/provider-postgres/portable"
 import { ensureSupabaseDatabase, SUPABASE_SCHEMA } from "@/packages/provider-supabase/schema"
 import { withPostgresFixture, type createPostgresFixture } from "@/tests/providers/postgres-fixture"
 
@@ -130,6 +132,28 @@ describe("terminal workspace removal in PostgreSQL", () => {
     await expect(v.provider.commands.saveVisualizationRevision({ visualizationId: d.id, expectedRevision: 1, document: d.document, idempotencyKey: key })).rejects.toThrow()
     await expect(v.provider.commands.saveVisualizationRevision({ visualizationId: other.id, expectedRevision: 1, document: other.document, idempotencyKey: key })).rejects.toThrow()
   }))
+  it("makes a direct SQL child write waiting on a removal observe the committed tombstone", () => check(async (v) => {
+    const d = await draft(v), { ids } = await graph(v, d.id), request = await intent(v, d.id), writer = createPostgresDatabase(v.connectionString)
+    let pending: Promise<unknown> | undefined
+    try {
+      const pid = (await writer.query("SELECT pg_backend_pid() AS pid")).rows[0].pid
+      await v.database.transaction(async () => {
+        expect((await v.removals.remove(v.access, request)).status).toBe("removed")
+        pending = writer.query(`UPDATE ${S}.visualization_checkpoints SET title='racing overwrite' WHERE id=$1`, [ids.visualization_checkpoints])
+        // Attach rejection handling before intentionally holding the other side.
+        void pending.catch(() => {})
+        let waiting = false
+        for (let attempt = 0; attempt < 50; attempt++) {
+          waiting = (await v.database.query("SELECT EXISTS(SELECT 1 FROM pg_locks WHERE pid=$1 AND NOT granted AND locktype='advisory') AS waiting", [pid])).rows[0].waiting === true
+          if (waiting) break
+          await new Promise((resolve) => setTimeout(resolve, 10))
+        }
+        expect(waiting).toBe(true)
+      })
+      await expect(pending).rejects.toMatchObject({ code: "55000" })
+      expect((await v.database.query(`SELECT title FROM ${S}.visualization_checkpoints WHERE id=$1`, [ids.visualization_checkpoints])).rows[0].title).not.toBe("racing overwrite")
+    } finally { await pending?.catch(() => {}); await writer.close() }
+  }))
   it("protects every retained child from inserts updates deletes retargets and truncation", () => check(async (v) => {
     const d = await draft(v), first = await graph(v, d.id), other = await draft(v), active = await graph(v, other.id)
     await v.removals.remove(v.access, await intent(v, d.id)); const before = await retained(v)
@@ -214,6 +238,9 @@ describe("terminal workspace removal in PostgreSQL", () => {
         owned.push(...(await admin.query("SELECT rolname,oid::text AS oid FROM pg_roles WHERE rolname=$1", [role])).rows)
       }
       await withPostgresFixture(async (f) => {
+        const source = await context(f), d = await draft(source); await graph(source, d.id)
+        const backupRoot = await mkdtemp(path.join(os.tmpdir(), "iv-hosted-removal-")), backup = path.join(backupRoot, "portable")
+        await exportPortableDatabase(f.database, backup)
         await f.database.query(await readFile(path.resolve("packages/provider-supabase/migration.sql.in"), "utf8"))
         owned.push(...(await admin.query("SELECT rolname,oid::text AS oid FROM pg_roles WHERE rolname='iv_runtime'")).rows)
         await f.database.query("ALTER ROLE iv_runtime LOGIN PASSWORD 'authored-runtime-only'")
@@ -228,9 +255,19 @@ describe("terminal workspace removal in PostgreSQL", () => {
         const runtime = nativeDatabase({ connectionString: url.toString(), max: 1, options: "-c search_path=pg_catalog" })
         try {
           await ensureSupabaseDatabase(runtime, true)
+          await importPostgresBackup({ kind: "supabase", database: runtime, schema: SUPABASE_SCHEMA, ensure: () => ensureSupabaseDatabase(runtime) }, backup)
+          const provider = createSupabasePersistenceProviderForDatabase(runtime)
+          await provider.legacy.withState((state) => { state.sessions.push({ id: randomUUID(), userId: source.user.id, tokenHash: source.access.tokenHash, createdAt: Date.now(), expiresAt: Date.now() + 60_000 }) })
+          const request = await provider.workspaceRemovals.get(source.access, d.id)
+          expect(request).toBeTruthy()
+          const result = await provider.workspaceRemovals.remove(source.access, { id: d.id, requestId: randomUUID(), expected: { draftRevision: request!.draftRevision,
+            draftHash: request!.draftHash, status: request!.status, publishedVersionId: request!.publishedVersionId } })
+          expect(result.status).toBe("removed")
+          await expect(runtime.query(`UPDATE ${SUPABASE_SCHEMA}.visualizations SET status='draft' WHERE id=$1`, [d.id])).rejects.toMatchObject({ code: "55000" })
+          await expect(runtime.query(`DELETE FROM ${SUPABASE_SCHEMA}.visualization_versions WHERE visualization_id=$1`, [d.id])).rejects.toMatchObject({ code: "55000" })
           await f.database.query(`ALTER TABLE ${SUPABASE_SCHEMA}.visualizations DISABLE TRIGGER iv_removed_parent_v2`)
           await expect(ensureSupabaseDatabase(runtime, true)).rejects.toThrow("does not match")
-        } finally { await runtime.close() }
+        } finally { await runtime.close(); await rm(backupRoot, { recursive: true }) }
       })
     } finally {
       for (const row of owned) {

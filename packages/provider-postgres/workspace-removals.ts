@@ -24,6 +24,7 @@ function normalize(value: RemoveWorkspaceDraftInput) {
     draftRevision: e.draftRevision, draftHash: e.draftHash, status: e.status,
     publishedVersionId: e.publishedVersionId?.toLowerCase() ?? null,
   } }
+}
 type Current = WorkspaceRemovalResult["current"]
 export function createWorkspaceRemovalRepository(context: PostgresContext): WorkspaceRemovalRepository {
   const database = context.database, SCHEMA = postgresSchema(context.schema)
