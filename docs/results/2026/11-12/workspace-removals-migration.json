@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-11-12T22:55:33.184Z",
+  "cliVersion": "2.117.0",
+  "command": [
+    "supabase",
+    "migration",
+    "new",
+    "terminal_visualization_removal_v2"
+  ],
+  "path": "supabase/migrations/20261112225304_terminal_visualization_removal_v2.sql",
+  "sqlBytes": 12542,
+  "sqlSha256": "2ac5379d008c8ca3ddd3b771ae74c5c896a8ce8d9f4c6dcd5c7ae3ea6b858284",
+  "generator": "packages/provider-supabase/lifecycle-upgrade.ts#hostedLifecycleUpgradeSql",
+  "qualifiedSource": "bbc6f6391539dbec8a783f0d5b75fae8e9a5c1c1",
+  "generatorInputs": [
+    {
+      "path": "packages/provider-postgres/context.ts",
+      "sha256": "57d0c67a66279b3bb6c200a16b945f225f52037c21a32c4591194a299e6d3446"
+    },
+    {
+      "path": "packages/provider-postgres/lifecycle-v2.ts",
+      "sha256": "5dc3ec04a8624ab16b6ac4e9022d9ad172daaaac5eb297711710a68fb97f2876"
+    },
+    {
+      "path": "packages/provider-supabase/schema.ts",
+      "sha256": "9f93969ed8b4201554e4250387911261a0640754804ede279d2c262b1b6a0f67"
+    },
+    {
+      "path": "packages/provider-supabase/lifecycle-upgrade.ts",
+      "sha256": "9e13b4506fa66b04628860ebe7bef7c91aac7c9809f932da2676c7b8348f792b"
+    }
+  ],
+  "sqlReadbackMatchesFactory": true,
+  "databaseConnected": false,
+  "applied": false,
+  "initialCLIRead": {
+    "outcome": "EPERM on default telemetry state outside writable roots",
+    "followup": "Documented SUPABASE_HOME in task temp plus SUPABASE_TELEMETRY_DISABLED=1 and DO_NOT_TRACK=1; no auth operation"
+  },
+  "ownedCLIResidueRemoved": true,
+  "unverified": [
+    "Supabase CLI reset or apply",
+    "Supabase migration history reconciliation",
+    "Supabase advisors",
+    "Hosted database activation"
+  ],
+  "sources": [
+    "https://supabase.com/docs/guides/local-development/cli/getting-started",
+    "https://supabase.com/docs/reference/cli/supabase-migration-new",
+    "https://supabase.com/changelog/supabase-cli-v3"
+  ]
+}

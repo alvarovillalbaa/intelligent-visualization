@@ -77,7 +77,7 @@ boundary. Both failures remain preserved; no single four-pass run is claimed.
 Still in progress:
 
 - Full replacement of deck-facing UI/routes with visualization terminology.
-- Supabase provider.
+- Hosted Supabase activation and native Supabase Auth.
 - Report browser/download/print acceptance and hosted saving/publication.
 - Hosted Course saving/publication and learner analytics; browser draft authoring is implemented.
 - AI SDK structured-output migration.

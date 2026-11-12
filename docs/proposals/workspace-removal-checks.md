@@ -1,5 +1,9 @@
 # Terminal workspace removal checks
 
+Result: [qualified candidate](../results/2026/11-12/workspace-removals.md), still
+off production. The prepared scope and failed-attempt changes below are historical;
+accepted identities retain their original sources and are not rerun unchanged.
+
 Prepared 12 November 2026 under Alvaro's standing "I approve everything / Keep
 going / Do all the work" authorization. Source changes and checks are candidates,
 not accepted results. No local install/build/server/browser follows Storage

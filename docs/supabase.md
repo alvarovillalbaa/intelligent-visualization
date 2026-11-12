@@ -1,6 +1,16 @@
 # Supabase
 
-Supabase support is planned as a provider-contract adapter over Supabase Postgres, optional Supabase Storage, optional Supabase Auth, and optional Supabase Realtime.
+The candidate implements private Supabase Postgres and Storage selection over
+the provider contracts. Native Supabase Auth and Realtime remain optional,
+unfinished integrations. Hosted activation is separate from disposable proof.
+
+The new [terminal-removal receipt](results/2026/11-12/workspace-removals.md) adds
+v2 lineage/functions/triggers, including an actual restricted-role removal on
+disposable PostgreSQL. This is not a new full Supabase-stack qualification.
+Read the [stopped-process upgrade boundary](proposals/workspace-removal.md)
+before using v2; an old `supabase db reset` invocation now refuses without the
+explicit maintenance acknowledgement. The generated migration, CLI history
+reconciliation, advisors and actual hosted activation have distinct limits.
 
 Current status:
 

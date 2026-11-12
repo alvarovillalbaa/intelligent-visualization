@@ -1,8 +1,9 @@
 # Remove saved work from a workspace
 
 The candidate adds **Remove from workspace** to saved Course and Report rows.
-Qualification is tracked in [the new check scope](proposals/workspace-removal-checks.md);
-this document is a behavior and rollout contract, not a test receipt. Slides,
+Its [focused qualification](results/2026/11-12/workspace-removals.md) accepts
+34 distinct core checks over two sources and four actual browser journeys at a
+third source. This document describes behavior and rollout. Slides,
 guest drafts, workspaces and accounts are outside this control.
 
 Editors and administrators open the confirmation, which loads the current saved

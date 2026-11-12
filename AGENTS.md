@@ -10,6 +10,12 @@
   checks and four new desktop/narrow-touch scenarios in one disposable public
   Ubuntu/PostgreSQL job capped at 20 minutes. Preserve every failed receipt.
   This does not activate v2 on a live database or retire old production processes.
+- Removal qualification is closed in `docs/results/2026/11-12/workspace-removals.md`:
+  32 core identities at `bbc6f639`, two fixture completions at `773036fd`, and
+  four complete browser identities at `c6c8490f`. Keep their sources separate;
+  do not replay these accepted cases unchanged. The v2 SQL file is generated
+  from the qualified factory. Existing v1 Supabase reset/check tooling needs
+  the explicit maintenance acknowledgement; no unchanged old-suite replay.
 - Alvaro's standing "I approve everything / Keep going / Do all the work"
   authorization covers the four existing Course export browser identities in
   `docs/proposals/course-export-browser-v2.md` and their bounded temporary CI.

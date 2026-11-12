@@ -1,3 +1,4 @@
+# Retired example. Workflow 416649212 is disabled and all seven owned QA refs retired.
 name: Temporary terminal workspace removal checks
 on:
   create:

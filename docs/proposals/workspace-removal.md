@@ -1,6 +1,9 @@
 # Remove a saved Course or Report from its workspace
 
-Status: **implementation candidate, unverified**, 12 November 2026. The Supabase
+Status: **qualified candidate, off production**, 12 November 2026. The
+[removal receipt](../results/2026/11-12/workspace-removals.md) accepts 34 distinct
+core identities across two sources and four browser identities at a third source.
+The Supabase
 application password gate closed on 10 November at `e35ad7c6`; that result does
 not qualify this new lifecycle scope. Historical design notes below retain their
 7 November context. New checks are scoped in [removal checks](workspace-removal-checks.md).
@@ -12,8 +15,8 @@ references for all 12 child tables. This conservative lock serializes canonical
 lifecycle writes in a schema. It trades write concurrency for a bounded, common
 ordering across old SQL writers and the new application. It does not fence old
 SELECTs or evict old initialized pools: retiring every old app, worker and backup
-tool is mandatory before activation. No production upgrade is authorized by this
-receipt or performed here.
+tool is mandatory before activation. The receipt does not establish that
+production retirement; no live upgrade was performed here.
 
 Existing v1 local databases refuse automatic upgrade. After process retirement,
 the operator runs `npm run setup:local -- --upgrade-lifecycle-v2
@@ -25,6 +28,16 @@ retirement; the SQL refuses other runtime connections and takes exclusive table
 locks. A peer snapshot does not establish future quiescence. Drain and prevent
 old restarts, apply the new migration, start only v2 processes, then qualify
 the actual deployment. Never use runtime credentials for DDL.
+
+The CLI-created [v2 migration](../../supabase/migrations/20261112225304_terminal_visualization_removal_v2.sql)
+contains the exact 12,542-byte factory output qualified under the restricted role.
+Its generation/readback is recorded [separately](../results/2026/11-12/workspace-removals-migration.json).
+Even an empty Supabase reset must supply the explicit maintenance acknowledgement;
+old reset/CI tooling must not replay unchanged. The file was not applied through
+Supabase CLI and CLI history/advisors remain unverified. Once tombstones exist,
+roll forward with v2-capable readers/tools; do not restart v1 or restore an old
+backup as an implicit rollback. Reconcile Supabase migration history under the
+reviewed migration-owner process before any hosted activation.
 
 New ordinary reads and cached commands refuse tombstones. Portable v2 retains
 the graph and stages only newly absent tombstones as draft inside the restore
