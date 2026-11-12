@@ -17,7 +17,7 @@ import traceback
 
 repo = Path.cwd()
 source = os.environ["SOURCE_COMMIT"]
-branch = "qa/workspace-removals-20261112-6"
+branch = "qa/workspace-removals-20261112-7"
 assert os.environ.get("CI") == "true"
 assert os.environ.get("GITHUB_REPOSITORY") == "alvarovillalbaa/intelligent-visualization"
 assert os.environ.get("GITHUB_EVENT_NAME") == "create" and os.environ.get("GITHUB_REF") == "refs/heads/" + branch
@@ -59,7 +59,7 @@ assert (carry["core"]["numTotalTests"], carry["core"]["numPassedTests"], carry["
 failed_titles = ["terminal workspace removal in PostgreSQL makes a direct SQL child write waiting on a removal observe the committed tombstone",
     "terminal workspace removal in PostgreSQL protects every retained child from inserts updates deletes retargets and truncation"]
 assert [test["fullName"] for file in carry["core"]["testResults"] for test in file["assertionResults"] if test["status"] == "failed"] == failed_titles
-mutable = {"scripts/workspace-removal-checks.py", "tests/integration/workspace-removals-postgres.test.ts", "tests/e2e/workspace-removals.spec.ts"}
+mutable = {"README.md", "scripts/workspace-removal-checks.py", "tests/integration/workspace-removals-postgres.test.ts", "tests/e2e/workspace-removals.spec.ts"}
 runtime_names = lambda files: {name for name in files if not name.startswith(("docs/", ".github/", ".claude/")) and name not in mutable}
 assert runtime_names(before) == runtime_names(carry["sourceFiles"])
 assert all(before[name] == carry["sourceFiles"][name] for name in runtime_names(before))

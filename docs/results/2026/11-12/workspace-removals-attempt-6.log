@@ -1,0 +1,382 @@
+﻿2026-11-12T22:46:50.0682334Z Current runner version: '2.338.2'
+2026-11-12T22:46:50.0712369Z ##[group]Runner Image Provisioner
+2026-11-12T22:46:50.0713540Z Hosted Compute Agent
+2026-11-12T22:46:50.0714271Z Version: 20261028.624
+2026-11-12T22:46:50.0715122Z Commit: 54898b74c23fde5556c9b3c3a2290865feef0dfe
+2026-11-12T22:46:50.0716207Z Build Date: 2026-10-28T21:51:42Z
+2026-11-12T22:46:50.0717092Z Worker ID: {ab0969cf-9b8e-42b6-b4c0-ede6e8c64024}
+2026-11-12T22:46:50.0718135Z Region: eastus2
+2026-11-12T22:46:50.0718817Z Cloud: Azure
+2026-11-12T22:46:50.0719504Z ##[endgroup]
+2026-11-12T22:46:50.0721379Z ##[group]Operating System
+2026-11-12T22:46:50.0722174Z Ubuntu
+2026-11-12T22:46:50.0722896Z 24.04.5
+2026-11-12T22:46:50.0723580Z LTS
+2026-11-12T22:46:50.0724284Z ##[endgroup]
+2026-11-12T22:46:50.0725046Z ##[group]Runner Image
+2026-11-12T22:46:50.0725829Z Image: ubuntu-24.04
+2026-11-12T22:46:50.0726665Z Version: 20261101.360.1
+2026-11-12T22:46:50.0728333Z Included Software: https://github.com/actions/runner-images/blob/ubuntu24/20261101.360/images/ubuntu/Ubuntu2404-Readme.md
+2026-11-12T22:46:50.0731211Z Image Release: https://github.com/actions/runner-images/releases/tag/ubuntu24%2F20261101.360
+2026-11-12T22:46:50.0732461Z ##[endgroup]
+2026-11-12T22:46:50.0733796Z ##[group]GITHUB_TOKEN Permissions
+2026-11-12T22:46:50.0735762Z Contents: read
+2026-11-12T22:46:50.0736347Z Metadata: read
+2026-11-12T22:46:50.0736864Z ##[endgroup]
+2026-11-12T22:46:50.0738658Z Secret source: Actions
+2026-11-12T22:46:50.0739508Z Cache mode: write
+2026-11-12T22:46:50.0740462Z Prepare workflow directory
+2026-11-12T22:46:50.1214083Z Prepare all required actions
+2026-11-12T22:46:50.1268645Z Getting action download info
+2026-11-12T22:46:50.3175377Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-11-12T22:46:50.4365764Z Download action repository 'actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1' (SHA:949feb2413d6458794dcd2491c4babbbce0c15c1)
+2026-11-12T22:46:50.6337897Z Complete job name: removals
+2026-11-12T22:46:50.6816366Z ##[group]Checking docker version
+2026-11-12T22:46:50.6828647Z ##[command]/usr/bin/docker version --format '{{.Server.APIVersion}}'
+2026-11-12T22:46:50.7560982Z '1.48'
+2026-11-12T22:46:50.7578665Z Docker daemon API version: '1.48'
+2026-11-12T22:46:50.7579304Z ##[command]/usr/bin/docker version --format '{{.Client.APIVersion}}'
+2026-11-12T22:46:50.7733184Z '1.48'
+2026-11-12T22:46:50.7746917Z Docker client API version: '1.48'
+2026-11-12T22:46:50.7750961Z ##[endgroup]
+2026-11-12T22:46:50.7753006Z ##[group]Clean up resources from previous jobs
+2026-11-12T22:46:50.7757583Z ##[command]/usr/bin/docker ps --all --quiet --no-trunc --filter "label=61c576"
+2026-11-12T22:46:50.7895718Z ##[command]/usr/bin/docker network prune --force --filter "label=61c576"
+2026-11-12T22:46:50.8023758Z ##[endgroup]
+2026-11-12T22:46:50.8024194Z ##[group]Create local container network
+2026-11-12T22:46:50.8032244Z ##[command]/usr/bin/docker network create --label 61c576 github_network_1c1785d497274a67b3040216b6f541bd
+2026-11-12T22:46:50.8552120Z 6fdb04749a20b4b8b6e6a8ccfd90aca20884d4b9d106ee479ea242140f980077
+2026-11-12T22:46:50.8567697Z ##[endgroup]
+2026-11-12T22:46:50.8589371Z ##[group]Starting postgres service container
+2026-11-12T22:46:50.8609204Z ##[command]/usr/bin/docker pull postgres:17.6
+2026-11-12T22:46:51.1745155Z 17.6: Pulling from library/postgres
+2026-11-12T22:46:51.2574243Z d7ecded7702a: Pulling fs layer
+2026-11-12T22:46:51.2576003Z d95a46ea6a60: Pulling fs layer
+2026-11-12T22:46:51.2577041Z df684e12be42: Pulling fs layer
+2026-11-12T22:46:51.2577937Z baf316c053aa: Pulling fs layer
+2026-11-12T22:46:51.2578676Z b3ec056f36c4: Pulling fs layer
+2026-11-12T22:46:51.2579278Z f9f6c3699755: Pulling fs layer
+2026-11-12T22:46:51.2579747Z 30854ed26966: Pulling fs layer
+2026-11-12T22:46:51.2580294Z 639bc10553ca: Pulling fs layer
+2026-11-12T22:46:51.2580933Z 5d95d2afb8ab: Pulling fs layer
+2026-11-12T22:46:51.2581433Z 0424836d8a95: Pulling fs layer
+2026-11-12T22:46:51.2581950Z 4b0b164c9bcd: Pulling fs layer
+2026-11-12T22:46:51.2582823Z 36e0cf935aa6: Pulling fs layer
+2026-11-12T22:46:51.2583355Z 36b8b7af114e: Pulling fs layer
+2026-11-12T22:46:51.2583859Z 5df7a8bf57f1: Pulling fs layer
+2026-11-12T22:46:51.2584362Z baf316c053aa: Waiting
+2026-11-12T22:46:51.2584863Z b3ec056f36c4: Waiting
+2026-11-12T22:46:51.2585258Z f9f6c3699755: Waiting
+2026-11-12T22:46:51.2585736Z 30854ed26966: Waiting
+2026-11-12T22:46:51.2586132Z 639bc10553ca: Waiting
+2026-11-12T22:46:51.2586624Z 5d95d2afb8ab: Waiting
+2026-11-12T22:46:51.2587082Z 0424836d8a95: Waiting
+2026-11-12T22:46:51.2587499Z 4b0b164c9bcd: Waiting
+2026-11-12T22:46:51.2587973Z 36e0cf935aa6: Waiting
+2026-11-12T22:46:51.2588370Z 36b8b7af114e: Waiting
+2026-11-12T22:46:51.2588842Z 5df7a8bf57f1: Waiting
+2026-11-12T22:46:51.3114134Z d95a46ea6a60: Verifying Checksum
+2026-11-12T22:46:51.3114954Z d95a46ea6a60: Download complete
+2026-11-12T22:46:51.3550448Z df684e12be42: Verifying Checksum
+2026-11-12T22:46:51.3551729Z df684e12be42: Download complete
+2026-11-12T22:46:51.3983923Z baf316c053aa: Verifying Checksum
+2026-11-12T22:46:51.3984881Z baf316c053aa: Download complete
+2026-11-12T22:46:51.4087095Z d7ecded7702a: Verifying Checksum
+2026-11-12T22:46:51.4087979Z d7ecded7702a: Download complete
+2026-11-12T22:46:51.4612577Z b3ec056f36c4: Download complete
+2026-11-12T22:46:51.4654808Z 30854ed26966: Verifying Checksum
+2026-11-12T22:46:51.4655903Z 30854ed26966: Download complete
+2026-11-12T22:46:51.4735359Z f9f6c3699755: Verifying Checksum
+2026-11-12T22:46:51.4736206Z f9f6c3699755: Download complete
+2026-11-12T22:46:51.5126108Z 639bc10553ca: Verifying Checksum
+2026-11-12T22:46:51.5127866Z 639bc10553ca: Download complete
+2026-11-12T22:46:51.5259699Z 0424836d8a95: Download complete
+2026-11-12T22:46:51.5668305Z 4b0b164c9bcd: Verifying Checksum
+2026-11-12T22:46:51.5669270Z 4b0b164c9bcd: Download complete
+2026-11-12T22:46:51.5775457Z 36e0cf935aa6: Download complete
+2026-11-12T22:46:51.6215518Z 36b8b7af114e: Verifying Checksum
+2026-11-12T22:46:51.6216554Z 36b8b7af114e: Download complete
+2026-11-12T22:46:51.6268750Z 5df7a8bf57f1: Verifying Checksum
+2026-11-12T22:46:51.6269977Z 5df7a8bf57f1: Download complete
+2026-11-12T22:46:51.8532412Z 5d95d2afb8ab: Verifying Checksum
+2026-11-12T22:46:51.8533581Z 5d95d2afb8ab: Download complete
+2026-11-12T22:46:52.2670527Z d7ecded7702a: Pull complete
+2026-11-12T22:46:53.7767863Z d95a46ea6a60: Pull complete
+2026-11-12T22:46:54.0186368Z df684e12be42: Pull complete
+2026-11-12T22:46:54.0857390Z baf316c053aa: Pull complete
+2026-11-12T22:46:54.4720756Z b3ec056f36c4: Pull complete
+2026-11-12T22:46:54.5389643Z f9f6c3699755: Pull complete
+2026-11-12T22:46:54.5498153Z 30854ed26966: Pull complete
+2026-11-12T22:46:54.5592767Z 639bc10553ca: Pull complete
+2026-11-12T22:46:58.2402727Z 5d95d2afb8ab: Pull complete
+2026-11-12T22:46:58.2501050Z 0424836d8a95: Pull complete
+2026-11-12T22:46:58.2591328Z 4b0b164c9bcd: Pull complete
+2026-11-12T22:46:58.2708553Z 36e0cf935aa6: Pull complete
+2026-11-12T22:46:58.2821799Z 36b8b7af114e: Pull complete
+2026-11-12T22:46:58.2892542Z 5df7a8bf57f1: Pull complete
+2026-11-12T22:46:58.2937152Z Digest: sha256:00bc86618629af00d2937fdc5a5d63db3ff8450acf52f0636ec813c7f4902929
+2026-11-12T22:46:58.2954653Z Status: Downloaded newer image for postgres:17.6
+2026-11-12T22:46:58.2960916Z docker.io/library/postgres:17.6
+2026-11-12T22:46:58.3029217Z ##[command]/usr/bin/docker create --name 960b0eb1d05a4369b076a163634e2896_postgres176_f5a936 --label 61c576 --network github_network_1c1785d497274a67b3040216b6f541bd --network-alias postgres -p 54431:5432 --health-cmd "pg_isready -U iv_ci -d intelligent_visualization_ci" --health-interval 5s --health-timeout 5s --health-retries 10 -e "POSTGRES_USER=iv_ci" -e "POSTGRES_PASSWORD=authored-ci-only" -e "POSTGRES_DB=intelligent_visualization_ci" -e GITHUB_ACTIONS=true -e CI=true postgres:17.6
+2026-11-12T22:46:58.3277945Z ef12b0dbc0b7e38b3945fdc6dc49573b4d3b57ffc19ebf134207e259315f4284
+2026-11-12T22:46:58.3299469Z ##[command]/usr/bin/docker start ef12b0dbc0b7e38b3945fdc6dc49573b4d3b57ffc19ebf134207e259315f4284
+2026-11-12T22:46:58.5114315Z ef12b0dbc0b7e38b3945fdc6dc49573b4d3b57ffc19ebf134207e259315f4284
+2026-11-12T22:46:58.5142379Z ##[command]/usr/bin/docker ps --all --filter id=ef12b0dbc0b7e38b3945fdc6dc49573b4d3b57ffc19ebf134207e259315f4284 --filter status=running --no-trunc --format "{{.ID}} {{.Status}}"
+2026-11-12T22:46:58.5300009Z ef12b0dbc0b7e38b3945fdc6dc49573b4d3b57ffc19ebf134207e259315f4284 Up Less than a second (health: starting)
+2026-11-12T22:46:58.5321913Z ##[command]/usr/bin/docker port ef12b0dbc0b7e38b3945fdc6dc49573b4d3b57ffc19ebf134207e259315f4284
+2026-11-12T22:46:58.5451434Z 5432/tcp -> 0.0.0.0:54431
+2026-11-12T22:46:58.5452187Z 5432/tcp -> [::]:54431
+2026-11-12T22:46:58.5498641Z ##[endgroup]
+2026-11-12T22:46:58.5505869Z ##[group]Waiting for all services to be ready
+2026-11-12T22:46:58.5517016Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" ef12b0dbc0b7e38b3945fdc6dc49573b4d3b57ffc19ebf134207e259315f4284
+2026-11-12T22:46:58.5654045Z starting
+2026-11-12T22:46:58.5677390Z postgres service is starting, waiting 2 seconds before checking again.
+2026-11-12T22:47:00.5674568Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" ef12b0dbc0b7e38b3945fdc6dc49573b4d3b57ffc19ebf134207e259315f4284
+2026-11-12T22:47:00.5796840Z starting
+2026-11-12T22:47:00.5811470Z postgres service is starting, waiting 3 seconds before checking again.
+2026-11-12T22:47:04.3168760Z ##[command]/usr/bin/docker inspect --format="{{if .Config.Healthcheck}}{{print .State.Health.Status}}{{end}}" ef12b0dbc0b7e38b3945fdc6dc49573b4d3b57ffc19ebf134207e259315f4284
+2026-11-12T22:47:04.3302916Z healthy
+2026-11-12T22:47:04.3322080Z postgres service is healthy.
+2026-11-12T22:47:04.3322835Z ##[endgroup]
+2026-11-12T22:47:04.3547138Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+2026-11-12T22:47:04.3547638Z with:
+2026-11-12T22:47:04.3547830Z   ref: 92ae168ec85699dd33a69c548e073c0bca3c0a8e
+2026-11-12T22:47:04.3548070Z   persist-credentials: false
+2026-11-12T22:47:04.3548289Z   fetch-depth: 1
+2026-11-12T22:47:04.3548453Z   clean: false
+2026-11-12T22:47:04.3548669Z   repository: alvarovillalbaa/intelligent-visualization
+2026-11-12T22:47:04.3550698Z   token: ***
+2026-11-12T22:47:04.3550871Z   ssh-strict: true
+2026-11-12T22:47:04.3551040Z   ssh-user: git
+2026-11-12T22:47:04.3551222Z   sparse-checkout-cone-mode: true
+2026-11-12T22:47:04.3551423Z   fetch-tags: false
+2026-11-12T22:47:04.3551596Z   show-progress: true
+2026-11-12T22:47:04.3551763Z   lfs: false
+2026-11-12T22:47:04.3551911Z   submodules: false
+2026-11-12T22:47:04.3552079Z   set-safe-directory: true
+2026-11-12T22:47:04.3552274Z   allow-unsafe-pr-checkout: false
+2026-11-12T22:47:04.3552627Z env:
+2026-11-12T22:47:04.3552870Z   SOURCE_COMMIT: 92ae168ec85699dd33a69c548e073c0bca3c0a8e
+2026-11-12T22:47:04.3553117Z ##[endgroup]
+2026-11-12T22:47:04.5588104Z Syncing repository: alvarovillalbaa/intelligent-visualization
+2026-11-12T22:47:04.5589859Z ##[group]Getting Git version info
+2026-11-12T22:47:04.5590452Z Working directory is '/home/runner/work/intelligent-visualization/intelligent-visualization'
+2026-11-12T22:47:04.5591437Z [command]/usr/bin/git version
+2026-11-12T22:47:04.5663991Z git version 2.56.0
+2026-11-12T22:47:04.5680079Z ##[endgroup]
+2026-11-12T22:47:04.5689650Z Temporarily overriding HOME='/home/runner/work/_temp/3d134ad1-1812-4cd0-92f5-eca2d75e118c' before making global git config changes
+2026-11-12T22:47:04.5690886Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-12T22:47:04.5695584Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/intelligent-visualization/intelligent-visualization
+2026-11-12T22:47:04.5738127Z Deleting the contents of '/home/runner/work/intelligent-visualization/intelligent-visualization'
+2026-11-12T22:47:04.5740736Z ##[group]Determining repository object format
+2026-11-12T22:47:04.5742033Z ##[endgroup]
+2026-11-12T22:47:04.5742591Z ##[group]Initializing the repository
+2026-11-12T22:47:04.5745761Z [command]/usr/bin/git init /home/runner/work/intelligent-visualization/intelligent-visualization
+2026-11-12T22:47:04.5845495Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-12T22:47:04.5846594Z hint: will change to "main" in Git 3.0. To configure the initial branch name
+2026-11-12T22:47:04.5847244Z hint: to use in all of your new repositories, which will suppress this warning,
+2026-11-12T22:47:04.5848200Z hint: call:
+2026-11-12T22:47:04.5848439Z hint:
+2026-11-12T22:47:04.5848841Z hint: 	git config --global init.defaultBranch <name>
+2026-11-12T22:47:04.5849362Z hint:
+2026-11-12T22:47:04.5849739Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-12T22:47:04.5850406Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-12T22:47:04.5851003Z hint:
+2026-11-12T22:47:04.5851262Z hint: 	git branch -m <name>
+2026-11-12T22:47:04.5851555Z hint:
+2026-11-12T22:47:04.5851982Z hint: Disable this message with "git config set advice.defaultBranchName false"
+2026-11-12T22:47:04.5853793Z Initialized empty Git repository in /home/runner/work/intelligent-visualization/intelligent-visualization/.git/
+2026-11-12T22:47:04.5863435Z [command]/usr/bin/git remote add origin https://github.com/alvarovillalbaa/intelligent-visualization
+2026-11-12T22:47:04.5905931Z ##[endgroup]
+2026-11-12T22:47:04.5906466Z ##[group]Disabling automatic garbage collection
+2026-11-12T22:47:04.5909146Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-12T22:47:04.5948744Z ##[endgroup]
+2026-11-12T22:47:04.5949176Z ##[group]Setting up auth
+2026-11-12T22:47:04.5949507Z Removing SSH command configuration
+2026-11-12T22:47:04.5951511Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-12T22:47:04.5986207Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-12T22:47:04.6318750Z Removing HTTP extra header
+2026-11-12T22:47:04.6324446Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-12T22:47:04.6369648Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-12T22:47:04.6572407Z Removing includeIf entries pointing to credentials config files
+2026-11-12T22:47:04.6578207Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-12T22:47:04.6616345Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-12T22:47:04.6823967Z [command]/usr/bin/git config --file /home/runner/work/_temp/git-credentials-7e5450fa-1ef5-4baf-867b-882899b84085.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-12T22:47:04.6864980Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/intelligent-visualization/intelligent-visualization/.git.path /home/runner/work/_temp/git-credentials-7e5450fa-1ef5-4baf-867b-882899b84085.config
+2026-11-12T22:47:04.6901431Z [command]/usr/bin/git config --local includeIf.gitdir:/home/runner/work/intelligent-visualization/intelligent-visualization/.git/worktrees/*.path /home/runner/work/_temp/git-credentials-7e5450fa-1ef5-4baf-867b-882899b84085.config
+2026-11-12T22:47:04.6937660Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-7e5450fa-1ef5-4baf-867b-882899b84085.config
+2026-11-12T22:47:04.6974122Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-7e5450fa-1ef5-4baf-867b-882899b84085.config
+2026-11-12T22:47:04.7008650Z ##[endgroup]
+2026-11-12T22:47:04.7008986Z ##[group]Fetching the repository
+2026-11-12T22:47:04.7013762Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin 92ae168ec85699dd33a69c548e073c0bca3c0a8e
+2026-11-12T22:47:05.5577871Z From https://github.com/alvarovillalbaa/intelligent-visualization
+2026-11-12T22:47:05.5578567Z  * branch            92ae168ec85699dd33a69c548e073c0bca3c0a8e -> FETCH_HEAD
+2026-11-12T22:47:05.5588077Z [command]/usr/bin/git rev-parse --verify --quiet 92ae168ec85699dd33a69c548e073c0bca3c0a8e^{object}
+2026-11-12T22:47:05.5622035Z 92ae168ec85699dd33a69c548e073c0bca3c0a8e
+2026-11-12T22:47:05.5625958Z ##[endgroup]
+2026-11-12T22:47:05.5626294Z ##[group]Determining the checkout info
+2026-11-12T22:47:05.5626766Z ##[endgroup]
+2026-11-12T22:47:05.5631574Z [command]/usr/bin/git sparse-checkout disable
+2026-11-12T22:47:05.6645578Z [command]/usr/bin/git config --local --unset-all extensions.worktreeConfig
+2026-11-12T22:47:05.6686588Z ##[group]Checking out the ref
+2026-11-12T22:47:05.6690385Z [command]/usr/bin/git checkout --progress --force 92ae168ec85699dd33a69c548e073c0bca3c0a8e
+2026-11-12T22:47:05.7448691Z Note: switching to '92ae168ec85699dd33a69c548e073c0bca3c0a8e'.
+2026-11-12T22:47:05.7448960Z 
+2026-11-12T22:47:05.7449150Z You are in 'detached HEAD' state. You can look around, make experimental
+2026-11-12T22:47:05.7449712Z changes and commit them, and you can discard any commits you make in this
+2026-11-12T22:47:05.7450214Z state without impacting any branches by switching back to a branch.
+2026-11-12T22:47:05.7450505Z 
+2026-11-12T22:47:05.7450861Z If you want to create a new branch to retain commits you create, you may
+2026-11-12T22:47:05.7451334Z do so (now or later) by using -c with the switch command. Example:
+2026-11-12T22:47:05.7451615Z 
+2026-11-12T22:47:05.7451757Z   git switch -c <new-branch-name>
+2026-11-12T22:47:05.7452320Z 
+2026-11-12T22:47:05.7452447Z Or undo this operation with:
+2026-11-12T22:47:05.7452617Z 
+2026-11-12T22:47:05.7452725Z   git switch -
+2026-11-12T22:47:05.7452864Z 
+2026-11-12T22:47:05.7453110Z Turn off this advice by setting config variable advice.detachedHead to false
+2026-11-12T22:47:05.7453471Z 
+2026-11-12T22:47:05.7453796Z HEAD is now at 92ae168 test: scope the removal error assertion and retain accepted core proof [skip actions]
+2026-11-12T22:47:05.7463995Z ##[endgroup]
+2026-11-12T22:47:05.7515311Z [command]/usr/bin/git log -1 --format=%H
+2026-11-12T22:47:05.7549459Z 92ae168ec85699dd33a69c548e073c0bca3c0a8e
+2026-11-12T22:47:05.7557423Z ##[group]Removing auth
+2026-11-12T22:47:05.7557743Z Removing SSH command configuration
+2026-11-12T22:47:05.7560734Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-12T22:47:05.7602382Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-12T22:47:05.7809177Z Removing HTTP extra header
+2026-11-12T22:47:05.7812768Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-12T22:47:05.7851506Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-12T22:47:05.8058893Z Removing includeIf entries pointing to credentials config files
+2026-11-12T22:47:05.8062480Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-12T22:47:05.8102956Z includeif.gitdir:/home/runner/work/intelligent-visualization/intelligent-visualization/.git.path
+2026-11-12T22:47:05.8103867Z includeif.gitdir:/home/runner/work/intelligent-visualization/intelligent-visualization/.git/worktrees/*.path
+2026-11-12T22:47:05.8104567Z includeif.gitdir:/github/workspace/.git.path
+2026-11-12T22:47:05.8105205Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-12T22:47:05.8114294Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/intelligent-visualization/intelligent-visualization/.git.path
+2026-11-12T22:47:05.8154659Z /home/runner/work/_temp/git-credentials-7e5450fa-1ef5-4baf-867b-882899b84085.config
+2026-11-12T22:47:05.8164204Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/intelligent-visualization/intelligent-visualization/.git.path \/home\/runner\/work\/_temp\/git\-credentials\-7e5450fa\-1ef5\-4baf\-867b\-882899b84085\.config
+2026-11-12T22:47:05.8209145Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/runner/work/intelligent-visualization/intelligent-visualization/.git/worktrees/*.path
+2026-11-12T22:47:05.8239672Z /home/runner/work/_temp/git-credentials-7e5450fa-1ef5-4baf-867b-882899b84085.config
+2026-11-12T22:47:05.8246772Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/runner/work/intelligent-visualization/intelligent-visualization/.git/worktrees/*.path \/home\/runner\/work\/_temp\/git\-credentials\-7e5450fa\-1ef5\-4baf\-867b\-882899b84085\.config
+2026-11-12T22:47:05.8286732Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-11-12T22:47:05.8317260Z /github/runner_temp/git-credentials-7e5450fa-1ef5-4baf-867b-882899b84085.config
+2026-11-12T22:47:05.8322886Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-7e5450fa\-1ef5\-4baf\-867b\-882899b84085\.config
+2026-11-12T22:47:05.8361936Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-12T22:47:05.8391402Z /github/runner_temp/git-credentials-7e5450fa-1ef5-4baf-867b-882899b84085.config
+2026-11-12T22:47:05.8397317Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-7e5450fa\-1ef5\-4baf\-867b\-882899b84085\.config
+2026-11-12T22:47:05.8437300Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-12T22:47:05.8639097Z Removing credentials config '/home/runner/work/_temp/git-credentials-7e5450fa-1ef5-4baf-867b-882899b84085.config'
+2026-11-12T22:47:05.8653312Z ##[endgroup]
+2026-11-12T22:47:05.8867905Z ##[group]Run actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+2026-11-12T22:47:05.8868215Z with:
+2026-11-12T22:47:05.8868385Z   node-version: 24.21.0
+2026-11-12T22:47:05.8868585Z   package-manager-cache: false
+2026-11-12T22:47:05.8868789Z   check-latest: false
+2026-11-12T22:47:05.8870860Z   token: ***
+2026-11-12T22:47:05.8871063Z env:
+2026-11-12T22:47:05.8871265Z   SOURCE_COMMIT: 92ae168ec85699dd33a69c548e073c0bca3c0a8e
+2026-11-12T22:47:05.8871515Z ##[endgroup]
+2026-11-12T22:47:05.9900273Z Attempting to download 24.21.0...
+2026-11-12T22:47:06.7069472Z Acquiring 24.21.0 - x64 from https://github.com/actions/node-versions/releases/download/24.21.0-34304089047/node-24.21.0-linux-x64.tar.gz
+2026-11-12T22:47:07.0657675Z Extracting ...
+2026-11-12T22:47:07.0932762Z [command]/usr/bin/tar xz --strip 1 --warning=no-unknown-keyword --overwrite -C /home/runner/work/_temp/70551737-9db7-44c3-8d42-12df2a5aba8b -f /home/runner/work/_temp/6282096a-ff93-46e1-86b2-f6f83a117ee6
+2026-11-12T22:47:08.1546267Z Adding to the cache ...
+2026-11-12T22:47:10.1462229Z ##[group]Environment details
+2026-11-12T22:47:10.3337900Z node: v24.21.0
+2026-11-12T22:47:10.3338522Z npm: 11.19.0
+2026-11-12T22:47:10.3338750Z yarn: 1.22.22
+2026-11-12T22:47:10.3339310Z ##[endgroup]
+2026-11-12T22:47:10.3499897Z ##[group]Run python3 scripts/workspace-removal-checks.py
+2026-11-12T22:47:10.3500282Z [36;1mpython3 scripts/workspace-removal-checks.py[0m
+2026-11-12T22:47:10.3523365Z shell: /usr/bin/bash -e {0}
+2026-11-12T22:47:10.3523584Z env:
+2026-11-12T22:47:10.3523798Z   SOURCE_COMMIT: 92ae168ec85699dd33a69c548e073c0bca3c0a8e
+2026-11-12T22:47:10.3524055Z ##[endgroup]
+2026-11-12T22:47:10.6383989Z Traceback (most recent call last):
+2026-11-12T22:47:10.6384682Z   File "/home/runner/work/intelligent-visualization/intelligent-visualization/scripts/workspace-removal-checks.py", line 65, in <module>
+2026-11-12T22:47:10.6385686Z     assert all(before[name] == carry["sourceFiles"][name] for name in runtime_names(before))
+2026-11-12T22:47:10.6386112Z            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2026-11-12T22:47:10.6386388Z AssertionError
+2026-11-12T22:47:10.6519752Z ##[error]Process completed with exit code 1.
+2026-11-12T22:47:10.6613707Z Post job cleanup.
+2026-11-12T22:47:10.7335372Z [command]/usr/bin/git version
+2026-11-12T22:47:10.7385091Z git version 2.56.0
+2026-11-12T22:47:10.7417518Z Temporarily overriding HOME='/home/runner/work/_temp/ef91ccff-276e-43b7-b542-2d733576f640' before making global git config changes
+2026-11-12T22:47:10.7418645Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-12T22:47:10.7422362Z [command]/usr/bin/git config --global --add safe.directory /home/runner/work/intelligent-visualization/intelligent-visualization
+2026-11-12T22:47:10.7458474Z Removing SSH command configuration
+2026-11-12T22:47:10.7459238Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-12T22:47:10.7500910Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-12T22:47:10.7734009Z Removing HTTP extra header
+2026-11-12T22:47:10.7735003Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-12T22:47:10.7771708Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-12T22:47:10.7992510Z Removing includeIf entries pointing to credentials config files
+2026-11-12T22:47:10.7999831Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-12T22:47:10.8040212Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-12T22:47:10.8378495Z Print service container logs: 960b0eb1d05a4369b076a163634e2896_postgres176_f5a936
+2026-11-12T22:47:10.8382251Z ##[command]/usr/bin/docker logs --details ef12b0dbc0b7e38b3945fdc6dc49573b4d3b57ffc19ebf134207e259315f4284
+2026-11-12T22:47:10.8510049Z  The files belonging to this database system will be owned by user "postgres".
+2026-11-12T22:47:10.8510796Z  This user must also own the server process.
+2026-11-12T22:47:10.8511154Z  
+2026-11-12T22:47:10.8511494Z  The database cluster will be initialized with locale "en_US.utf8".
+2026-11-12T22:47:10.8512034Z  The default database encoding has accordingly been set to "UTF8".
+2026-11-12T22:47:10.8512559Z  The default text search configuration will be set to "english".
+2026-11-12T22:47:10.8513036Z  
+2026-11-12T22:47:10.8514179Z  initdb: warning: enabling "trust" authentication for local connections
+2026-11-12T22:47:10.8515037Z  initdb: hint: You can change this by editing pg_hba.conf or using the option -A, or --auth-local and --auth-host, the next time you run initdb.
+2026-11-12T22:47:10.8515813Z  2026-11-12 22:46:59.682 UTC [1] LOG:  starting PostgreSQL 17.6 (Debian 17.6-2.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+2026-11-12T22:47:10.8516376Z  2026-11-12 22:46:59.682 UTC [1] LOG:  listening on IPv4 address "0.0.0.0", port 5432
+2026-11-12T22:47:10.8516747Z  2026-11-12 22:46:59.682 UTC [1] LOG:  listening on IPv6 address "::", port 5432
+2026-11-12T22:47:10.8517136Z  2026-11-12 22:46:59.683 UTC [1] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-11-12T22:47:10.8517568Z  2026-11-12 22:46:59.685 UTC [64] LOG:  database system was shut down at 2026-11-12 22:46:59 UTC
+2026-11-12T22:47:10.8517951Z  2026-11-12 22:46:59.689 UTC [1] LOG:  database system is ready to accept connections
+2026-11-12T22:47:10.8518252Z  Data page checksums are disabled.
+2026-11-12T22:47:10.8518453Z  
+2026-11-12T22:47:10.8518925Z  fixing permissions on existing directory /var/lib/postgresql/data ... ok
+2026-11-12T22:47:10.8519227Z  creating subdirectories ... ok
+2026-11-12T22:47:10.8519474Z  selecting dynamic shared memory implementation ... posix
+2026-11-12T22:47:10.8519754Z  selecting default "max_connections" ... 100
+2026-11-12T22:47:10.8519998Z  selecting default "shared_buffers" ... 128MB
+2026-11-12T22:47:10.8520230Z  selecting default time zone ... Etc/UTC
+2026-11-12T22:47:10.8520448Z  creating configuration files ... ok
+2026-11-12T22:47:10.8520874Z  running bootstrap script ... ok
+2026-11-12T22:47:10.8521213Z  performing post-bootstrap initialization ... ok
+2026-11-12T22:47:10.8521573Z  syncing data to disk ... ok
+2026-11-12T22:47:10.8521839Z  
+2026-11-12T22:47:10.8522033Z  
+2026-11-12T22:47:10.8522311Z  Success. You can now start the database server using:
+2026-11-12T22:47:10.8522665Z  
+2026-11-12T22:47:10.8522935Z      pg_ctl -D /var/lib/postgresql/data -l logfile start
+2026-11-12T22:47:10.8523262Z  
+2026-11-12T22:47:10.8524002Z  waiting for server to start....2026-11-12 22:46:59.378 UTC [48] LOG:  starting PostgreSQL 17.6 (Debian 17.6-2.pgdg13+1) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit
+2026-11-12T22:47:10.8525021Z  2026-11-12 22:46:59.378 UTC [48] LOG:  listening on Unix socket "/var/run/postgresql/.s.PGSQL.5432"
+2026-11-12T22:47:10.8525691Z  2026-11-12 22:46:59.380 UTC [51] LOG:  database system was shut down at 2026-11-12 22:46:58 UTC
+2026-11-12T22:47:10.8526290Z  2026-11-12 22:46:59.384 UTC [48] LOG:  database system is ready to accept connections
+2026-11-12T22:47:10.8526725Z   done
+2026-11-12T22:47:10.8526938Z  server started
+2026-11-12T22:47:10.8527174Z  CREATE DATABASE
+2026-11-12T22:47:10.8527385Z  
+2026-11-12T22:47:10.8527584Z  
+2026-11-12T22:47:10.8527950Z  /usr/local/bin/docker-entrypoint.sh: ignoring /docker-entrypoint-initdb.d/*
+2026-11-12T22:47:10.8528415Z  
+2026-11-12T22:47:10.8528706Z  2026-11-12 22:46:59.559 UTC [48] LOG:  received fast shutdown request
+2026-11-12T22:47:10.8529529Z  waiting for server to shut down....2026-11-12 22:46:59.559 UTC [48] LOG:  aborting any active transactions
+2026-11-12T22:47:10.8530357Z  2026-11-12 22:46:59.561 UTC [48] LOG:  background worker "logical replication launcher" (PID 54) exited with exit code 1
+2026-11-12T22:47:10.8531161Z  2026-11-12 22:46:59.561 UTC [49] LOG:  shutting down
+2026-11-12T22:47:10.8531625Z  2026-11-12 22:46:59.561 UTC [49] LOG:  checkpoint starting: shutdown immediate
+2026-11-12T22:47:10.8532969Z  2026-11-12 22:46:59.645 UTC [49] LOG:  checkpoint complete: wrote 925 buffers (5.6%); 0 WAL file(s) added, 0 removed, 0 recycled; write=0.079 s, sync=0.005 s, total=0.085 s; sync files=301, longest=0.004 s, average=0.001 s; distance=4256 kB, estimate=4256 kB; lsn=0/1915970, redo lsn=0/1915970
+2026-11-12T22:47:10.8534264Z  2026-11-12 22:46:59.652 UTC [48] LOG:  database system is shut down
+2026-11-12T22:47:10.8534670Z   done
+2026-11-12T22:47:10.8534890Z  server stopped
+2026-11-12T22:47:10.8535123Z  
+2026-11-12T22:47:10.8535406Z  PostgreSQL init process complete; ready for start up.
+2026-11-12T22:47:10.8535742Z  
+2026-11-12T22:47:10.8541511Z Stop and remove container: 960b0eb1d05a4369b076a163634e2896_postgres176_f5a936
+2026-11-12T22:47:10.8544912Z ##[command]/usr/bin/docker rm --force ef12b0dbc0b7e38b3945fdc6dc49573b4d3b57ffc19ebf134207e259315f4284
+2026-11-12T22:47:12.8933266Z ef12b0dbc0b7e38b3945fdc6dc49573b4d3b57ffc19ebf134207e259315f4284
+2026-11-12T22:47:12.8959895Z Remove container network: github_network_1c1785d497274a67b3040216b6f541bd
+2026-11-12T22:47:12.8963341Z ##[command]/usr/bin/docker network rm github_network_1c1785d497274a67b3040216b6f541bd
+2026-11-12T22:47:12.9979398Z github_network_1c1785d497274a67b3040216b6f541bd
+2026-11-12T22:47:13.0045683Z Cleaning up orphan processes

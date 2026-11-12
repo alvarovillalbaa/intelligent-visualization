@@ -5,7 +5,7 @@ permissions:
   contents: read
 jobs:
   removals:
-    if: github.repository == 'alvarovillalbaa/intelligent-visualization' && github.event.repository.private == false && github.event.ref_type == 'branch' && github.event.ref == 'qa/workspace-removals-20261112-6' && github.ref == 'refs/heads/qa/workspace-removals-20261112-6'
+    if: github.repository == 'alvarovillalbaa/intelligent-visualization' && github.event.repository.private == false && github.event.ref_type == 'branch' && github.event.ref == 'qa/workspace-removals-20261112-7' && github.ref == 'refs/heads/qa/workspace-removals-20261112-7'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     services:
