@@ -1,5 +1,7 @@
 # Course Authoring
 
+Last updated: 2026-11-06
+
 Courses are continuous-scroll learning artifacts, not tall slide decks.
 
 ## Edit a generated Course
@@ -27,9 +29,12 @@ lesson/block content. Search metadata is retained separately from visible conten
 In guest mode, the existing four-hour browser retention and storage warnings
 apply. A failed storage replacement leaves the prior stored copy intact and the
 current edited batch in memory; the preview also displays the storage notice.
-Workspace mode retains Course edits in this tab. Apply is not hosted saving or
-publication. The [all-format persistence proposal](proposals/all-formats-persistence.md)
-remains behind its existing provider, schema and authorization gates.
+In workspace mode, Apply updates this tab, then **Save Course** explicitly saves
+the document to the private workspace in the local PostgreSQL candidate. **Open
+saved Course** reopens it; **Save revision** persists later applied edits. Conflicts
+and uncertain acknowledgements preserve local edits and the original retry intent.
+This is not publication or hosted-provider acceptance. See
+[the saving contract and checks](proposals/workspace-draft-checks.md).
 
 After applying edits, open the completed Course preview and choose **Download
 Course HTML**, then **Save Course HTML**. This exports the committed document,

@@ -88,7 +88,7 @@ async function postEvent(payload: Record<string, unknown>) {
   })
 }
 
-export function PublicAccessGate({ deck }: { deck: DeckRecord }) {
+export function PublicAccessGate({ deck }: { deck: Pick<DeckRecord, "title" | "publicId"> }) {
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
@@ -118,9 +118,7 @@ export function PublicAccessGate({ deck }: { deck: DeckRecord }) {
                 const result = await unlockDeckAction({ publicId: deck.publicId, password })
                 if (!result.ok) {
                   setError(result.error ?? "Incorrect password.")
-                  return
                 }
-                window.location.reload()
               })
             }
             disabled={pending}
@@ -147,13 +145,13 @@ export function DeckPlayer({
 
     return window.localStorage.getItem("slides_visitor_id") ?? crypto.randomUUID()
   })
-  const assetCount = useMemo(() => view.deck.assets.filter((asset) => asset.url).length, [view.deck.assets])
   const experimentAssignment = useMemo(
     () => (visitorId ? assignExperimentVersion(view.deck, visitorId) : null),
     [view.deck, visitorId],
   )
   const activeVersion = experimentAssignment?.version ?? view.version
   const activeVariantLabel = experimentAssignment?.label ?? null
+  const assetCount = activeVersion.publicAssets?.length ?? 0
 
   useEffect(() => {
     if (visitorId) {
@@ -450,7 +448,7 @@ function DeckPlayerSurface({
           <section className="rounded-[32px] border border-black/8 bg-white/50 p-5 backdrop-blur-xl">
             <p className="text-xs uppercase tracking-[0.18em] text-foreground/58">Assets</p>
             <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-              {view.deck.assets.map((asset) => (
+              {(activeVersion.publicAssets ?? []).map((asset) => (
                 <a
                   key={asset.id}
                   href={asset.url}

@@ -1,0 +1,19 @@
+name: intelligent-visualization-local
+services:
+  postgres:
+    image: postgres:17.6
+    environment:
+      POSTGRES_USER: iv_local
+      POSTGRES_PASSWORD: iv_local
+      POSTGRES_DB: intelligent_visualization
+    ports:
+      - "127.0.0.1:54431:5432"
+    volumes:
+      - visualization-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U iv_local -d intelligent_visualization"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+volumes:
+  visualization-postgres:

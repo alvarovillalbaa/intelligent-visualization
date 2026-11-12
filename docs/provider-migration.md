@@ -13,6 +13,13 @@ Provider switching is explicit:
 9. Run smoke tests.
 10. Reopen writes.
 
-Current executable tooling supports local export, verify, and import.
+Current executable tooling supports local and selected private Supabase export,
+verify and import. Objects require a separate storage backup.
 
-Convex, Supabase, and Cloudflare import/export adapters remain to be implemented.
+Local PostgreSQL remains the default. Supabase selection is implemented with
+separate [provider/application and hosted boundaries](supabase.md). The new
+[terminal-removal lifecycle](workspace-removal.md) requires v2 tooling, an explicit
+stopped-process migration of existing v1 databases and no old reader/writer/tool
+restarts. V2 exports preserve tombstones and are refused by old importers; receipts
+and active sessions remain excluded. Existing files and external deployments are
+not changed by source publication. See [the PostgreSQL boundaries](postgres-migration.md).

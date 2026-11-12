@@ -72,9 +72,10 @@ export function DeckEditorClient({
   sessionUser: SessionUser
   deck: DeckRecord
   shareUrls: {
-    publicUrl: string
-    embedUrl: string
+    publicUrl: string | null
+    embedUrl: string | null
     artifactUrl: string | null
+    publicArtifactUrls: Record<string, string>
   }
 }) {
   const router = useRouter()
@@ -217,15 +218,20 @@ export function DeckEditorClient({
       return
     }
 
-    const nextSource = updateManualDraft()
+    const nextSource = draftSource
+    setActivity("Publishing…")
     startTransition(async () => {
-      await publishDeckVersionAction({
-        deckId: deck.id,
-        label: publishLabel,
-        source: nextSource,
-        password: publishPassword || undefined,
-      })
-      router.refresh()
+      try {
+        const version = await publishDeckVersionAction({
+          deckId: deck.id,
+          label: publishLabel,
+          source: nextSource,
+          password: publishPassword || undefined,
+        })
+        setActivity(`Published ${version.label}.`)
+      } catch {
+        setActivity("Publication could not be confirmed. Your local edits are still here. Check Published variants before trying again.")
+      }
     })
   }
 
@@ -287,7 +293,6 @@ export function DeckEditorClient({
         description: "",
         url: "",
       })
-      router.refresh()
     })
   }
 
@@ -340,7 +345,6 @@ export function DeckEditorClient({
         url: "",
       })
       setActivity("Asset uploaded and attached to the deck.")
-      router.refresh()
     } finally {
       setUploadingAsset(false)
     }
@@ -425,7 +429,7 @@ export function DeckEditorClient({
             <div className="rounded-[24px] border border-foreground/8 bg-muted/35 p-4">
               <p className="text-sm font-medium">Publishing</p>
               <div className="mt-3 grid gap-3">
-                <Input value={publishLabel} onChange={(event) => setPublishLabel(event.target.value)} disabled={!canEdit} />
+                <Input aria-label="Version label" value={publishLabel} onChange={(event) => setPublishLabel(event.target.value)} disabled={!canEdit} />
                 <Input
                   type="password"
                   placeholder="Optional password"
@@ -470,17 +474,21 @@ export function DeckEditorClient({
                 <CardDescription>Every deck has a public slug URL and an embeddable iframe target.</CardDescription>
               </CardHeader>
               <CardContent className="grid gap-3">
-                <ReadOnlyField label="Hosted URL" value={shareUrls.publicUrl} />
-                <ReadOnlyField label="Embed URL" value={shareUrls.embedUrl} />
-                {shareUrls.artifactUrl ? <ReadOnlyField label="Immutable artifact" value={shareUrls.artifactUrl} /> : null}
-                <div className="grid gap-2">
-                  <label className="text-sm font-medium">Iframe snippet</label>
-                  <Textarea readOnly value={buildEmbedCode(shareUrls.embedUrl)} className="min-h-28 bg-white" />
-                </div>
+                {shareUrls.publicUrl && shareUrls.embedUrl ? (
+                  <>
+                    <ReadOnlyField label="Hosted URL" value={shareUrls.publicUrl} />
+                    <ReadOnlyField label="Embed URL" value={shareUrls.embedUrl} />
+                    {shareUrls.artifactUrl ? <ReadOnlyField label="Immutable artifact" value={shareUrls.artifactUrl} /> : null}
+                    <div className="grid gap-2">
+                      <label className="text-sm font-medium">Iframe snippet</label>
+                      <Textarea readOnly value={buildEmbedCode(shareUrls.embedUrl)} className="min-h-28 bg-white" />
+                    </div>
+                  </>
+                ) : <p className="text-sm text-muted-foreground">Publish a version to create share links.</p>}
               </CardContent>
             </Card>
 
-            <p className="rounded-[24px] border border-foreground/8 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
+            <p role="status" aria-live="polite" className="rounded-[24px] border border-foreground/8 bg-muted/30 px-4 py-3 text-sm text-muted-foreground">
               {activity}
             </p>
           </CardContent>
@@ -623,10 +631,10 @@ export function DeckEditorClient({
                   {deck.publishedVersionId === version.id ? (
                     <p className="mt-3 text-xs uppercase tracking-[0.16em] text-emerald-700">Currently routed live</p>
                   ) : null}
-                  {version.artifactUrl && !deck.passwordProtected ? (
-                    <Link href={version.artifactUrl} target="_blank" className="mt-3 inline-flex text-sm text-primary underline">
+                  {Object.hasOwn(shareUrls.publicArtifactUrls, version.id) ? (
+                    <a href={shareUrls.publicArtifactUrls[version.id]} target="_blank" rel="noreferrer" className="mt-3 inline-flex text-sm text-primary underline">
                       Open immutable artifact
-                    </Link>
+                    </a>
                   ) : null}
                 </article>
               ))}

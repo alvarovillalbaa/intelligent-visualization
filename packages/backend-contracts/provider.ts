@@ -11,7 +11,7 @@ import type {
   VisualizationVersion,
 } from "@/packages/domain/entities"
 
-export type PersistenceKind = "local" | "convex" | "supabase" | "cloudflare"
+export type PersistenceKind = "local" | "supabase"
 
 export interface PersistenceCapabilities {
   transactions: boolean
@@ -421,7 +421,13 @@ export interface PersistenceProvider {
   readonly kind: PersistenceKind
   readonly capabilities: PersistenceCapabilities
 
+  legacy: import("./legacy-repository").LegacyRepository
+
   health(): Promise<ProviderHealth>
+
+  workspaceDrafts: import("./workspace-drafts").WorkspaceDraftRepository
+  workspacePublications: import("./workspace-publications").WorkspacePublicationRepository
+  workspaceRemovals: import("./workspace-removals").WorkspaceRemovalRepository
 
   users: UserRepository
   sessions: SessionRepository

@@ -1,6 +1,6 @@
 export type VisualizationKind = "course" | "slides" | "report"
 export type Role = "admin" | "editor" | "viewer"
-export type VisualizationStatus = "draft" | "preview" | "published" | "archived"
+export type VisualizationStatus = "draft" | "preview" | "published" | "archived" | "removed"
 export type ReviewStatus = "open" | "approved" | "changes_requested"
 export type ExperimentStatus = "draft" | "running" | "paused" | "completed"
 
@@ -306,7 +306,8 @@ export interface VisualizationVersion {
   id: string
   visualizationId: string
   label: string
-  status: "preview" | "published"
+  // Public eligibility may change; snapshot content and artifacts remain immutable.
+  status: "preview" | "published" | "revoked"
   schemaVersion: number
   document: VisualizationDocument
   documentHash: string

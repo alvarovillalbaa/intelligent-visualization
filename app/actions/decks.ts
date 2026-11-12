@@ -1,6 +1,6 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
+import { refresh, revalidatePath } from "next/cache"
 import { cookies } from "next/headers"
 import { redirect } from "next/navigation"
 
@@ -10,6 +10,7 @@ import { repository } from "@/lib/repository"
 import type { DeckExperiment, DeckSource, GenerationInput, Role } from "@/lib/types"
 import { getBaseUrl } from "@/lib/env"
 import { slugify } from "@/lib/utils"
+import { createPublicDeckAccessToken, currentPublicDeckPasswordHash, currentPublicDeckVersion, publicDeckRequiresPassword, PUBLIC_DECK_ACCESS_TTL_MS } from "@/lib/public-deck-access"
 
 function requireDeckMutationRole(role: Role) {
   if (role === "viewer") {
@@ -136,6 +137,12 @@ export async function publishDeckVersionAction(input: {
 }) {
   const sessionUser = await requireSessionUser()
   requireDeckMutationRole(sessionUser.role)
+  const editorView = await repository.getDeckEditor(sessionUser.id, input.deckId)
+  if (!editorView || editorView.deck.id !== input.deckId || editorView.deck.teamId !== sessionUser.teamId
+    || editorView.workspace.id !== editorView.deck.workspaceId || editorView.workspace.teamId !== sessionUser.teamId
+    || typeof editorView.workspace.slug !== "string" || !editorView.workspace.slug) {
+    throw new Error("Deck not found.")
+  }
   const version = await repository.publishVersion(
     sessionUser.id,
     input.deckId,
@@ -144,7 +151,7 @@ export async function publishDeckVersionAction(input: {
     hashDeckPassword(input.password ?? ""),
   )
 
-  revalidatePath(`/app/workspaces/${sessionUser.workspaceSlug}/decks/${input.deckId}`)
+  revalidatePath(`/app/workspaces/${editorView.workspace.slug}/decks/${editorView.deck.id}`)
   revalidatePath(`/d/${sessionUser.teamSlug}/${slugify(version.source.title)}`)
 
   return version
@@ -199,8 +206,14 @@ export async function addDeckAssetAction(input: {
 }) {
   const sessionUser = await requireSessionUser()
   requireDeckMutationRole(sessionUser.role)
+  const editorView = await repository.getDeckEditor(sessionUser.id, input.deckId)
+  if (!editorView || editorView.deck.id !== input.deckId || editorView.deck.teamId !== sessionUser.teamId
+    || editorView.workspace.id !== editorView.deck.workspaceId || editorView.workspace.teamId !== sessionUser.teamId
+    || typeof editorView.workspace.slug !== "string" || !editorView.workspace.slug) {
+    throw new Error("Deck not found.")
+  }
   await repository.addAsset(sessionUser.id, input.deckId, input)
-  revalidatePath(`/app/workspaces/${sessionUser.workspaceSlug}/decks/${input.deckId}`)
+  revalidatePath(`/app/workspaces/${editorView.workspace.slug}/decks/${editorView.deck.id}`)
 }
 
 export async function saveDeckExperimentAction(input: {
@@ -293,21 +306,29 @@ export async function applyReviewSuggestionAction(input: {
 }
 
 export async function unlockDeckAction(input: { publicId: string; password: string }) {
+  if (!input || typeof input.publicId !== "string" || !/^[A-Za-z0-9_-]{1,128}$/.test(input.publicId)
+    || typeof input.password !== "string" || input.password.length > 4096) return { ok: false, error: "Invalid deck access request." }
   const view = await repository.getPublicDeckById(input.publicId)
-  if (!view) {
+  if (!view || !currentPublicDeckVersion(view.deck)) {
     return { ok: false, error: "Deck not found." }
   }
 
-  if (!verifyDeckPassword(input.password, view.deck.passwordHash)) {
+  if (!publicDeckRequiresPassword(view.deck)) {
+    refresh()
+    return { ok: true }
+  }
+  const passwordHash = currentPublicDeckPasswordHash(view.deck)
+  if (!passwordHash || !verifyDeckPassword(input.password, passwordHash)) {
     return { ok: false, error: "Incorrect password." }
   }
 
   const cookieStore = await cookies()
-  cookieStore.set(`slides_public_${view.deck.publicId}`, "1", {
+  cookieStore.set(`slides_public_${view.deck.publicId}`, createPublicDeckAccessToken(view.deck), {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",
     path: "/",
+    maxAge: PUBLIC_DECK_ACCESS_TTL_MS / 1000,
   })
 
   return { ok: true }

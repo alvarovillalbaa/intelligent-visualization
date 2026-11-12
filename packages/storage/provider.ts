@@ -1,6 +1,6 @@
 import type { ProviderHealth } from "@/packages/domain/entities"
 
-export type StorageKind = "local" | "vercel-blob" | "convex" | "supabase" | "cloudflare-r2"
+export type StorageKind = "local" | "vercel-blob" | "supabase"
 
 export interface PutObjectInput {
   key: string

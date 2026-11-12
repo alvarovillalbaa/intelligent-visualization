@@ -11,5 +11,5 @@ Compatibility rules:
 Remaining work:
 
 - Move all deck persistence behind visualization services.
-- Migrate Convex deck records in place.
+- Migrate any existing external slide data through a separately reviewed export/import procedure; current source never contacts or deletes it.
 - Add old-route redirect/render tests.

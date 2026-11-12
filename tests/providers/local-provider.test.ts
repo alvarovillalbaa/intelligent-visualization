@@ -1,20 +1,19 @@
-import { mkdtemp } from "node:fs/promises"
-import os from "node:os"
-import path from "node:path"
-
-import { describe, expect, it } from "vitest"
+import { afterEach, describe, expect, it } from "vitest"
 
 import { compileVisualizationArtifact } from "@/lib/artifacts/compiler"
 import { createStarterSlidesDocument } from "@/packages/domain/fixtures"
 import { createDomainId, createPublicId } from "@/packages/domain/ids"
-import { createLocalPersistenceProvider } from "@/packages/provider-local/adapter"
+import { createPostgresFixture } from "./postgres-fixture"
+
+const fixtures: Awaited<ReturnType<typeof createPostgresFixture>>[] = []
 
 async function createProvider() {
-  const root = await mkdtemp(path.join(os.tmpdir(), "iv-local-provider-"))
-  const provider = createLocalPersistenceProvider({ databasePath: path.join(root, "db.sqlite") })
-  await provider.health()
-  return provider
+  const fixture = await createPostgresFixture()
+  fixtures.push(fixture)
+  return fixture.provider
 }
+
+afterEach(async () => { for (const fixture of fixtures.splice(0)) await fixture.dispose() })
 
 describe("local persistence provider contract slice", () => {
   it("registers a user with a team idempotently", async () => {
