@@ -17,7 +17,7 @@ import traceback
 
 repo = Path.cwd()
 source = os.environ["SOURCE_COMMIT"]
-branch = "qa/workspace-removals-20261112-5"
+branch = "qa/workspace-removals-20261112-6"
 assert os.environ.get("CI") == "true"
 assert os.environ.get("GITHUB_REPOSITORY") == "alvarovillalbaa/intelligent-visualization"
 assert os.environ.get("GITHUB_EVENT_NAME") == "create" and os.environ.get("GITHUB_REF") == "refs/heads/" + branch
@@ -59,13 +59,25 @@ assert (carry["core"]["numTotalTests"], carry["core"]["numPassedTests"], carry["
 failed_titles = ["terminal workspace removal in PostgreSQL makes a direct SQL child write waiting on a removal observe the committed tombstone",
     "terminal workspace removal in PostgreSQL protects every retained child from inserts updates deletes retargets and truncation"]
 assert [test["fullName"] for file in carry["core"]["testResults"] for test in file["assertionResults"] if test["status"] == "failed"] == failed_titles
-mutable = {"scripts/workspace-removal-checks.py", "tests/integration/workspace-removals-postgres.test.ts"}
+mutable = {"scripts/workspace-removal-checks.py", "tests/integration/workspace-removals-postgres.test.ts", "tests/e2e/workspace-removals.spec.ts"}
 runtime_names = lambda files: {name for name in files if not name.startswith(("docs/", ".github/", ".claude/")) and name not in mutable}
 assert runtime_names(before) == runtime_names(carry["sourceFiles"])
 assert all(before[name] == carry["sourceFiles"][name] for name in runtime_names(before))
 report["acceptedCoreProvenance"] = {"path": carry_path, "sha256": sha(carry_bytes), "sourceCommit": carry["sourceCommit"],
     "passed": [test["fullName"] for file in carry["core"]["testResults"] for test in file["assertionResults"] if test["status"] == "passed"],
     "runtimeFilesExact": len(runtime_names(before)), "notANewSingle34CaseRun": True}
+completion_path = "docs/results/2026/11-12/workspace-removals-attempt-5.json"
+completion_bytes = (repo / completion_path).read_bytes()
+assert sha(completion_bytes) == "54396a8221c3cc25cc2c55eb2bf058ae8f947f703cc229902ea1eb66f2736952"
+completion = json.loads(completion_bytes)
+assert completion["sourceCommit"] == "773036fd67960d0e33bfecae8d534f3e6c09f776" and completion["exitCode"] == 1
+assert (completion["core"]["numPassedTests"], completion["core"]["numFailedTests"], completion["core"]["numPendingTests"]) == (2, 0, 32)
+assert [test["fullName"] for file in completion["core"]["testResults"] for test in file["assertionResults"] if test["status"] == "passed"] == failed_titles
+for name in ["tests/unit/workspace-removals.test.ts", "tests/integration/workspace-removals-postgres.test.ts", "vitest.workspace-removals.config.ts"]:
+    assert before[name] == completion["sourceFiles"][name]
+assert completion["cleanup"]["database"]["dropped"] is True and all(group["absent"] for group in completion["cleanup"]["groups"])
+report["acceptedCoreCompletion"] = {"path": completion_path, "sha256": sha(completion_bytes), "sourceCommit": completion["sourceCommit"], "passed": failed_titles,
+    "coreFilesExact": True, "notExecutedAgain": True}
 
 def guard(label):
     assert vector() == before
@@ -176,9 +188,6 @@ try:
         "exclude": ["node_modules", "components/ai-elements"], "compilerOptions": {"incremental": False, "plugins": []}}))
     run(["node_modules/.bin/tsc", "--noEmit", "-p", "tsconfig.removal-checks.json"], 90)
     report["databaseOwnership"] = database_guard("mark")
-    run(["node_modules/.bin/vitest", "run", "--config", "vitest.workspace-removals.config.ts", "--testNamePattern=makes a direct SQL child write waiting|protects every retained child", "--reporter=default", "--reporter=json", "--outputFile=" + str(root / "core.json")], 90)
-    report["core"] = json.loads((root / "core.json").read_text())
-    assert report["core"]["numPassedTests"] == 2 and report["core"]["numFailedTests"] == 0
     report["fixtureAuditAfterCore"] = database_guard("audit")
     guard("after-core")
     run(["npm", "run", "setup:local"], 75)
@@ -213,6 +222,10 @@ finally:
     for name in ["core", "browser"]:
         file = root / (name + ".json")
         if file.exists() and name not in report: report[name] = json.loads(file.read_text())
+    report["screenshots"] = {file.name: packed(file.read_bytes()) for file in sorted(root.glob("*.png"))}
+    assert len(report["screenshots"]) <= 4
+    report["browserFailureContexts"] = {str(file.relative_to(root)): packed(file.read_bytes()) for file in sorted((root / "browser-output").rglob("error-context.md"))}
+    assert len(report["browserFailureContexts"]) <= 4
     try: guard("after-owned-shutdown")
     except BaseException: report["cleanup"]["sourceGuardError"] = traceback.format_exc(); status = 1
     if any(not group["absent"] for group in report["cleanup"]["groups"]): status = 1

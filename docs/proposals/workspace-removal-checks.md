@@ -43,3 +43,10 @@ the two corrected fixture cases plus four unrun browser identities. It also
 records fixture console drains, a direct no-leftover-database/role audit, and
 owned application database identity/drop after server shutdown. There is no
 synthetic merged 34-case invocation.
+
+Attempt 5 closed both corrected guard cases and retained their actual drain/drop
+and inventory evidence. Its four browser identities failed an ambiguous final
+alert selector. The next run carries the two core packets, verifies identical
+core test inputs and product runtime, and executes only the four browser
+identities with the alert scoped to the editor region. Failure PNGs/contexts are
+retained as well as passing images; no fixture or product assertion is waived.

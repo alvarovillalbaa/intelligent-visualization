@@ -91,7 +91,8 @@ for (const kind of ["course", "report"] as const) test(`${kind} removal retains 
     }
     const refused = dirty.waitForResponse((r) => r.url() === ORIGIN + API && r.request().method() === "POST")
     await dirty.getByRole("button", { name: "Save revision", exact: true }).click(); expect((await refused).status()).toBe(404)
-    await expect(dirty.getByRole("heading", { name: dirtyTitle, exact: true })).toBeVisible(); await expect(dirty.getByRole("alert")).toBeVisible()
+    await expect(dirty.getByRole("heading", { name: dirtyTitle, exact: true })).toBeVisible()
+    await expect(dirty.getByRole("region", { name: `Saved ${label}`, exact: true }).getByRole("alert")).toBeVisible()
     expect(await storage()).toEqual(filesBefore)
     await page.reload(); await expect(page.getByRole("article", { name: new RegExp(`Saved ${label}: Authored`) })).toHaveCount(0)
     expect(unexpected).toEqual([])

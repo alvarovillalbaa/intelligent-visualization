@@ -32,6 +32,7 @@ Implemented in the current migration slice:
 - [Private workspace drafts](docs/private-workspace-drafts.md) let authenticated users explicitly save, reopen and revise Course/Report documents on local PostgreSQL.
 - [Course/Report publication](docs/workspace-publication.md) explicitly publishes a saved revision to anonymous live and immutable-version links, keeping later draft edits separate.
 - [Unpublish](docs/workspace-unpublication.md) revokes existing Course/Report public versions while preserving drafts, local edits and stored content.
+- [Remove from workspace](docs/workspace-removal.md) adds terminal logical removal for saved Course/Report rows, retaining history and files. Its new qualification and stopped-process lifecycle-v2 rollout are separate from earlier publication checks.
 
 The current [PostgreSQL migration checks](docs/results/2026/11-06/postgres-checks.md)
 accept seven configuration, 28 real PostgreSQL and two actual desktop/narrow
@@ -126,9 +127,10 @@ Allowed persistence providers:
 Local PostgreSQL remains the default. Supabase PostgreSQL and private Storage
 adapters and application selection are implemented; the separate 90-case provider
 packet passed at its [recorded source](docs/results/2026/11-07/supabase-provider-attempt-8.md).
-The [latest application run](docs/results/2026/11-07/supabase-application-attempt-10.md)
-passed focused types, production build and startup, then failed all four journeys
-on publishing cancellations. Application and hosted acceptance remain pending.
+The [later password-gate application packet](docs/results/2026/11-10/supabase-password-gate.md)
+passed seven access tests and four desktop/narrow journeys, build/startup and TLS
+checks in a disposable Supabase stack. All earlier failures remain recorded.
+Those v1 results do not qualify the new lifecycle-v2/removal changes or hosted production.
 Portable authentication remains the default; native Supabase Auth, Vercel Blob
 and the remaining AI/Eve suite are unfinished. This candidate stays off production
 until verified hosting database and private Storage configuration are available.
