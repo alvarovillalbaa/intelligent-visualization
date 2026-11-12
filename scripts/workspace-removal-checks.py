@@ -17,7 +17,7 @@ import traceback
 
 repo = Path.cwd()
 source = os.environ["SOURCE_COMMIT"]
-branch = "qa/workspace-removals-20261112-1"
+branch = "qa/workspace-removals-20261112-2"
 assert os.environ.get("CI") == "true"
 assert os.environ.get("GITHUB_REPOSITORY") == "alvarovillalbaa/intelligent-visualization"
 assert os.environ.get("GITHUB_EVENT_NAME") == "create" and os.environ.get("GITHUB_REF") == "refs/heads/" + branch
@@ -41,8 +41,9 @@ def vector():
         mode, kind, blob = metadata.decode().split()
         name = raw.decode()
         file = repo / name
-        assert kind == "blob" and mode in ["100644", "100755"] and stat.S_ISREG(file.lstat().st_mode) and not file.is_symlink()
-        data = file.read_bytes()
+        assert kind == "blob" and mode in ["100644", "100755", "120000"]
+        assert file.is_symlink() if mode == "120000" else stat.S_ISREG(file.lstat().st_mode) and not file.is_symlink()
+        data = os.fsencode(os.readlink(file)) if mode == "120000" else file.read_bytes()
         assert hashlib.sha1(b"blob " + str(len(data)).encode() + b"\0" + data).hexdigest() == blob
         result[name] = {"blob": blob, "mode": mode, "bytes": len(data), "sha256": sha(data)}
     return result
@@ -56,7 +57,8 @@ def guard(label):
     report["sourceGuards"].append({"label": label, "matches": True, "files": len(before)})
 
 for name in before:
-    if name.startswith(("docs/", ".github/")): continue
+    if name.startswith(("docs/", ".github/", ".claude/")): continue
+    assert before[name]["mode"] != "120000", "Unexpected application symlink"
     target = app / name
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(repo / name, target)
