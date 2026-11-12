@@ -10,7 +10,7 @@ const bodySchema = z.object({ requestId: uuid, versionId: uuid,
 const unpublishBodySchema = z.object({ requestId: uuid, expectedCurrentVersionId: uuid }).strict()
 export const WORKSPACE_PUBLICATION_BODY_LIMIT = 16 * 1024
 
-async function readPublicationBody(request: Request): Promise<unknown> {
+export async function readPublicationBody(request: Request): Promise<unknown> {
   requireWorkspaceDraftOrigin(request)
   if (!/^application\/json(?:\s*;|$)/i.test(request.headers.get("content-type") ?? "") || !request.body) {
     throw new WorkspaceDraftAccessError("INVALID_INPUT")

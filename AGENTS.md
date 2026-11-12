@@ -5,6 +5,11 @@
 - Do not claim a provider is supported until its adapter and shared provider contract tests pass.
 - Keep local mode free of hosted-service requirements.
 - Prefer application services and provider contracts over direct data-store access.
+- Standing portfolio approval also covers the new terminal workspace-removal
+  scope in `docs/proposals/workspace-removal-checks.md`: focused static/core
+  checks and four new desktop/narrow-touch scenarios in one disposable public
+  Ubuntu/PostgreSQL job capped at 20 minutes. Preserve every failed receipt.
+  This does not activate v2 on a live database or retire old production processes.
 - Alvaro's standing "I approve everything / Keep going / Do all the work"
   authorization covers the four existing Course export browser identities in
   `docs/proposals/course-export-browser-v2.md` and their bounded temporary CI.

@@ -427,6 +427,7 @@ export interface PersistenceProvider {
 
   workspaceDrafts: import("./workspace-drafts").WorkspaceDraftRepository
   workspacePublications: import("./workspace-publications").WorkspacePublicationRepository
+  workspaceRemovals: import("./workspace-removals").WorkspaceRemovalRepository
 
   users: UserRepository
   sessions: SessionRepository

@@ -11,7 +11,7 @@ import {
   createStarterSlidesDocument,
 } from "@/packages/domain/fixtures"
 import { createLocalPersistenceProvider } from "@/packages/provider-local/adapter"
-import { getLocalDatabase, initializeLocalDatabase } from "@/packages/provider-local/database"
+import { getLocalDatabase, initializeLocalDatabase, upgradeLocalLifecycle } from "@/packages/provider-local/database"
 import { seedLegacyRepository } from "@/packages/provider-local/legacy-state"
 import { LocalStorageAdapter } from "@/packages/storage/local"
 import type { VisualizationDocument, VisualizationKind } from "@/packages/domain/entities"
@@ -31,6 +31,9 @@ async function main() {
   const provider = createLocalPersistenceProvider()
   const database = getLocalDatabase()
   try {
+    if (process.argv.includes("--upgrade-lifecycle-v2")) {
+      await upgradeLocalLifecycle(database, process.argv.includes("--acknowledge-stopped-v1-processes"))
+    }
     await initializeLocalDatabase(database)
     await seedLegacyRepository(database)
     await fs.mkdir(storageDir, { recursive: true })

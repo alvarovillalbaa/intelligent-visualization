@@ -1,6 +1,8 @@
+import { lifecycleMigration } from "@/packages/provider-postgres/lifecycle-v2"
+
 export const LOCAL_SCHEMA = "intelligent_visualization_local"
 
-export const LOCAL_SCHEMA_VERSION = 1
+export const LOCAL_SCHEMA_VERSION = 2
 
 export const localMigrations = [
   {
@@ -38,4 +40,5 @@ export const localMigrations = [
       `CREATE INDEX idx_leads_visualization ON ${LOCAL_SCHEMA}.leads(visualization_id, created_at)`,
     ],
   },
+  lifecycleMigration(LOCAL_SCHEMA),
 ]

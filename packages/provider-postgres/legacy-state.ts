@@ -1,6 +1,7 @@
 import type { RepositoryState } from "@/lib/types"
 import type { LegacyRepository } from "@/packages/backend-contracts/legacy-repository"
 import { postgresSchema, type PostgresContext } from "./context"
+import { lockVisualizationLifecycle } from "./lifecycle-v2"
 
 export const LEGACY_REPOSITORY_KEY = "legacy-slides"
 
@@ -26,6 +27,7 @@ export async function withLegacyRepositoryState<T>(
   await context.ensure()
   const database = context.database, SCHEMA = postgresSchema(context.schema)
   return database.transaction(async (transaction) => {
+    await lockVisualizationLifecycle(transaction, SCHEMA)
     const { rows } = await transaction.query(
       `SELECT payload FROM ${SCHEMA}.legacy_repository_state WHERE key = $1 FOR UPDATE`,
       [LEGACY_REPOSITORY_KEY],

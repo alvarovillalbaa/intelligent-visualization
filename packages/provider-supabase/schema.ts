@@ -1,7 +1,8 @@
 import type { PostgresDatabase } from "@/packages/provider-postgres/database"
+import { lifecycleFunctions, LIFECYCLE_CHILD_TABLES, LIFECYCLE_MIGRATION_NAME, LIFECYCLE_VERSION } from "@/packages/provider-postgres/lifecycle-v2"
 
 export const SUPABASE_SCHEMA = "intelligent_visualization_supabase"
-export const SUPABASE_SCHEMA_VERSION = 1
+export const SUPABASE_SCHEMA_VERSION = LIFECYCLE_VERSION
 export const SUPABASE_MIGRATION_NAME = "initial_supabase_private_visualization_schema"
 export const SUPABASE_RUNTIME_ROLE = "iv_runtime"
 export const SUPABASE_TABLES = [
@@ -70,7 +71,40 @@ async function validate(database: PostgresDatabase): Promise<void> {
         || row.cmd !== (lineage ? "SELECT" : "ALL") || row.qual !== "true" || row.with_check !== (lineage ? null : "true")
     })) invalidSchema()
     const versions = (await transaction.query(`SELECT version, name FROM ${SUPABASE_SCHEMA}.schema_migrations ORDER BY version`)).rows
-    if (versions.length !== 1 || versions[0].version !== SUPABASE_SCHEMA_VERSION || versions[0].name !== SUPABASE_MIGRATION_NAME) invalidSchema()
+    if (versions.length !== 2 || versions[0].version !== 1 || versions[0].name !== SUPABASE_MIGRATION_NAME
+      || versions[1].version !== SUPABASE_SCHEMA_VERSION || versions[1].name !== LIFECYCLE_MIGRATION_NAME) invalidSchema()
+    const functions = (await transaction.query(`SELECT p.proname, p.prosrc, p.prosecdef, p.proconfig, p.proretset, p.pronargs,
+      p.provolatile, p.prorettype::integer AS return_type, p.proargtypes::text AS argument_types, p.pronargdefaults, p.prokind,
+      p.provariadic::integer AS variadic_type, l.lanname, p.proowner = n.nspowner AS schema_owner,
+      has_function_privilege($2, p.oid, 'EXECUTE') AS can_execute,
+      EXISTS (SELECT 1 FROM aclexplode(COALESCE(p.proacl, acldefault('f', p.proowner))) a WHERE a.grantee = 0 OR a.is_grantable AND a.grantee = (SELECT oid FROM pg_roles WHERE rolname = $2)) AS public_access,
+      EXISTS (SELECT 1 FROM pg_roles r WHERE r.rolname IN ('anon', 'authenticated') AND has_function_privilege(r.oid, p.oid, 'EXECUTE')) AS browser_access
+      FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace JOIN pg_language l ON l.oid = p.prolang
+      WHERE n.nspname = $1 AND p.proname = ANY($3::text[]) ORDER BY p.proname`,
+    [SUPABASE_SCHEMA, SUPABASE_RUNTIME_ROLE, lifecycleFunctions(SUPABASE_SCHEMA).map((fn) => fn.name)])).rows
+    const definitions = [...lifecycleFunctions(SUPABASE_SCHEMA)].sort((a, b) => a.name.localeCompare(b.name))
+    if (functions.length !== definitions.length || functions.some((row, index) => {
+      const fn = definitions[index], references = fn.name === "iv_lifecycle_references_v2"
+      return row.proname !== fn.name || row.prosrc !== fn.body || row.prosecdef !== false
+        || JSON.stringify(row.proconfig) !== JSON.stringify(["search_path=pg_catalog"]) || row.proretset !== references
+        || row.pronargs !== (references ? 1 : 0) || row.argument_types !== (references ? "3802" : "")
+        || row.return_type !== (references ? 25 : 2279) || row.provolatile !== (references ? "s" : "v")
+        || row.pronargdefaults !== 0 || row.prokind !== "f" || row.variadic_type !== 0 || row.lanname !== fn.language
+        || row.schema_owner !== true || row.can_execute !== true || row.public_access !== false || row.browser_access !== false
+    })) invalidSchema()
+    const triggers = (await transaction.query(`SELECT c.relname, t.tgname, t.tgtype::integer AS trigger_type, t.tgenabled, p.proname,
+      t.tgisinternal, t.tgconstraint = 0 AS ordinary, t.tgnargs = 0 AND octet_length(t.tgargs) = 0 AS no_arguments,
+      t.tgqual IS NULL AS unconditional, p.pronamespace = n.oid AS same_schema FROM pg_trigger t JOIN pg_class c ON c.oid = t.tgrelid
+      JOIN pg_namespace n ON n.oid = c.relnamespace JOIN pg_proc p ON p.oid = t.tgfoid
+      WHERE n.nspname = $1 AND NOT t.tgisinternal`, [SUPABASE_SCHEMA])).rows
+    const tablesWithFences = ["visualizations", ...LIFECYCLE_CHILD_TABLES]
+    if (triggers.length !== 2 * tablesWithFences.length || tablesWithFences.some((table) => {
+      const rows = triggers.filter((row) => row.relname === table)
+      const parent = table === "visualizations" ? "iv_removed_parent_v2" : "iv_removed_child_v2"
+      return rows.length !== 2 || !rows.some((row) => row.tgname === "iv_lifecycle_statement_v2" && row.proname === row.tgname && row.trigger_type === 62)
+        || !rows.some((row) => row.tgname === parent && row.proname === parent && row.trigger_type === 31)
+        || rows.some((row) => row.tgenabled !== "O" || row.tgisinternal !== false || row.ordinary !== true || row.no_arguments !== true || row.unconditional !== true || row.same_schema !== true)
+    })) invalidSchema()
     const state = (await transaction.query(`SELECT key FROM ${SUPABASE_SCHEMA}.legacy_repository_state ORDER BY key`)).rows
     if (state.length !== 1 || state[0].key !== "legacy-slides") invalidSchema()
   })

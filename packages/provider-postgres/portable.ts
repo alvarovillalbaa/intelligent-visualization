@@ -3,6 +3,7 @@ import { constants, promises as fs } from "node:fs"
 import path from "node:path"
 
 import { postgresSchema, type PostgresContext } from "./context"
+import { lockVisualizationLifecycle } from "./lifecycle-v2"
 
 export const PORTABLE_COLUMNS = {
   users: "id email name password_hash created_at updated_at",
@@ -132,7 +133,7 @@ export async function readPortableBackup(inputDirectory: string): Promise<{ mani
   await directory(input); await directory(path.join(input, "entities"))
   const manifest = JSON.parse((await readFile(path.join(input, "manifest.json"), 1048576)).toString()) as Row
   const checksums = JSON.parse((await readFile(path.join(input, "checksums.json"), 1048576)).toString()) as Record<string, unknown>
-  if (manifest.format !== "intelligent-visualization-portable" || manifest.version !== 1 || manifest.includesSessions !== false || manifest.objectCount !== 0
+  if (manifest.format !== "intelligent-visualization-portable" || (manifest.version !== 1 && manifest.version !== 2) || manifest.includesSessions !== false || manifest.objectCount !== 0
     || !manifest.entityCounts || typeof manifest.entityCounts !== "object" || Array.isArray(manifest.entityCounts)
     || !checksums || typeof checksums !== "object" || Array.isArray(checksums)) throw new Error("Unsupported portable backup manifest.")
   const counts = manifest.entityCounts as Record<string, unknown>
@@ -154,6 +155,15 @@ export async function readPortableBackup(inputDirectory: string): Promise<{ mani
     const keys = rows.map((row) => stable(primaryKey(table).map((key) => row[key])))
     if (new Set(keys).size !== keys.length) throw new Error("Duplicate portable entity identity.")
     entities[table] = rows
+  }
+  if (manifest.version !== 1 && (!manifest.schemaVersions || typeof manifest.schemaVersions !== "object"
+    || (manifest.schemaVersions as Row).lifecycle !== 2)) throw new Error("Portable lifecycle version is unavailable.")
+  for (const row of entities.visualizations) {
+    if (!["draft", "preview", "published", "archived", ...(manifest.version === 2 ? ["removed"] : [])].includes(String(row.status))) throw new Error("Unsupported portable visualization lifecycle.")
+    if (row.status === "removed" && (!["course", "report"].includes(String(row.kind))
+      || entities.visualization_versions.some((version) => version.visualization_id === row.id && version.status === "published"))) {
+      throw new Error("A removed portable visualization must retain revoked publication history.")
+    }
   }
   return { manifest, entities }
 }
@@ -190,8 +200,8 @@ export async function exportPortableDatabase(context: PostgresContext, outputDir
     await fs.writeFile(path.join(output, relative), bytes, { flag: "wx", mode: 0o600 })
     checksums[relative] = digest(bytes); entityCounts[table] = entities[table].length
   }
-  const manifest = { format: "intelligent-visualization-portable", version: 1, sourceProvider: context.kind, createdAt: new Date().toISOString(),
-    applicationVersion: "0.1.0", schemaVersions: { visualizationDocument: 1 }, entityCounts, objectCount: 0,
+  const manifest = { format: "intelligent-visualization-portable", version: 2, sourceProvider: context.kind, createdAt: new Date().toISOString(),
+    applicationVersion: "0.1.0", schemaVersions: { visualizationDocument: 1, lifecycle: 2 }, entityCounts, objectCount: 0,
     includesUsers: true, includesSessions: false, encryptedSecrets: false,
     containsAuthenticationHashes: true, containsBearerLinks: entities.legacy_repository_state.length > 0, sensitiveBackup: true }
   await fs.writeFile(path.join(output, "manifest.json"), JSON.stringify(manifest, null, 2), { flag: "wx", mode: 0o600 })
@@ -204,29 +214,45 @@ export async function importPortableDatabase(context: PostgresContext, inputDire
   const { entities } = await readPortableBackup(inputDirectory) // Integrity before any database work.
   await context.ensure()
   return database.transaction(async (transaction) => {
+    await lockVisualizationLifecycle(transaction, SCHEMA)
     const imported: Record<string, number> = {}
+    const finalize: string[] = []
+    async function compareExisting(table: PortableTable, row: Row): Promise<boolean> {
+      const keys = primaryKey(table)
+      const existing = await transaction.query(`SELECT * FROM ${SCHEMA}.${table} WHERE ${keys.map((key, index) => `${key} = $${index + 1}`).join(" AND ")} FOR UPDATE`, keys.map((key) => row[key]))
+      if (!existing.rows.length) return false
+      if (existing.rows.length !== 1) throw new Error("Portable import found an ambiguous existing identity.")
+      if (stable(portableRow(table, existing.rows[0], true)) !== stable(row)) {
+        if (context.kind !== "supabase" || table !== "legacy_repository_state" || !emptyLegacyState(existing.rows[0].payload)) {
+          throw new Error("Portable import conflicts with existing data; no existing row was overwritten.")
+        }
+        const replaced = await transaction.query(`UPDATE ${SCHEMA}.legacy_repository_state SET payload = $2::jsonb, updated_at = $3 WHERE key = $1`,
+          [row.key, row.payload, row.updated_at])
+        if (replaced.rowCount !== 1) throw new Error("Hosted empty repository restore could not be committed.")
+      }
+      return true
+    }
     for (const table of PORTABLE_TABLES) {
       const names = columns(table), keys = primaryKey(table)
       for (const row of entities[table]) {
-        const args = names.map((name) => name === "password_protected" ? row[name] === 1 : row[name])
+        // Avoid even a BEFORE INSERT trigger for already identical retained rows.
+        if (await compareExisting(table, row)) continue
+        const terminal = table === "visualizations" && row.status === "removed"
+        // Only newly absent tombstones are staged, inside this one transaction.
+        // Existing tombstones are never reopened, even when a child is missing.
+        const staged = terminal ? { ...row, status: "draft" } : row
+        const args = names.map((name) => name === "password_protected" ? staged[name] === 1 : staged[name])
         const parameters = names.map((name, index) => `$${index + 1}${jsonColumn(name) ? "::jsonb" : ""}`)
         const result = await transaction.query(`INSERT INTO ${SCHEMA}.${table} (${names.join(", ")}) VALUES (${parameters.join(", ")}) ON CONFLICT (${keys.join(", ")}) DO NOTHING RETURNING ${keys.join(", ")}`, args)
         if (result.rowCount === 0) {
-          const existing = await transaction.query(`SELECT * FROM ${SCHEMA}.${table} WHERE ${keys.map((key, index) => `${key} = $${index + 1}`).join(" AND ")} FOR UPDATE`, keys.map((key) => row[key]))
-          if (existing.rows.length !== 1) throw new Error("Portable import conflicts with existing data; no existing row was overwritten.")
-          if (stable(portableRow(table, existing.rows[0], true)) !== stable(row)) {
-            // Only an explicit hosted restore may replace the migration's exact
-            // empty seed. Inspect raw state so even active sessions prevent it.
-            if (context.kind !== "supabase" || table !== "legacy_repository_state" || !emptyLegacyState(existing.rows[0].payload)) {
-              throw new Error("Portable import conflicts with existing data; no existing row was overwritten.")
-            }
-            const replaced = await transaction.query(`UPDATE ${SCHEMA}.legacy_repository_state SET payload = $2::jsonb, updated_at = $3 WHERE key = $1`,
-              [row.key, row.payload, row.updated_at])
-            if (replaced.rowCount !== 1) throw new Error("Hosted empty repository restore could not be committed.")
-          }
-        }
+          if (!await compareExisting(table, row)) throw new Error("Portable import could not confirm its existing row.")
+        } else if (terminal) finalize.push(String(row.id))
       }
       imported[table] = entities[table].length
+    }
+    for (const id of finalize) {
+      const result = await transaction.query(`UPDATE ${SCHEMA}.visualizations SET status = 'removed' WHERE id = $1 AND status = 'draft'`, [id])
+      if (result.rowCount !== 1) throw new Error("Portable tombstone could not be committed.")
     }
     return imported
   })

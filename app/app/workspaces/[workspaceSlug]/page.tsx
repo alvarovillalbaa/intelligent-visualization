@@ -5,6 +5,7 @@ import { createWorkspaceAction, updateTeamMemberRoleAction } from "@/app/actions
 import { TeamInviteForm } from "@/components/slides/team-invite-form"
 import { Button } from "@/components/ui/button"
 import { Composer } from "@/components/visualizations/composer"
+import { WorkspaceRemoval } from "@/components/visualizations/workspace-removal"
 import { repository } from "@/lib/repository"
 import { currentPublicDeckVersion } from "@/lib/public-deck-access"
 import { requireSessionUser } from "@/lib/server-auth"
@@ -70,7 +71,7 @@ export default async function WorkspacePage({
               workspaceSlug={dashboard.workspace.slug}
             />
           ))}
-          {savedDrafts?.items.map((draft) => <WorkspaceDraftRow key={draft.id} draft={draft} workspaceSlug={dashboard.workspace.slug} />)}
+          {savedDrafts?.items.map((draft) => <WorkspaceDraftRow key={draft.id} draft={draft} workspaceSlug={dashboard.workspace.slug} canWrite={sessionUser.role !== "viewer"} />)}
           {draftsError ? (
             <div role="alert" className="grid gap-3 rounded-xl border border-destructive/30 bg-white px-4 py-5 text-sm">
               <p>Saved Course and Report drafts could not be loaded. Your existing work has not been changed.</p>
@@ -170,7 +171,7 @@ export default async function WorkspacePage({
   )
 }
 
-function WorkspaceDraftRow({ draft, workspaceSlug }: { draft: WorkspaceDraftSummary; workspaceSlug: string }) {
+function WorkspaceDraftRow({ draft, workspaceSlug, canWrite }: { draft: WorkspaceDraftSummary; workspaceSlug: string; canWrite: boolean }) {
   const kind = draft.kind === "course" ? "Course" : "Report"
   return <article aria-label={`Saved ${kind}: ${draft.title}`} className="flex min-w-0 flex-wrap items-center justify-between gap-4 rounded-xl bg-white px-5 py-4 shadow-sm">
     <div className="min-w-0 flex-1 basis-56">
@@ -181,7 +182,7 @@ function WorkspaceDraftRow({ draft, workspaceSlug }: { draft: WorkspaceDraftSumm
       <p className="mt-1 line-clamp-2 break-words text-sm text-muted-foreground">{draft.summary}</p>
       <p className="mt-1 text-xs text-muted-foreground">Revision {draft.draftRevision} · updated {formatRelativeDate(Date.parse(draft.updatedAt))}</p>
     </div>
-    <Link href={`/app/workspaces/${encodeURIComponent(workspaceSlug)}/visualizations/${draft.id}`} className="inline-flex min-h-11 shrink-0 items-center rounded-full bg-[#111513] px-4 text-sm font-medium text-white transition-colors hover:bg-[#202820]">Open saved {kind}</Link>
+    <WorkspaceRemoval id={draft.id} kind={draft.kind} workspaceSlug={workspaceSlug} canWrite={canWrite} />
   </article>
 }
 

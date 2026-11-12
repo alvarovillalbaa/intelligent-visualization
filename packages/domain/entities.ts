@@ -1,6 +1,6 @@
 export type VisualizationKind = "course" | "slides" | "report"
 export type Role = "admin" | "editor" | "viewer"
-export type VisualizationStatus = "draft" | "preview" | "published" | "archived"
+export type VisualizationStatus = "draft" | "preview" | "published" | "archived" | "removed"
 export type ReviewStatus = "open" | "approved" | "changes_requested"
 export type ExperimentStatus = "draft" | "running" | "paused" | "completed"
 

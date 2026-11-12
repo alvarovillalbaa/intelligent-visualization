@@ -32,6 +32,8 @@ import { withLegacyRepositoryState } from "./legacy-state"
 import type { LegacyRepository } from "@/packages/backend-contracts/legacy-repository"
 import { createWorkspaceDraftRepository } from "./workspace-drafts"
 import { createWorkspacePublicationRepository } from "./workspace-publications"
+import { createWorkspaceRemovalRepository } from "./workspace-removals"
+import { lockVisualizationLifecycle } from "./lifecycle-v2"
 
 type PostgresRow = Record<string, unknown>
 type PostgresStatement = { sql: string; args: readonly unknown[] }
@@ -66,6 +68,11 @@ export class PostgresPersistenceProvider implements PersistenceProvider {
     list: (...args) => createWorkspaceDraftRepository(this.context, this).list(...args),
     get: (...args) => createWorkspaceDraftRepository(this.context, this).get(...args),
     save: (...args) => createWorkspaceDraftRepository(this.context, this).save(...args),
+  }
+
+  workspaceRemovals: import("@/packages/backend-contracts/workspace-removals").WorkspaceRemovalRepository = {
+    get: (...args) => createWorkspaceRemovalRepository(this.context).get(...args),
+    remove: (...args) => createWorkspaceRemovalRepository(this.context).remove(...args),
   }
 
   constructor(private readonly context: PostgresContext) {
@@ -161,8 +168,8 @@ export class PostgresPersistenceProvider implements PersistenceProvider {
       const cappedLimit = Math.min(Math.max(limit, 1), 100)
       const rows = await this.all(
         cursor
-          ? `SELECT * FROM ${this.schema}.visualizations WHERE workspace_id = $1 AND updated_at < $2 ORDER BY updated_at DESC LIMIT $3`
-          : `SELECT * FROM ${this.schema}.visualizations WHERE workspace_id = $1 ORDER BY updated_at DESC LIMIT $2`,
+          ? `SELECT * FROM ${this.schema}.visualizations WHERE workspace_id = $1 AND status <> 'removed' AND updated_at < $2 ORDER BY updated_at DESC LIMIT $3`
+          : `SELECT * FROM ${this.schema}.visualizations WHERE workspace_id = $1 AND status <> 'removed' ORDER BY updated_at DESC LIMIT $2`,
         cursor ? [workspaceId, cursor, cappedLimit + 1] : [workspaceId, cappedLimit + 1],
       )
       const items = rows.slice(0, cappedLimit).map(mapVisualization)
@@ -202,16 +209,16 @@ export class PostgresPersistenceProvider implements PersistenceProvider {
       const visualization = await this.getVisualization(id)
       if (!visualization) throw new Error("Failed to create visualization.")
       return visualization
-    }),
+    }, { visualization_id: command.id, public_id: command.publicId }),
   }
 
   versions = {
     get: async (id: string) => {
-      const row = await this.one(`SELECT * FROM ${this.schema}.visualization_versions WHERE id = $1`, [id])
+      const row = await this.one(`SELECT v.* FROM ${this.schema}.visualization_versions v JOIN ${this.schema}.visualizations p ON p.id = v.visualization_id WHERE v.id = $1 AND p.status <> 'removed'`, [id])
       return row ? mapVersion(row) : null
     },
     listByVisualization: async (visualizationId: string) => {
-      const rows = await this.all(`SELECT * FROM ${this.schema}.visualization_versions WHERE visualization_id = $1 ORDER BY created_at DESC`, [visualizationId])
+      const rows = await this.all(`SELECT * FROM ${this.schema}.visualization_versions WHERE visualization_id = $1 AND EXISTS (SELECT 1 FROM ${this.schema}.visualizations WHERE id = $1 AND status <> 'removed') ORDER BY created_at DESC`, [visualizationId])
       return rows.map(mapVersion)
     },
   }
@@ -231,7 +238,7 @@ export class PostgresPersistenceProvider implements PersistenceProvider {
       return record
     },
     listByVisualization: async (visualizationId: string) => {
-      const rows = await this.all(`SELECT * FROM ${this.schema}.visualization_checkpoints WHERE visualization_id = $1 ORDER BY created_at DESC`, [visualizationId])
+      const rows = await this.all(`SELECT * FROM ${this.schema}.visualization_checkpoints WHERE visualization_id = $1 AND EXISTS (SELECT 1 FROM ${this.schema}.visualizations WHERE id = $1 AND status <> 'removed') ORDER BY created_at DESC`, [visualizationId])
       return rows.map(mapCheckpoint)
     },
   }
@@ -246,7 +253,7 @@ export class PostgresPersistenceProvider implements PersistenceProvider {
       return input
     },
     listByVisualization: async (visualizationId: string) => {
-      const rows = await this.all(`SELECT * FROM ${this.schema}.visualization_sources WHERE visualization_id = $1 ORDER BY created_at ASC`, [visualizationId])
+      const rows = await this.all(`SELECT * FROM ${this.schema}.visualization_sources WHERE visualization_id = $1 AND EXISTS (SELECT 1 FROM ${this.schema}.visualizations WHERE id = $1 AND status <> 'removed') ORDER BY created_at ASC`, [visualizationId])
       return rows.map(mapSource)
     },
   }
@@ -261,7 +268,7 @@ export class PostgresPersistenceProvider implements PersistenceProvider {
       return input
     },
     listByVisualization: async (visualizationId: string) => {
-      const rows = await this.all(`SELECT * FROM ${this.schema}.visualization_assets WHERE visualization_id = $1 ORDER BY created_at ASC`, [visualizationId])
+      const rows = await this.all(`SELECT * FROM ${this.schema}.visualization_assets WHERE visualization_id = $1 AND EXISTS (SELECT 1 FROM ${this.schema}.visualizations WHERE id = $1 AND status <> 'removed') ORDER BY created_at ASC`, [visualizationId])
       return rows.map(mapAsset)
     },
   }
@@ -276,12 +283,12 @@ export class PostgresPersistenceProvider implements PersistenceProvider {
       return input
     },
     getRequest: async (id: string) => {
-      const row = await this.one(`SELECT * FROM ${this.schema}.review_requests WHERE id = $1`, [id])
+      const row = await this.one(`SELECT r.* FROM ${this.schema}.review_requests r JOIN ${this.schema}.visualizations p ON p.id = r.visualization_id WHERE r.id = $1 AND p.status <> 'removed'`, [id])
       return row ? mapReviewRequest(row) : null
     },
     appendComment: async (command: AppendReviewCommentCommand) => this.commands.appendReviewComment(command),
     listComments: async (reviewRequestId: string) => {
-      const rows = await this.all(`SELECT * FROM ${this.schema}.review_comments WHERE review_request_id = $1 ORDER BY created_at ASC`, [reviewRequestId])
+      const rows = await this.all(`SELECT c.* FROM ${this.schema}.review_comments c JOIN ${this.schema}.review_requests r ON r.id = c.review_request_id JOIN ${this.schema}.visualizations p ON p.id = r.visualization_id WHERE c.review_request_id = $1 AND p.status <> 'removed' ORDER BY c.created_at ASC`, [reviewRequestId])
       return rows.map(mapReviewComment)
     },
   }
@@ -298,7 +305,7 @@ export class PostgresPersistenceProvider implements PersistenceProvider {
       )
     },
     listByVisualization: async (visualizationId: string) => {
-      const rows = await this.all(`SELECT * FROM ${this.schema}.analytics_events WHERE visualization_id = $1 ORDER BY created_at ASC`, [visualizationId])
+      const rows = await this.all(`SELECT * FROM ${this.schema}.analytics_events WHERE visualization_id = $1 AND EXISTS (SELECT 1 FROM ${this.schema}.visualizations WHERE id = $1 AND status <> 'removed') ORDER BY created_at ASC`, [visualizationId])
       return rows.map(mapAnalyticsEvent)
     },
   }
@@ -312,7 +319,7 @@ export class PostgresPersistenceProvider implements PersistenceProvider {
       return input
     },
     listByVisualization: async (visualizationId: string) => {
-      const rows = await this.all(`SELECT * FROM ${this.schema}.leads WHERE visualization_id = $1 ORDER BY created_at ASC`, [visualizationId])
+      const rows = await this.all(`SELECT * FROM ${this.schema}.leads WHERE visualization_id = $1 AND EXISTS (SELECT 1 FROM ${this.schema}.visualizations WHERE id = $1 AND status <> 'removed') ORDER BY created_at ASC`, [visualizationId])
       return rows.map(mapLead)
     },
   }
@@ -334,7 +341,7 @@ export class PostgresPersistenceProvider implements PersistenceProvider {
       return input
     },
     get: async (id: string) => {
-      const row = await this.one(`SELECT * FROM ${this.schema}.experiments WHERE id = $1`, [id])
+      const row = await this.one(`SELECT e.* FROM ${this.schema}.experiments e JOIN ${this.schema}.visualizations p ON p.id = e.visualization_id WHERE e.id = $1 AND p.status <> 'removed'`, [id])
       if (!row) return null
       const variants = (await this.all(`SELECT * FROM ${this.schema}.experiment_variants WHERE experiment_id = $1 ORDER BY id ASC`, [id])).map(mapVariant)
       return { ...mapExperiment(row), variants }
@@ -364,7 +371,7 @@ export class PostgresPersistenceProvider implements PersistenceProvider {
       return updated
     },
     get: async (id: string) => {
-      const row = await this.one(`SELECT * FROM ${this.schema}.workflow_runs WHERE id = $1`, [id])
+      const row = await this.one(`SELECT w.* FROM ${this.schema}.workflow_runs w WHERE w.id = $1 AND (w.visualization_id IS NULL OR EXISTS (SELECT 1 FROM ${this.schema}.visualizations p WHERE p.id = w.visualization_id AND p.status <> 'removed'))`, [id])
       return row ? mapWorkflowRun(row) : null
     },
   }
@@ -458,6 +465,7 @@ export class PostgresPersistenceProvider implements PersistenceProvider {
 
     saveVisualizationRevision: async (command: import("@/packages/backend-contracts/provider").SaveVisualizationRevisionCommand) =>
       this.withIdempotency("saveVisualizationRevision", command.idempotencyKey, async () => {
+        if (command.status === "removed") throw new Error("Use the explicit workspace removal command.")
         const current = await this.getVisualization(command.visualizationId, true)
         if (!current) throw new Error("Visualization not found.")
         if (current.draftRevision !== command.expectedRevision) {
@@ -482,7 +490,7 @@ export class PostgresPersistenceProvider implements PersistenceProvider {
         const visualization = await this.getVisualization(current.id)
         if (!visualization) throw new Error("Visualization not found after save.")
         return { status: "saved" as const, visualization }
-      }),
+      }, { visualization_id: command.visualizationId }),
 
     publishVisualizationVersion: async (command: PublishVisualizationVersionCommand) =>
       this.withIdempotency("publishVisualizationVersion", command.idempotencyKey, async () => {
@@ -521,7 +529,7 @@ export class PostgresPersistenceProvider implements PersistenceProvider {
         const visualization = await this.getVisualization(current.id)
         if (!visualization) throw new Error("Visualization not found after publish.")
         return { status: "published" as const, visualization, version }
-      }),
+      }, { visualization_id: command.visualizationId, version_id: command.versionId }),
 
     restoreCheckpoint: async (command: import("@/packages/backend-contracts/provider").RestoreCheckpointCommand) =>
       this.withIdempotency("restoreCheckpoint", command.idempotencyKey, async () => {
@@ -536,7 +544,7 @@ export class PostgresPersistenceProvider implements PersistenceProvider {
           title: checkpoint.title,
           description: checkpoint.summary,
         })
-      }),
+      }, { visualization_id: command.visualizationId }),
 
     appendReviewComment: async (command: AppendReviewCommentCommand) =>
       this.withIdempotency("appendReviewComment", command.idempotencyKey, async () => {
@@ -559,7 +567,7 @@ export class PostgresPersistenceProvider implements PersistenceProvider {
           args: [comment.id, comment.reviewRequestId, comment.authorName, comment.body, JSON.stringify(comment.anchor), comment.status, comment.suggestedPatch == null ? null : JSON.stringify(comment.suggestedPatch), comment.parentCommentId, comment.createdAt, comment.appliedAt],
         })
         return comment
-      }),
+      }, { review_request_id: command.reviewRequestId }),
 
     activateExperiment: async (command: import("@/packages/backend-contracts/provider").ActivateExperimentCommand) =>
       this.withIdempotency("activateExperiment", command.idempotencyKey, async () => {
@@ -573,7 +581,7 @@ export class PostgresPersistenceProvider implements PersistenceProvider {
           args: [updatedAt, experiment.id],
         })
         return { ...experiment, status: "running" as const, updatedAt }
-      }),
+      }, { experiment_id: command.experimentId }),
 
     recordExperimentExposure: async (command: import("@/packages/backend-contracts/provider").RecordExperimentExposureCommand) =>
       this.withIdempotency("recordExperimentExposure", command.idempotencyKey, async () => {
@@ -591,7 +599,7 @@ export class PostgresPersistenceProvider implements PersistenceProvider {
           args: [createDomainId(), command.experimentId, command.visitorId, variant.id, variant.versionId, now()],
         })
         return { variantId: variant.id, versionId: variant.versionId }
-      }),
+      }, { experiment_id: command.experimentId }),
 
     rollbackPublishedVersion: async (command: RollbackPublishedVersionCommand) =>
       this.withIdempotency("rollbackPublishedVersion", command.idempotencyKey, async () => {
@@ -615,27 +623,41 @@ export class PostgresPersistenceProvider implements PersistenceProvider {
         const visualization = await this.getVisualization(current.id)
         if (!visualization) throw new Error("Visualization not found after rollback.")
         return { status: "published" as const, visualization, version }
-      }),
+      }, { visualization_id: command.visualizationId, version_id: command.versionId }),
   }
 
   private async getVisualization(id: string, forUpdate = false): Promise<VisualizationRecord | null> {
     const row = await this.one(
       forUpdate
-        ? `SELECT * FROM ${this.schema}.visualizations WHERE id = $1 FOR UPDATE`
-        : `SELECT * FROM ${this.schema}.visualizations WHERE id = $1`,
+        ? `SELECT * FROM ${this.schema}.visualizations WHERE id = $1 AND status <> 'removed' FOR UPDATE`
+        : `SELECT * FROM ${this.schema}.visualizations WHERE id = $1 AND status <> 'removed'`,
       [id],
     )
     return row ? mapVisualization(row) : null
   }
 
-  private async withIdempotency<T>(command: string, key: string, work: () => Promise<T>): Promise<T> {
+  private async rejectRemovedReferences(references: Record<string, unknown>) {
+    const rows = (await this.database.query(`SELECT p.id FROM ${this.schema}.visualizations p
+      WHERE p.status = 'removed' AND p.id IN (SELECT * FROM ${this.schema}.iv_lifecycle_references_v2($1::jsonb))`, [JSON.stringify(references)])).rows
+    if (rows.length) throw new Error("Visualization is unavailable.")
+  }
+
+  private async withIdempotency<T>(command: string, key: string, work: () => Promise<T>, references: Record<string, unknown> = {}): Promise<T> {
     await this.migrate()
     return this.database.transaction(async () => {
+      await lockVisualizationLifecycle(this.database, this.schema)
+      await this.rejectRemovedReferences(references)
       // Lock before reading: concurrent requests with the same key observe one committed result.
       await this.lockResource(`idempotency:${key}`)
       const existing = await this.one(`SELECT command, result_json FROM ${this.schema}.idempotency_records WHERE key = $1`, [key])
       if (existing) {
         if (existing.command !== command) throw new Error("Idempotency key was already used for another command.")
+        const cached = existing.result_json as Record<string, unknown>
+        const visualization = cached.visualization as Record<string, unknown> | undefined
+        const version = cached.version as Record<string, unknown> | undefined
+        await this.rejectRemovedReferences({ visualization_id: command === "createVisualization" ? cached.id : visualization?.id ?? cached.visualizationId,
+          version_id: version?.id ?? cached.versionId, review_request_id: cached.reviewRequestId,
+          experiment_id: command === "activateExperiment" ? cached.id : cached.experimentId, variant_id: cached.variantId })
         return existing.result_json as T
       }
       const result = await work()

@@ -38,7 +38,7 @@ export function createLocalPostgresContext(database: LocalDatabase): PostgresCon
 
 const initialized = new WeakMap<LocalDatabase, Promise<void>>()
 
-export async function initializeLocalDatabase(database: LocalDatabase): Promise<void> {
+export async function initializeLocalDatabase(database: LocalDatabase, upgradeFromV1 = false): Promise<void> {
   let initialization = initialized.get(database)
   if (!initialization) {
     initialization = database.transaction(async (transaction) => {
@@ -59,6 +59,13 @@ export async function initializeLocalDatabase(database: LocalDatabase): Promise<
           throw new Error("Local PostgreSQL schema has an unknown migration version or identity.")
         }
       }
+      if (rows.length === 1 && Number(rows[0].version) === 1) {
+        if (!upgradeFromV1) throw new Error("Local lifecycle v2 requires an explicit upgrade after stopping every v1 app, job and backup tool.")
+        const peers = await transaction.query(`SELECT pid FROM pg_catalog.pg_stat_activity
+          WHERE datname = current_database() AND pid <> pg_backend_pid()
+          AND application_name = 'intelligent-visualization-local'`)
+        if (peers.rows.length) throw new Error("Stop all other local visualization database connections before lifecycle upgrade.")
+      }
       for (const migration of localMigrations) {
         if (rows.some((row) => Number(row.version) === migration.version)) continue
         for (const statement of migration.statements) await transaction.query(statement)
@@ -73,6 +80,14 @@ export async function initializeLocalDatabase(database: LocalDatabase): Promise<
     if (initialized.get(database) === initialization) initialized.delete(database)
     throw error
   }
+}
+
+// Operator-only setup path, never called from HTTP. This acknowledges external
+// process retirement; the connection check alone cannot prove future quiescence.
+export async function upgradeLocalLifecycle(database: LocalDatabase, oldProcessesRetired: boolean) {
+  if (!oldProcessesRetired) throw new Error("Explicit acknowledgement of stopped v1 readers, writers, jobs and tools is required.")
+  initialized.delete(database)
+  await initializeLocalDatabase(database, true)
 }
 
 let singleton: { connectionString: string; database: LocalDatabase } | undefined

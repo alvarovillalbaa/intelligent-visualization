@@ -150,9 +150,9 @@ export function createWorkspaceDraftRepository(context: PostgresContext, provide
           to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') AS cursor_updated_at`
         const { rows } = await database.query(after
           ? `SELECT ${columns} FROM ${SCHEMA}.visualizations WHERE team_id = $1 AND workspace_id = $2
-             AND kind IN ('course', 'report') AND (updated_at, id) < ($3::timestamptz, $4::text) ORDER BY updated_at DESC, id DESC LIMIT $5`
+             AND kind IN ('course', 'report') AND status <> 'removed' AND (updated_at, id) < ($3::timestamptz, $4::text) ORDER BY updated_at DESC, id DESC LIMIT $5`
           : `SELECT ${columns} FROM ${SCHEMA}.visualizations WHERE team_id = $1 AND workspace_id = $2
-             AND kind IN ('course', 'report') ORDER BY updated_at DESC, id DESC LIMIT $3`,
+             AND kind IN ('course', 'report') AND status <> 'removed' ORDER BY updated_at DESC, id DESC LIMIT $3`,
         after ? [scope.teamId, scope.workspaceId, ...after, limit + 1] : [scope.teamId, scope.workspaceId, limit + 1])
         const page = rows.slice(0, limit)
         const last = page[page.length - 1]

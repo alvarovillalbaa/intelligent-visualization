@@ -1,9 +1,38 @@
 # Remove a saved Course or Report from its workspace
 
-Status: **NEXT, not implemented**. Prepared 7 November 2026 from read-only source
-inspection. Implementation is held until the Supabase application gate closes
-and the reader/writer compatibility decisions below are resolved. Earlier failed
-application attempts do not establish acceptance.
+Status: **implementation candidate, unverified**, 12 November 2026. The Supabase
+application password gate closed on 10 November at `e35ad7c6`; that result does
+not qualify this new lifecycle scope. Historical design notes below retain their
+7 November context. New checks are scoped in [removal checks](workspace-removal-checks.md).
+
+The candidate chooses immutable v1 plus an explicit v2 migration. A per-schema
+transaction advisory lock precedes legacy/parent locks and every linked DML
+statement; row triggers protect the removed parent and both old/new parent
+references for all 12 child tables. This conservative lock serializes canonical
+lifecycle writes in a schema. It trades write concurrency for a bounded, common
+ordering across old SQL writers and the new application. It does not fence old
+SELECTs or evict old initialized pools: retiring every old app, worker and backup
+tool is mandatory before activation. No production upgrade is authorized by this
+receipt or performed here.
+
+Existing v1 local databases refuse automatic upgrade. After process retirement,
+the operator runs `npm run setup:local -- --upgrade-lifecycle-v2
+--acknowledge-stopped-v1-processes`; any other local app connection refuses it.
+Hosted migration SQL is printed by `tsx scripts/lifecycle-migration.ts
+--print-supabase-sql` without connecting. An operator must set
+`iv.lifecycle_v2_retired=true` in the applying migration-owner session after
+retirement; the SQL refuses other runtime connections and takes exclusive table
+locks. A peer snapshot does not establish future quiescence. Drain and prevent
+old restarts, apply the new migration, start only v2 processes, then qualify
+the actual deployment. Never use runtime credentials for DDL.
+
+New ordinary reads and cached commands refuse tombstones. Portable v2 retains
+the graph and stages only newly absent tombstones as draft inside the restore
+transaction before terminalization. Identical existing rows are compared before
+INSERT; existing tombstones are never reopened. Receipts remain excluded. No
+monotonic recovery promise is made for an empty target restored from a backup
+that predates removal. Read/export requests admitted before removal and copied
+content cannot be recalled. No storage deletion or bypass URL is introduced.
 
 ## User-visible boundary
 
