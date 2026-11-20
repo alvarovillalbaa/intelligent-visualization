@@ -1,5 +1,9 @@
 # Intelligent Visualization
 
+<!-- project-family:start -->
+> **Project family:** [Web & Creative Apps](https://github.com/alvarovillalbaa#web-and-creative-apps) · **Area:** Visual documents
+<!-- project-family:end -->
+
 Intelligent Visualization is a Next.js + TypeScript application for creating interactive visual documents.
 
 The platform supports exactly three primary visualization types:
